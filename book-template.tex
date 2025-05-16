@@ -1,0 +1,378 @@
+% ---
+% BOOK TEMPLATE: Professional Book Structure for Pandoc/LaTeX
+% ---------------------------------------------------
+% MARKDOWN BEST PRACTICES FOR THIS TEMPLATE:
+% - Organize your markdown into three main sections:
+%   1. Front Matter (Title Page, Disclaimer, Acknowledgements, Introduction)
+%   2. Main Matter (Chapters: label each as 'Chapter X Title' in markdown)
+%   3. Back Matter (Appendix, Glossary, References, etc.)
+% - Use standard markdown headings throughout your document:
+%   - # DISCLAIMER (front matter section heading)
+%   - # ACKNOWLEDGMENTS (front matter section heading)
+%   - # Chapter 1: Title (main matter chapter)
+%   - # APPENDIX (back matter section)
+% - In Front Matter: Headings will appear centered with text on the same page
+% - In Main Matter: Chapter headings will appear on their own page with chapter numbers
+% - The template automatically handles proper formatting of all sections
+% - Page numbers: Roman numerals for front matter (skip on title page), Arabic for main/back matter (skip on first page of main matter).
+% ---------------------------------------------------
+
+% ---
+% To avoid text breaking the margins (required for KDP):
+% - Avoid very long unbreakable words, URLs, or code in your markdown.
+% - The template uses \sloppy and microtype for better justification.
+% - Hyphenation is enabled for English.
+% ---
+
+% !TEX TS-program = xelatex
+% !TEX encoding = UTF-8
+
+\documentclass[$if(fontsize)$$fontsize$,$endif$$if(lang)$$babel-lang$,$endif$$if(papersize)$$papersize$,$endif$$for(classoption)$$classoption$$sep$,$endfor$]{book}
+
+% --- Disable all section numbering directly after documentclass ---
+\setcounter{secnumdepth}{-1}
+
+% --- Basic packages ---
+\usepackage{fontspec}
+\setmainfont{Times New Roman}
+\setsansfont{Arial}
+
+% --- Page geometry ---
+\usepackage{geometry}
+\geometry{$if(geometry)$$geometry$$else$letterpaper$endif$}
+
+% Debug page dimensions
+\typeout{DEBUG - Using paper size: $paperwidth$ x $paperheight$}
+\typeout{DEBUG - Margin: $if(margin)$$margin$$else$1in$endif$}
+\typeout{DEBUG - Binding type: $if(binding)$$binding$$else$paperback$endif$}
+
+% --- Hyphenation and justification ---
+\usepackage[english]{babel}
+\usepackage{microtype}
+\sloppy
+
+% --- Pandoc tightlist fix ---
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+
+% --- Core packages ---
+\usepackage{graphicx}
+\usepackage{setspace}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{tocbibind}
+\usepackage{etoolbox}
+\usepackage{hyperref}
+% --- Force images to appear exactly where placed in markdown (Pandoc/LaTeX best practice for SaaS) ---
+\usepackage{float}
+\let\origfigure\figure
+\let\endorigfigure\endfigure
+\renewenvironment{figure}[1][]%  
+  {\origfigure[H]}%  
+  {\endorigfigure}
+% --- Ensure images fit within text width by default ---
+\setkeys{Gin}{width=\linewidth,keepaspectratio}
+
+% --- Table support ---
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{colortbl}
+\usepackage{calc}
+\usepackage{multirow}
+\usepackage{makecell}
+
+% Default longtable settings
+\setlength{\LTpre}{0pt}
+\setlength{\LTpost}{0pt}
+\setlength{\LTleft}{0pt}
+\setlength{\LTright}{0pt}
+
+% Column types for Pandoc tables
+\DeclareExpandableDocumentCommand\CT{O{0.2\textwidth}m}{%
+  \parbox[t]{#1}{\strut{}#2\strut}}
+
+% Handle Pandoc tables
+$if(tables)$
+\usepackage{longtable,booktabs,array}
+\usepackage{calc}
+\usepackage{caption}
+\captionsetup{singlelinecheck=false, font={it}, labelfont={rm,it}, labelsep=period, justification=centering}
+$endif$
+
+% Small-size font for tables
+\usepackage{xcolor}
+\definecolor{gray95}{gray}{0.95}
+\definecolor{gray90}{gray}{0.90}
+\definecolor{gray85}{gray}{0.85}
+
+% --- TABLE OF CONTENTS CONTROL ---
+% Set TOC depth - this is the most important setting
+$if(toc-depth)$
+\setcounter{tocdepth}{$toc-depth$}
+$else$
+\setcounter{tocdepth}{2}
+$endif$
+
+% --- DOCUMENT STRUCTURE FORMATTING ---
+% Configure chapter styles - no chapter numbers
+\titleformat{\chapter}[display]
+  {\normalfont\huge\bfseries\centering}
+  {}
+  {20pt}
+  {\Huge}
+  []
+\titlespacing*{\chapter}{0pt}{50pt}{40pt}
+
+% Configure section formatting - no section numbers
+\titleformat{\section}
+  {\normalfont\Large\bfseries}
+  {}
+  {0em}
+  {}
+\titlespacing*{\section}{0pt}{3.5ex plus 1ex minus .2ex}{2.3ex plus .2ex}
+
+% Unnumbered chapters
+\titleformat{name=\chapter,numberless}[display]
+  {\normalfont\huge\bfseries\centering}
+  {}
+  {0pt}
+  {\Huge}
+  []
+\titlespacing*{name=\chapter,numberless}{0pt}{50pt}{20pt}
+
+% --- Configure spacing ---
+\onehalfspacing
+\setlength{\parindent}{1.5em}
+\setlength{\parskip}{0.5em}
+
+% --- Fix excessive vertical space ---
+\raggedbottom
+\usepackage{nowidow}
+\widowpenalty=10000
+\clubpenalty=10000
+\setlength{\emergencystretch}{3em}
+
+% --- Header/footer style ---
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot[R]{\thepage}
+\fancyhead[L]{\nouppercase{\leftmark}}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0pt}
+\renewcommand{\chaptermark}[1]{\markboth{#1}{}}
+\renewcommand{\sectionmark}[1]{}
+
+% --- Plain style for chapter pages ---
+\fancypagestyle{plain}{
+  \fancyhf{}
+  \fancyfoot[R]{\thepage}
+  \renewcommand{\headrulewidth}{0pt}
+}
+
+% --- For front matter chapters ---
+\fancypagestyle{frontmatter}{
+  \fancyhf{}
+  \fancyfoot[R]{\thepage}
+  \renewcommand{\headrulewidth}{0pt}
+}
+
+% --- Front/Main/Back Matter Formatting ---
+% Redefine front matter style
+\renewcommand{\frontmatter}{%
+  \pagenumbering{roman}
+  % Front matter chapter style
+  \titleformat{\chapter}[display]
+    {\normalfont\huge\bfseries\centering}
+    {} % No chapter number
+    {0pt}
+    {\Huge}
+    []
+  \titlespacing*{\chapter}{0pt}{0pt}{1em}
+}
+
+% Redefine main matter style
+\renewcommand{\mainmatter}{%
+  \clearpage
+  \pagenumbering{arabic}
+  \setcounter{page}{1}
+  % Main matter chapter style
+  \titleformat{\chapter}[display]
+    {\normalfont\huge\bfseries\centering}
+    {}
+    {20pt}
+    {\Huge}
+    []
+  \titlespacing*{\chapter}{0pt}{50pt}{40pt}
+  % Hide page number on first page of main matter
+  \thispagestyle{empty}
+}
+
+% Redefine back matter style
+\renewcommand{\backmatter}{%
+  \clearpage
+  % Do NOT reset page numbering; continue Arabic
+  \setcounter{secnumdepth}{-2}
+}
+
+% --- Title page settings ---
+\newcommand{\notitlepagenumber}{
+  \thispagestyle{empty}
+  \addtocounter{page}{-1}
+}
+
+% --- Custom front matter heading ---
+\newcommand{\frontheading}[1]{%
+  \vspace*{2em}
+  \begin{center}
+    {\huge\bfseries #1}
+  \end{center}
+  \vspace{1em}
+}
+
+% --- Table of Contents Configuration ---
+\renewcommand{\contentsname}{CONTENTS}
+
+% --- Book metadata ---
+$if(title)$
+\title{$title$}
+$endif$
+$if(author)$
+\author{$for(author)$$author$$sep$ \\ $endfor$}
+$endif$
+$if(date)$
+\date{$date$}
+$endif$
+
+% Check if we should add bleed
+$if(bleed)$
+\usepackage[cam,a4,center]{crop}
+\crop[cropspec=$paperwidth$,$paperheight$]
+$endif$
+
+% Include any custom header content
+$for(header-includes)$
+$header-includes$
+$endfor$
+
+% Define variables for book structure
+\usepackage{etoolbox}
+\usepackage{titlesec}
+
+% Chapter prefix variables - default to false if not set
+\providecommand{\usechapterprefix}{false}
+\providecommand{\chapterlabelformat}{number}
+
+% Document structure variables
+\providecommand{\includetitlepage}{true}
+\providecommand{\noseparatorpages}{false}
+
+% Configure chapter formatting based on settings
+\ifstrequal{\usechapterprefix}{true}{
+  \ifstrequal{\chapterlabelformat}{number}{
+    % Use numerical chapter labels (e.g., "Chapter 1")
+    \renewcommand{\chaptername}{Chapter}
+  }{
+    \ifstrequal{\chapterlabelformat}{text}{
+      % Use text chapter labels (e.g., "Chapter One")
+      \renewcommand{\chaptername}{Chapter}
+      \usepackage{fmtcount}
+      \makeatletter
+      \renewcommand{\@chapapp@head}{%
+        \chaptername\ \NUMBERstring{chapter}%
+      }
+      \makeatother
+    }{
+      % Default numerical format
+      \renewcommand{\chaptername}{Chapter}
+    }
+  }
+}{
+  % If chapter prefix is disabled, remove the word "Chapter" entirely
+  \renewcommand{\chaptername}{}
+  \titleformat{\chapter}[display]
+    {\normalfont\huge\bfseries}{\thechapter}{20pt}{\Huge}
+}
+
+% Handle separator pages between chapters if requested
+\ifstrequal{\noseparatorpages}{true}{
+  \renewcommand{\cleardoublepage}{\clearpage}
+}{}
+
+% PDF metadata
+\usepackage[
+  pdftitle={$if(title-meta)$$title-meta$$else$$title$$endif$},
+  pdfauthor={$if(author-meta)$$author-meta$$else$$author$$endif$},
+  pdfsubject={$if(subject)$$subject$$else$$title$$endif$},
+  pdfkeywords={$for(keywords)$$keywords$$sep$, $endfor$},
+  pdfborder={0 0 0},
+  pdfcreator={PublishJockey},
+  pdfproducer={PublishJockey}
+]{hyperref}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue,
+  filecolor=magenta,
+  citecolor=green,
+  urlcolor=blue,
+  pdfborderstyle={/S/U/W 1}
+}
+
+% Table of contents settings
+\setcounter{tocdepth}{$if(toc-depth)$$toc-depth$$else$2$endif$}
+\setcounter{secnumdepth}{$if(numbersections)$5$else$0$endif$}
+
+% Set paragraph spacing
+\setlength{\parindent}{0.5in}
+\setlength{\parskip}{6pt plus 2pt minus 1pt}
+
+\begin{document}
+
+% Start with front matter
+\frontmatter
+
+% Title page
+$if(title)$
+\thispagestyle{empty}
+\begin{titlepage}
+  \begin{center}
+    \vspace*{1in}
+    {\Huge\bfseries $title$\par}
+    \vspace{0.75in}
+    $if(subtitle)$
+    {\Large\bfseries $subtitle$\par}
+    \vspace{0.5in}
+    $endif$
+    $if(author)$
+    {\Large $for(author)$$author$$sep$ \\ $endfor$\par}
+    $endif$
+    \vfill
+    $if(date)$
+    {\large $date$\par}
+    $endif$
+  \end{center}
+\end{titlepage}
+\clearpage
+$endif$
+
+% Copyright page
+$if(copyright)$
+\thispagestyle{empty}
+\vspace*{\fill}
+$copyright$
+\vspace*{\fill}
+\clearpage
+$endif$
+
+% Table of Contents
+$if(toc)$
+\tableofcontents
+\clearpage
+$endif$
+
+% Main document content
+$body$
+
+\end{document}

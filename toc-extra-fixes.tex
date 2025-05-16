@@ -1,0 +1,110 @@
+% Additional fixes for TOC and section numbering issues
+\makeatletter
+
+% Completely remove section numbers from output - multiple approaches for redundancy
+\setcounter{secnumdepth}{-2147483647} % Set to most negative value possible
+\renewcommand\thesection{}
+\renewcommand\thesubsection{}
+\renewcommand\thesubsubsection{}
+\renewcommand\theparagraph{}
+\renewcommand\thesubparagraph{}
+
+% Prevent numbers for all section types
+\renewcommand{\@seccntformat}[1]{}
+
+% Also modify the chapter formatting to remove numbering
+\renewcommand\thechapter{}
+\makeatletter
+\renewcommand{\@makechapterhead}[1]{%
+  \vspace*{50\p@}%
+  {\parindent \z@ \raggedright \normalfont
+    \interlinepenalty\@M
+    \Huge \bfseries #1\par\nobreak
+    \vskip 40\p@
+  }}
+
+% For \chapter* command as well
+\renewcommand{\@makeschapterhead}[1]{%
+  \vspace*{50\p@}%
+  {\parindent \z@ \raggedright \normalfont
+    \interlinepenalty\@M
+    \Huge \bfseries #1\par\nobreak
+    \vskip 40\p@
+  }}
+
+% Make sure the section command doesn't include numbering
+\renewcommand{\section}{\@startsection{section}{1}{\z@}%
+                                   {-3.5ex \@plus -1ex \@minus -.2ex}%
+                                   {2.3ex \@plus.2ex}%
+                                   {\normalfont\Large\bfseries}}
+
+% Redefine subsection similarly
+\renewcommand{\subsection}{\@startsection{subsection}{2}{\z@}%
+                                     {-3.25ex\@plus -1ex \@minus -.2ex}%
+                                     {1.5ex \@plus .2ex}%
+                                     {\normalfont\large\bfseries}}
+
+% Strong override to force chapter and section numbers to be truly empty
+\def\@chapapp{}
+\def\thechapter{}
+\def\thesection{}
+\def\thesubsection{}
+\def\thesubsubsection{}
+\makeatletter
+
+% Fix the TOC entries - no numbering
+\renewcommand{\@seccntformat}[1]{}
+
+% Make sure no chapter numbers appear
+\renewcommand\thechapter{}
+\renewcommand\thefigure{\arabic{figure}}
+\renewcommand\thetable{\arabic{table}}
+
+% Remove the section number display in the document
+\renewcommand{\numberline}[1]{}
+
+% Remove the unnecessary bracket notation in sections and fix TOC
+\def\@sect#1#2#3#4#5#6[#7]#8{%
+  \ifnum #2>\c@secnumdepth
+    \let\@svsec\@empty
+  \else
+    \refstepcounter{#1}%
+    \protected@edef\@svsec{}%  % Empty section number
+  \fi
+  \@tempskipa #5\relax
+  \ifdim \@tempskipa>\z@
+    \begingroup
+      #6{%
+        \@hangfrom{\hskip #3\relax\@svsec}%
+          \interlinepenalty \@M #8\@@par}%
+    \endgroup
+    \csname #1mark\endcsname{#7}%
+    \addcontentsline{toc}{#1}{#7}%
+  \else
+    \def\@svsechd{%
+      #6{\hskip #3\relax
+      \@svsec #8}%
+      \csname #1mark\endcsname{#7}%
+      \addcontentsline{toc}{#1}{#7}}%
+  \fi
+  \@xsect{#5}}
+
+% Fix TOC display - remove dots and ensure clean formatting
+\renewcommand{\l@chapter}[2]{%
+  \ifnum \c@tocdepth >\m@ne
+    \addpenalty{-\@highpenalty}%
+    \vskip 1.0em \@plus\p@
+    \setlength\@tempdima{1.5em}%
+    \begingroup
+      \parindent \z@ \rightskip \@pnumwidth
+      \parfillskip -\@pnumwidth
+      \leavevmode \bfseries
+      \hskip -\leftskip
+      #1\nobreak
+      \xleaders\hbox{$\m@th\mkern \@dotsep mu\hbox{.}\mkern \@dotsep mu$}\hfill
+      \nobreak\hb@xt@\@pnumwidth{\hss #2}\par
+      \penalty\@highpenalty
+    \endgroup
+  \fi}
+
+\makeatother 

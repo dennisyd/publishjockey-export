@@ -1,0 +1,51 @@
+// Shared utility functions for all exporters
+const fs = require('fs');
+const path = require('path');
+
+function removeEmojis(str) {
+  return str.replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, '');
+}
+
+function saveDebugFile(content, filename, directory = 'debug') {
+  try {
+    const baseDir = path.join(__dirname, directory);
+    if (!fs.existsSync(baseDir)) {
+      fs.mkdirSync(baseDir, { recursive: true });
+    }
+    const filePath = path.join(baseDir, filename);
+    fs.writeFileSync(filePath, content, 'utf8');
+    console.log(`DEBUG: Saved ${filename} to ${filePath}`);
+    return filePath;
+  } catch (error) {
+    console.error(`ERROR: Failed to save debug file ${filename}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Replaces custom image placeholders with format-specific output.
+ * @param {string} markdown - The markdown content
+ * @param {string} format - 'pdf', 'epub', or 'docx'
+ * @returns {string} - The processed markdown
+ */
+function replaceCustomImages(markdown, format) {
+  return markdown.replace(/\{\{IMAGE:([^|}]+)\|([^|}]+)\|([^|}]+)\}\}/g, (match, src, alt, scale) => {
+    src = src.replace(/\\/g, '/'); // Always use forward slashes
+    scale = parseFloat(scale);
+    if (format === 'pdf') {
+      // LaTeX: width=...\textwidth
+      return `\\begin{figure}[h]\n\\centering\n\\includegraphics[width=${scale}\\textwidth]{${src}}\n\\caption{${alt.replace(/([%#&{}_])/g, '\\$1')}}\n\\end{figure}`;
+    } else if (format === 'epub') {
+      // HTML: center both image and caption
+      const percent = Math.round(scale * 100);
+      return `<div style="text-align: center;">\n  <img src="${src}" alt="${alt}" style="max-width:${percent}%;" />\n  <div style="text-align: center;"><em>${alt}</em></div>\n</div>`;
+    } else if (format === 'docx') {
+      // Markdown image
+      return `![${alt}](${src})`;
+    } else {
+      return match;
+    }
+  });
+}
+
+module.exports = { removeEmojis, saveDebugFile, replaceCustomImages }; 

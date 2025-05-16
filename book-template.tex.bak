@@ -1,0 +1,252 @@
+% ---
+% BOOK TEMPLATE: Professional Book Structure for Pandoc/LaTeX
+% ---------------------------------------------------
+% MARKDOWN BEST PRACTICES FOR THIS TEMPLATE:
+% - Organize your markdown into three main sections:
+%   1. Front Matter (Title Page, Disclaimer, Acknowledgements, Introduction)
+%   2. Main Matter (Chapters: label each as 'Chapter X Title' in markdown)
+%   3. Back Matter (Appendix, Glossary, References, etc.)
+% - Use standard markdown headings throughout your document:
+%   - # DISCLAIMER (front matter section heading)
+%   - # ACKNOWLEDGMENTS (front matter section heading)
+%   - # Chapter 1: Title (main matter chapter)
+%   - # APPENDIX (back matter section)
+% - In Front Matter: Headings will appear centered with text on the same page
+% - In Main Matter: Chapter headings will appear on their own page with chapter numbers
+% - The template automatically handles proper formatting of all sections
+% - Page numbers: Roman numerals for front matter (skip on title page), Arabic for main/back matter (skip on first page of main matter).
+% ---------------------------------------------------
+
+% ---
+% To avoid text breaking the margins (required for KDP):
+% - Avoid very long unbreakable words, URLs, or code in your markdown.
+% - The template uses \sloppy and microtype for better justification.
+% - Hyphenation is enabled for English.
+% ---
+
+\documentclass[12pt,openany]{book}
+
+% --- Encoding and font setup ---
+\usepackage{fontspec}
+\setmainfont{Times New Roman}
+
+% --- Page geometry ---
+\usepackage[paperwidth=$paperwidth$, paperheight=$paperheight$, margin=$margin$]{geometry}
+
+% --- Hyphenation and justification ---
+\usepackage[english]{babel}
+\usepackage{microtype}
+\sloppy
+
+% --- Pandoc tightlist fix ---
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+
+% --- Other useful packages ---
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage{setspace}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{tocbibind}
+\usepackage{etoolbox}
+
+% --- Enable TOC to detect all heading levels ---
+\setcounter{tocdepth}{3}  % Show up to subsubsection in TOC
+
+% --- Configure chapter styles for front matter to avoid page breaks ---
+\let\oldchapter\chapter
+\let\oldsection\section
+
+% Redefine how markdown headings work in front matter to NOT create page breaks
+\def\frontmatterchapterstyle{%
+  \titleformat{\chapter}[display]
+    {\normalfont\huge\bfseries\centering}
+    {} % No chapter number
+    {0pt}
+    {\Huge}
+    []
+  \titlespacing*{\chapter}{0pt}{0pt}{1em} % Adjust spacing to prevent page breaks
+}
+
+\def\mainmatterchapterstyle{%
+  \titleformat{\chapter}[display]
+    {\normalfont\huge\bfseries\centering}
+    {\thechapter}
+    {20pt}
+    {\Huge}
+    [\vspace{0.5em}\begin{center}\rule{0.6\textwidth}{1pt}\end{center}\vspace{1em}]
+  \titlespacing*{\chapter}{0pt}{50pt}{40pt}
+}
+
+% When mainmatter begins, apply main matter style
+\let\oldmainmatter\mainmatter
+\renewcommand{\mainmatter}{%
+  \clearpage
+  \oldmainmatter
+  \mainmatterchapterstyle
+  \pagenumbering{arabic}
+  \setcounter{page}{1}
+  % Hide page number on first page of main matter
+  \thispagestyle{empty}
+}
+
+% --- Custom environment for centered, non-chapter pages (e.g. disclaimers) ---
+\newenvironment{centerblock}{%
+  \thispagestyle{empty}
+  \vspace*{2em}
+  \begin{center}
+}{%
+  \end{center}
+  \vspace{1em}
+}
+
+% --- Configure spacing ---
+\onehalfspacing
+
+% --- Header/footer style ---
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[LE,RO]{\thepage}
+\fancyhead[LO,RE]{\nouppercase{\leftmark}}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0pt}
+
+% Only show chapter title in header (not section)
+\renewcommand{\chaptermark}[1]{\markboth{#1}{}}
+\renewcommand{\sectionmark}[1]{}
+
+% --- Plain style for chapter pages ---
+\fancypagestyle{plain}{
+  \fancyhf{}
+  \fancyfoot[C]{\thepage}
+  \renewcommand{\headrulewidth}{0pt}
+}
+
+% --- Title page: no page number ---
+\newcommand{\notitlepagenumber}{
+  \thispagestyle{empty}
+  \addtocounter{page}{-1}
+}
+
+% --- Unnumbered chapters (front/back matter) ---
+\titleformat{name=\chapter, numberless}[hang]
+  {\normalfont\huge\bfseries\centering}
+  {}
+  {0pt}
+  {\Huge}
+  []
+
+% --- Reduce spacing after unnumbered chapter headings (front/back matter) ---
+\titlespacing*{name=\chapter,numberless}{0pt}{50pt}{20pt}
+
+% --- To disable section numbering (no 1.1, 1.2, etc.), set secnumdepth to 0:
+\setcounter{secnumdepth}{0}
+
+% --- Section formatting ---
+\titleformat{\section}
+  {\normalfont\Large\bfseries}
+  {} % No section number
+  {0em}
+  {}
+
+% --- Section spacing ---
+\titlespacing*{\section}{0pt}{3.5ex plus 1ex minus .2ex}{2.3ex plus .2ex}
+
+% --- Back matter: unnumbered chapters, continue Arabic page numbering ---
+\let\oldbackmatter\backmatter
+\renewcommand{\backmatter}{%
+  \clearpage
+  \oldbackmatter
+  % Do NOT reset page numbering; continue Arabic
+  \setcounter{secnumdepth}{-2} % Disable numbering for chapters/sections
+}
+
+% --- Book metadata (filled by Pandoc) ---
+$if(title)$
+\title{$title$}
+$endif$
+$if(author)$
+\author{$for(author)$$author$$sep$ \\ $endfor$}
+$endif$
+$if(date)$
+\date{$date$}
+$endif$
+
+% --- Custom front matter heading (no page break) ---
+\newcommand{\frontheading}[1]{%
+  \vspace*{2em}
+  \begin{center}
+    {\huge\bfseries #1}
+  \end{center}
+  \vspace{1em}
+}
+
+\begin{document}
+
+% Start with proper setup
+\frontmatter
+\frontmatterchapterstyle
+\pagenumbering{roman}
+
+$if(title)$
+\thispagestyle{empty}
+\begin{titlepage}
+  \begin{center}
+    \vspace*{2in}
+    {\Huge\bfseries $title$\par}
+    \vspace{1.5in}
+    $if(subtitle)$
+    {\Large\bfseries $subtitle$\par}
+    \vspace{1in}
+    $endif$
+    $if(author)$
+    {\Large $for(author)$$author$$sep$ \\ $endfor$\par}
+    $endif$
+    \vfill
+    $if(date)$
+    {\large $date$\par}
+    $endif$
+  \end{center}
+\end{titlepage}
+\clearpage
+$endif$
+
+$if(copyright)$
+\thispagestyle{empty}
+\vspace*{\fill}
+$copyright$
+\vspace*{\fill}
+\clearpage
+$endif$
+
+% --- TOC placement based on user settings ---
+$if(toc)$
+$if(tocplacement)$
+$if(tocplacement == "start")$
+\tableofcontents
+\clearpage
+$endif$
+$else$
+\tableofcontents
+\clearpage
+$endif$
+$endif$
+
+% --- Main document content ---
+$body$
+
+$if(toc)$
+$if(tocplacement)$
+$if(tocplacement == "afterFront")$
+% Insert TOC after front matter, before main matter
+\tableofcontents
+\clearpage
+$endif$
+$if(tocplacement == "custom")$
+% For custom placement, TOC will be inserted via a special marker in the markdown
+$endif$
+$endif$
+$endif$
+
+\end{document}
