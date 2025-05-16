@@ -1,0 +1,24 @@
+% Simple LaTeX template for Pandoc
+\documentclass[12pt]{book}
+
+% Basic packages
+\usepackage{fontspec}
+\usepackage{geometry}
+\geometry{margin=1in}
+\usepackage{hyperref}
+\usepackage{setspace}
+\onehalfspacing
+
+% Add \tightlist definition for Pandoc compatibility
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+
+\begin{document}
+
+$if(toc)$
+\tableofcontents
+$endif$
+
+$body$
+
+\end{document} 
