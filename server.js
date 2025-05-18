@@ -25,6 +25,7 @@ const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
 const User = require('./models/User'); // Import User model for subscription checks (local to export-backend)
+const { upscaleImage, KDP_SIZES } = require('./imagemagic'); // Import ImageMagic module
 
 // Helper for promisifying exec
 const execPromise = util.promisify(exec);
@@ -37,6 +38,9 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json({ limit: '100mb' }));
+
+// Serve static files from the uploads directory
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -1749,6 +1753,122 @@ app.post('/delete-all-images', (req, res) => {
   }
 });
 // --- End SaaS Image Management Endpoints ---
+
+/**
+ * POST /upscale-image
+ * Upscales an image to KDP-compatible resolution using the ImageMagic module
+ * Expects: multipart/form-data with file upload and optional parameters
+ * Returns: JSON with original and new image information
+ * Required auth: JWT token
+ */
+app.post('/upscale-image', authenticateJWT, imageUpload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No image uploaded' });
+    }
+
+    // Extract parameters from request
+    const bookSize = req.body.bookSize || 'auto'; // Default to auto size detection
+    const outputFormat = req.body.outputFormat || 'jpg'; // Default to jpg output
+    
+    // Create unique output filename
+    const inputFilename = req.file.originalname;
+    const timestamp = Date.now();
+    const userId = req.user.id.toString();
+    const outputFilename = `${path.parse(inputFilename).name}_KDP_${timestamp}.${outputFormat}`;
+    
+    // Setup paths
+    const inputPath = req.file.path;
+    const userUploadsDir = path.join(__dirname, 'uploads', userId, 'kdp-ready');
+    
+    // Ensure directory exists
+    if (!fs.existsSync(userUploadsDir)) {
+      fs.mkdirSync(userUploadsDir, { recursive: true });
+    }
+    
+    const outputPath = path.join(userUploadsDir, outputFilename);
+
+    // Perform the upscaling
+    const result = await upscaleImage(inputPath, outputPath, bookSize);
+    
+    // Remove the input file
+    fs.unlinkSync(inputPath);
+    
+    // Return the result
+    res.json({
+      success: true,
+      message: 'Image successfully upscaled for KDP',
+      originalSize: result.originalSize,
+      newSize: result.newSize,
+      outputPath: `/uploads/${userId}/kdp-ready/${outputFilename}`,
+      kdpReady: true,
+      dpi: 300,
+      bookSize: bookSize === 'auto' ? 'auto-detected' : bookSize
+    });
+  } catch (error) {
+    console.error('Image upscaling error:', error);
+    // Clean up uploaded file on error
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+    return res.status(500).json({
+      error: 'Image upscaling failed',
+      details: error.message
+    });
+  }
+});
+
+/**
+ * GET /kdp-sizes
+ * Returns a list of available KDP sizes for book covers
+ */
+app.get('/kdp-sizes', (req, res) => {
+  // Create an array with the keys in the correct order to maintain the order in the UI
+  const sizeOrder = [
+    '6x9',
+    '5x8',
+    '5.06x7.81',
+    '5.25x8',
+    '5.5x8.5',
+    '6.14x9.21',
+    '6.69x9.61',
+    '7x10',
+    '7.44x9.69',
+    '7.5x9.25',
+    '8x10',
+    '8.5x11'
+  ];
+  
+  const sizes = sizeOrder.map(key => ({
+    id: key,
+    name: `${key}" (${getMetricSize(key)})`,
+    width: KDP_SIZES[key].width,
+    height: KDP_SIZES[key].height,
+    dpi: 300
+  }));
+  
+  res.json({
+    success: true,
+    sizes
+  });
+});
+
+// Helper function to convert book size to metric
+function getMetricSize(size) {
+  const parts = size.split('x');
+  if (parts.length !== 2) return size;
+  
+  const width = parseFloat(parts[0]);
+  const height = parseFloat(parts[1]);
+  
+  if (isNaN(width) || isNaN(height)) return size;
+  
+  // Convert inches to centimeters (1 inch = 2.54 cm)
+  const cmWidth = (width * 2.54).toFixed(2);
+  const cmHeight = (height * 2.54).toFixed(2);
+  
+  return `${cmWidth} x ${cmHeight} cm`;
+}
 
 // Utility to copy images referenced in markdown to export dir
 function copyImagesForExport(markdown, userId, projectId, exportDir) {
