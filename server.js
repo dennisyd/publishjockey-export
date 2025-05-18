@@ -1794,6 +1794,18 @@ app.post('/upscale-image', authenticateJWT, imageUpload.single('image'), async (
     // Remove the input file
     fs.unlinkSync(inputPath);
     
+    // Schedule automatic deletion after 15 minutes (900000 milliseconds)
+    setTimeout(() => {
+      try {
+        if (fs.existsSync(outputPath)) {
+          fs.unlinkSync(outputPath);
+          console.log(`Auto-cleanup: Deleted ${outputFilename} after 15 minutes`);
+        }
+      } catch (deleteError) {
+        console.error(`Auto-cleanup error for ${outputFilename}:`, deleteError);
+      }
+    }, 900000);
+    
     // Return the result
     res.json({
       success: true,
@@ -1803,7 +1815,8 @@ app.post('/upscale-image', authenticateJWT, imageUpload.single('image'), async (
       outputPath: `/uploads/${userId}/kdp-ready/${outputFilename}`,
       kdpReady: true,
       dpi: 300,
-      bookSize: bookSize === 'auto' ? 'auto-detected' : bookSize
+      bookSize: bookSize === 'auto' ? 'auto-detected' : bookSize,
+      expiresIn: '15 minutes' // Notify the user that the file will expire
     });
   } catch (error) {
     console.error('Image upscaling error:', error);
