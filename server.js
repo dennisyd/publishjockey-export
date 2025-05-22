@@ -35,12 +35,17 @@ const app = express();
 app.use(cors({
   origin: ['http://localhost:3000', 'http://localhost:5173'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['Content-Disposition'] // Expose Content-Disposition header for downloads
 }));
 app.use(express.json({ limit: '100mb' }));
 
-// Serve static files from the uploads directory
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Temporary file tracking for cleanup
+const tempExportFiles = new Map();
+
+// We use a dedicated API endpoint for file access instead of static file serving
+// This prevents automatic downloads and gives us more control over file access
+// See the '/api/files/:fileId' route below
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -451,19 +456,43 @@ app.post('/export/pdf', authenticateJWT, async (req, res) => {
     // Generate the PDF using our exportPdf module
     await exportPdf(mdPath, pdfPath, pdfOptions);
 
-    // Send the PDF as a download
-    res.download(pdfPath, `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf`, (err) => {
-      // Clean up temp files after sending
-      // try {
-      //   if (fs.existsSync(mdPath)) fs.unlinkSync(mdPath);
-      //   if (fs.existsSync(pdfPath)) fs.unlinkSync(pdfPath);
-      // } catch (cleanupErr) {
-      //   console.error('Error cleaning up temp files:', cleanupErr);
-      // }
-      if (err) {
-        console.error('Download error:', err);
-      }
-    });
+    // Serve the PDF file
+    try {
+      // Generate a unique file ID for tracking (include "pdf" in the ID)
+      const fileId = `${req.user?.userId || 'anonymous'}_pdf_${Date.now()}`;
+      
+      // Add file to tracking system for cleanup
+      tempExportFiles.set(fileId, pdfPath);
+      console.log(`[PDF EXPORT] Stored file at ${pdfPath} with ID ${fileId}`);
+      
+      // Schedule automatic cleanup after 15 minutes
+      setTimeout(() => {
+        if (tempExportFiles.has(fileId)) {
+          if (fs.existsSync(pdfPath)) {
+            try {
+              fs.unlinkSync(pdfPath);
+              console.log(`Auto-deleted temporary PDF file after 15 minutes: ${pdfPath}`);
+            } catch (err) {
+              console.error(`Error deleting temporary PDF file: ${pdfPath}`, err);
+            }
+          }
+          tempExportFiles.delete(fileId);
+        }
+      }, 15 * 60 * 1000); // 15 minutes
+      
+      // Return only the fileId, without any base64 data
+      const response = {
+        success: true,
+        fileId,
+        mimeType: 'application/pdf',
+        fileName: path.basename(pdfPath)
+      };
+      console.log(`[PDF EXPORT] Sending response to client:`, response);
+      res.json(response);
+    } catch (err) {
+      console.error('Error processing PDF file for download:', err);
+      return res.status(500).json({ error: 'Failed to process PDF file for download' });
+    }
   } catch (error) {
     console.error('Error generating PDF:', error);
     res.status(500).json({ error: 'Error generating PDF', details: error.message });
@@ -591,12 +620,38 @@ app.post('/export/epub', authenticateJWT, async (req, res) => {
         console.error('Pandoc EPUB error:', err);
         return res.status(500).send('EPUB generation failed');
       }
-      // Send the EPUB file to the client
-      res.download(tempOutputFile, `${exportOptions?.projectTitle || title || 'Untitled Book'}.epub`, (err) => {
-        // Optionally delete tempOutputFile after download (commented out for debugging)
-        // try { if (fs.existsSync(tempOutputFile)) fs.unlinkSync(tempOutputFile); } catch (cleanupErr) { console.error('Error deleting EPUB file:', cleanupErr); }
-        if (err) console.error('Download error:', err);
-      });
+      
+      // Generate a unique file ID for tracking (include "epub" in the ID)
+      const fileId = `${req.user?.userId || 'anonymous'}_epub_${Date.now()}`;
+      
+      // Add file to tracking system for cleanup
+      tempExportFiles.set(fileId, tempOutputFile);
+      console.log(`[EPUB EXPORT] Stored file at ${tempOutputFile} with ID ${fileId}`);
+      
+      // Schedule automatic cleanup after 15 minutes
+      setTimeout(() => {
+        if (tempExportFiles.has(fileId)) {
+          if (fs.existsSync(tempOutputFile)) {
+            try {
+              fs.unlinkSync(tempOutputFile);
+              console.log(`Auto-deleted temporary EPUB file after 15 minutes: ${tempOutputFile}`);
+            } catch (err) {
+              console.error(`Error deleting temporary EPUB file: ${tempOutputFile}`, err);
+            }
+          }
+          tempExportFiles.delete(fileId);
+        }
+      }, 15 * 60 * 1000); // 15 minutes
+      
+      // Return only the fileId, without any base64 data
+      const response = {
+        success: true,
+        fileId,
+        mimeType: 'application/epub+zip',
+        fileName: path.basename(tempOutputFile)
+      };
+      console.log(`[EPUB EXPORT] Sending response to client:`, response);
+      res.json(response);
     });
   } catch (err) {
     console.error(err);
@@ -786,10 +841,38 @@ app.post('/export/docx', authenticateJWT, async (req, res) => {
         console.error('Pandoc DOCX error:', err);
         return res.status(500).send('DOCX generation failed');
       }
-      // Send the DOCX file to the client
-      res.download(docxPath, `${projectTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.docx`, (err) => {
-        if (err) console.error('Download error:', err);
-      });
+      
+      // Generate a unique file ID for tracking (include "word" in the ID)
+      const fileId = `${req.user?.userId || 'anonymous'}_word_${Date.now()}`;
+      
+      // Add file to tracking system for cleanup
+      tempExportFiles.set(fileId, docxPath);
+      console.log(`[DOCX EXPORT] Stored file at ${docxPath} with ID ${fileId}`);
+      
+      // Schedule automatic cleanup after 15 minutes
+      setTimeout(() => {
+        if (tempExportFiles.has(fileId)) {
+          if (fs.existsSync(docxPath)) {
+            try {
+              fs.unlinkSync(docxPath);
+              console.log(`Auto-deleted temporary DOCX file after 15 minutes: ${docxPath}`);
+            } catch (err) {
+              console.error(`Error deleting temporary DOCX file: ${docxPath}`, err);
+            }
+          }
+          tempExportFiles.delete(fileId);
+        }
+      }, 15 * 60 * 1000); // 15 minutes
+      
+      // Return only the fileId, without any base64 data
+      const response = {
+        success: true,
+        fileId,
+        mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        fileName: path.basename(docxPath)
+      };
+      console.log(`[DOCX EXPORT] Sending response to client:`, response);
+      res.json(response);
     });
   } catch (err) {
     console.error(err);
@@ -2485,3 +2568,143 @@ async function enforceExportLimitOrSlice(req, res, sections) {
   // Paid/beta users: no limit
   return { sections, partial: false };
 }
+
+/**
+ * DELETE /cleanup/:fileId
+ * Deletes temporary export files after they are no longer needed
+ */
+app.delete('/cleanup/:fileId', (req, res) => {
+  try {
+    const { fileId } = req.params;
+    
+    // Check if the file ID exists in our tracking system
+    if (tempExportFiles.has(fileId)) {
+      const filePath = tempExportFiles.get(fileId);
+      
+      // Check if the file exists before attempting deletion
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+        console.log(`Successfully deleted temporary file: ${filePath}`);
+      }
+      
+      // Remove from tracking regardless of whether file exists
+      tempExportFiles.delete(fileId);
+      
+      return res.json({ 
+        success: true, 
+        message: `File ${fileId} successfully deleted` 
+      });
+    } else {
+      console.log(`File ID ${fileId} not found in tracking system`);
+      return res.status(404).json({ 
+        success: false, 
+        message: 'File ID not found in tracking system' 
+      });
+    }
+  } catch (error) {
+    console.error('Error deleting temporary file:', error);
+    return res.status(500).json({ 
+      success: false, 
+      error: 'Failed to delete file',
+      details: error.message 
+    });
+  }
+});
+
+// Scheduled cleanup for temporary files
+setInterval(() => {
+  const now = Date.now();
+  
+  // Check all tracked temporary files
+  for (const [fileId, filePath] of tempExportFiles.entries()) {
+    // Get file creation time from fileId (format: projectId_timestamp)
+    const parts = fileId.split('_');
+    if (parts.length > 1) {
+      const timestamp = parseInt(parts[parts.length - 1], 10);
+      
+      // If file is older than 15 minutes (900000 ms), delete it
+      if (!isNaN(timestamp) && (now - timestamp > 900000)) {
+        if (fs.existsSync(filePath)) {
+          try {
+            fs.unlinkSync(filePath);
+            console.log(`Auto-deleted expired temporary file: ${filePath}`);
+          } catch (err) {
+            console.error(`Failed to auto-delete file ${filePath}:`, err);
+          }
+        }
+        
+        // Remove from tracking
+        tempExportFiles.delete(fileId);
+      }
+    }
+  }
+}, 5 * 60 * 1000); // Run cleanup check every 5 minutes
+
+// Create a new endpoint to serve files explicitly when requested
+app.get('/api/files/:fileId', (req, res) => {
+  const { fileId } = req.params;
+  const suggestedFilename = req.query.filename || null; // Get suggested filename from query param
+  
+  console.log(`File download requested for fileId: ${fileId}, suggested filename: ${suggestedFilename}`);
+  
+  // Check if the file exists in our tracking system
+  if (tempExportFiles.has(fileId)) {
+    const filePath = tempExportFiles.get(fileId);
+    console.log(`File found in tracking system: ${filePath}`);
+    
+    // Check if the file exists on disk
+    if (fs.existsSync(filePath)) {
+      // Get file extension to determine content type
+      const ext = path.extname(filePath).toLowerCase();
+      const mimeTypes = {
+        '.pdf': 'application/pdf',
+        '.epub': 'application/epub+zip',
+        '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.png': 'image/png',
+        '.gif': 'image/gif'
+      };
+      
+      const contentType = mimeTypes[ext] || 'application/octet-stream';
+      
+      // Use suggested filename if provided, otherwise use the original filename
+      const fileName = suggestedFilename || path.basename(filePath);
+      
+      // Ensure filename has proper extension
+      const fileNameWithExt = fileName.endsWith(ext) ? fileName : `${fileName}${ext}`;
+      
+      // Set headers for explicitly requested download
+      res.setHeader('Content-Type', contentType);
+      
+      // Use proper Content-Disposition header to suggest filename to browser
+      // Note: filename* encoding helps with UTF-8 characters in filenames
+      res.setHeader('Content-Disposition', `attachment; filename="${fileNameWithExt}"; filename*=UTF-8''${encodeURIComponent(fileNameWithExt)}`);
+      
+      // Disable caching to ensure fresh content
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      
+      console.log(`Sending file: ${filePath} with content-type: ${contentType}, suggested filename: ${fileNameWithExt}`);
+      
+      // Send the file
+      return res.sendFile(path.resolve(filePath), { dotfiles: 'allow' }, (err) => {
+        if (err) {
+          console.error(`Error sending file ${filePath}:`, err);
+          if (!res.headersSent) {
+            return res.status(500).json({ error: 'Error sending file', details: err.message });
+          }
+        } else {
+          console.log(`File sent successfully: ${filePath} as ${fileNameWithExt}`);
+        }
+      });
+    } else {
+      console.log(`File not found on disk: ${filePath}`);
+      return res.status(404).json({ error: 'File not found on disk' });
+    }
+  } else {
+    console.log(`File ID ${fileId} not found in tracking system`);
+    return res.status(404).json({ error: 'File ID not found' });
+  }
+});
