@@ -41,13 +41,62 @@ const execPromise = util.promisify(exec);
 
 const app = express();
 // Update CORS configuration to explicitly allow frontend connections
-app.use(cors({
-  origin: ['https://publishjockey-frontend.vercel.app','http://localhost:3000', 'http://localhost:5173'],
+const corsOptions = {
+  origin: [
+    'https://publishjockey-frontend.vercel.app',
+    'http://localhost:3000', 
+    'http://localhost:5173'
+  ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  exposedHeaders: ['Content-Disposition'] // Expose Content-Disposition header for downloads
-}));
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['Content-Disposition'],
+  optionsSuccessStatus: 200 // For legacy browser support
+};
+
+// Apply CORS middleware FIRST
+app.use(cors(corsOptions));
+
+// Add explicit preflight handling for all routes
+app.options('*', cors(corsOptions));
+
+// Add debugging middleware to log all requests
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url} from ${req.get('Origin') || 'no origin'}`);
+  next();
+});
+
+// Then add your other middleware
+app.use(express.json({ limit: '100mb' }));
+
+// Test if CORS is working
+app.get('/ping', (req, res) => {
+  console.log('Ping request received from:', req.get('Origin'));
+  res.json({ 
+    status: 'ok', 
+    message: 'Export server is running',
+    timestamp: new Date().toISOString(),
+    origin: req.get('Origin')
+  });
+});
+
+// Add a test route that explicitly sets CORS headers
+app.get('/test-cors', (req, res) => {
+  // Manually set CORS headers as a backup
+  res.header('Access-Control-Allow-Origin', 'https://publishjockey-frontend.vercel.app');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  
+  res.json({ 
+    status: 'ok', 
+    message: 'CORS test successful',
+    headers: {
+      origin: req.get('Origin'),
+      userAgent: req.get('User-Agent')
+    }
+  });
+});
 app.use(express.json({ limit: '100mb' }));
 
 // Serve static files from uploads directory
