@@ -42,7 +42,7 @@ const execPromise = util.promisify(exec);
 const app = express();
 // Update CORS configuration to explicitly allow frontend connections
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:5173'],
+  origin: ['https://publishjockey-frontend.vercel.app','http://localhost:3000', 'http://localhost:5173'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   exposedHeaders: ['Content-Disposition'] // Expose Content-Disposition header for downloads
