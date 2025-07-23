@@ -23,7 +23,16 @@ const { assembleBookDocx } = require('./bookAssemblerDocx');
 const { saveDebugFile } = require('./utils');
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
-const JWT_SECRET = process.env.JWT_SECRET || 'changeme';
+// Use the same JWT secret as the main backend
+const JWT_SECRET = process.env.JWT_ACCESS_TOKEN_SECRET || process.env.JWT_SECRET || 'changeme';
+
+// Debug JWT secret loading
+console.log('Export backend JWT_SECRET loaded:', JWT_SECRET ? `${JWT_SECRET.substring(0, 10)}...` : 'NOT FOUND');
+console.log('Export backend environment variables:', {
+  JWT_ACCESS_TOKEN_SECRET: process.env.JWT_ACCESS_TOKEN_SECRET ? 'SET' : 'NOT SET',
+  JWT_SECRET: process.env.JWT_SECRET ? 'SET' : 'NOT SET',
+  NODE_ENV: process.env.NODE_ENV || 'NOT SET'
+});
 const User = require('./models/User'); // Import User model for subscription checks (local to export-backend)
 const { upscaleImage, KDP_SIZES } = require('./imagemagic'); // Import ImageMagic module
 
@@ -39,6 +48,9 @@ app.use(cors({
   exposedHeaders: ['Content-Disposition'] // Expose Content-Disposition header for downloads
 }));
 app.use(express.json({ limit: '100mb' }));
+
+// Serve static files from uploads directory
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Temporary file tracking for cleanup
 const tempExportFiles = new Map();
@@ -2095,9 +2107,15 @@ const Project = mongoose.model('Project', projectSchema);
 function authenticateJWT(req, res, next) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    console.log('Missing or invalid Authorization header');
     return res.status(401).json({ error: 'Missing or invalid Authorization header' });
   }
   const token = authHeader.split(' ')[1];
+  
+  // Debug token
+  console.log('Token received:', token ? `${token.substring(0, 10)}...${token.substring(token.length - 10)}` : 'NONE');
+  console.log('Using JWT_SECRET:', JWT_SECRET ? `${JWT_SECRET.substring(0, 10)}...` : 'NOT FOUND');
+  
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     
@@ -2123,6 +2141,12 @@ function authenticateJWT(req, res, next) {
     next();
   } catch (err) {
     console.error('JWT verification error:', err.message);
+    console.error('JWT verification error details:', {
+      name: err.name,
+      message: err.message,
+      tokenLength: token ? token.length : 0,
+      secretLength: JWT_SECRET ? JWT_SECRET.length : 0
+    });
     return res.status(401).json({ error: 'Invalid or expired token' });
   }
 }
