@@ -1,34 +1,42 @@
-# Use a base image that already has LaTeX
 FROM ubuntu:22.04
 
-# Install Node.js and LaTeX in one go
-RUN apt-get update && apt-get install -y \
+# Install Node.js and LaTeX
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     curl \
-    texlive-full \
+    gnupg \
+    texlive-latex-base \
+    texlive-latex-recommended \
+    texlive-latex-extra \
+    texlive-fonts-recommended \
+    texlive-fonts-extra \
+    texlive-xetex \
     pandoc \
-    && curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
-    && apt-get install -y nodejs \
-    && apt-get clean \
+    fontconfig \
+    lmodern \
     && rm -rf /var/lib/apt/lists/*
 
-# Verify installations
-RUN node --version && npm --version
-RUN pdflatex --version && xelatex --version && pandoc --version
+# Install Node.js 18
+RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get install -y nodejs
 
-# Set working directory
+# Verify everything is installed
+RUN echo "=== INSTALLATION VERIFICATION ===" && \
+    node --version && \
+    npm --version && \
+    pandoc --version && \
+    pdflatex --version && \
+    echo "=== LaTeX ENGINES AVAILABLE ===" && \
+    which pdflatex && \
+    which xelatex && \
+    echo "=== VERIFICATION COMPLETE ==="
+
 WORKDIR /app
 
-# Copy package files
 COPY package*.json ./
-
-# Install dependencies
 RUN npm install
 
-# Copy source code
 COPY . .
 
-# Expose port
 EXPOSE 3002
 
-# Start the app
 CMD ["node", "server.js"]
