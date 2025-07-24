@@ -31,7 +31,47 @@ function translateAlignmentDivsForDocx(markdown) {
 }
 
 /**
+ * Gets Cloudinary transformation URL for specific book format
+ * @param {string} cloudinaryUrl - Original Cloudinary URL
+ * @param {string} format - 'pdf', 'epub', or 'docx'
+ * @param {number} scale - Image scale factor
+ * @returns {string} - Optimized Cloudinary URL
+ */
+function getCloudinaryTransformation(cloudinaryUrl, format, scale = 0.6) {
+  // Check if this is a Cloudinary URL
+  if (!cloudinaryUrl.includes('cloudinary.com')) {
+    return cloudinaryUrl; // Return unchanged if not Cloudinary
+  }
+  
+  // Extract the transformation part and image path
+  const urlParts = cloudinaryUrl.split('/upload/');
+  if (urlParts.length !== 2) return cloudinaryUrl;
+  
+  const baseUrl = urlParts[0] + '/upload/';
+  const imagePath = urlParts[1];
+  
+  let transformation = '';
+  
+  if (format === 'pdf') {
+    // High-quality for print: DPI-aware, lossless compression
+    const widthPx = Math.round(scale * 800); // Assume 800px max width for PDF
+    transformation = `w_${widthPx},c_limit,f_auto,q_auto:best,dpr_2.0`;
+  } else if (format === 'epub') {
+    // Web-optimized: smaller file size, progressive loading
+    const widthPx = Math.round(scale * 600); // Smaller for EPUB
+    transformation = `w_${widthPx},c_limit,f_auto,q_auto:good,fl_progressive`;
+  } else if (format === 'docx') {
+    // Balanced: good quality, reasonable file size
+    const widthPx = Math.round(scale * 700);
+    transformation = `w_${widthPx},c_limit,f_auto,q_auto:good`;
+  }
+  
+  return `${baseUrl}${transformation}/${imagePath}`;
+}
+
+/**
  * Replaces custom image placeholders with format-specific output.
+ * Enhanced with Cloudinary optimization support.
  * @param {string} markdown - The markdown content
  * @param {string} format - 'pdf', 'epub', or 'docx'
  * @returns {string} - The processed markdown
@@ -41,12 +81,16 @@ function replaceCustomImages(markdown, format) {
     // Translate alignment divs for DOCX before replacing images
     markdown = translateAlignmentDivsForDocx(markdown);
   }
+  
   return markdown.replace(/\{\{IMAGE:([^|}]+)\|([^|}]+)\|([^|}]+)\}\}/g, (match, src, alt, scale) => {
     src = src.replace(/\\/g, '/'); // Always use forward slashes
     scale = parseFloat(scale);
     
+    // Apply Cloudinary transformations if applicable
+    const optimizedSrc = getCloudinaryTransformation(src, format, scale);
+    
     // Extract just the filename from the path for PDF (since images are copied to temp dir)
-    const imageFilename = format === 'pdf' ? path.basename(src) : src;
+    const imageFilename = format === 'pdf' ? path.basename(optimizedSrc) : optimizedSrc;
     
     if (format === 'pdf') {
       // For PDF, use a non-floating approach with raw centering and caption
@@ -58,16 +102,16 @@ function replaceCustomImages(markdown, format) {
 \\end{center}
 `;
     } else if (format === 'epub') {
-      // HTML: center both image and caption
+      // HTML: center both image and caption with responsive design
       const percent = Math.round(scale * 100);
-      return `<div style="text-align: center;">\n  <img src="${src}" alt="${alt}" style="max-width:${percent}%;" />\n  <div style="text-align: center;"><em>${alt}</em></div>\n</div>`;
+      return `<div style="text-align: center;">\n  <img src="${optimizedSrc}" alt="${alt}" style="max-width:${percent}%; height:auto;" loading="lazy" />\n  <div style="text-align: center;"><em>${alt}</em></div>\n</div>`;
     } else if (format === 'docx') {
       // Markdown image only (caption handled by alt text)
-      return `\n![${alt}](${src})\n`;
+      return `\n![${alt}](${optimizedSrc})\n`;
     } else {
       return match;
     }
   });
 }
 
-module.exports = { removeEmojis, saveDebugFile, replaceCustomImages }; 
+module.exports = { removeEmojis, saveDebugFile, replaceCustomImages, getCloudinaryTransformation }; 

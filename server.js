@@ -26,6 +26,9 @@ const jwt = require('jsonwebtoken');
 // Use the same JWT secret as the main backend
 const JWT_SECRET = process.env.JWT_ACCESS_TOKEN_SECRET || process.env.JWT_SECRET || 'changeme';
 
+// Import Cloudinary upload solution
+const { cloudImageUpload, prepareMarkdownForPDF } = require('./cloudinary-uploads');
+
 // Debug JWT secret loading
 console.log('Export backend JWT_SECRET loaded:', JWT_SECRET ? `${JWT_SECRET.substring(0, 10)}...` : 'NOT FOUND');
 console.log('Export backend environment variables:', {
@@ -327,17 +330,6 @@ app.post('/export/pdf', authenticateJWT, async (req, res) => {
     // Do not add YAML metadata here; let assembleBookPdf handle it
     const processedMarkdown = cleanMarkdown;
     
-    // Copy images to export dir (temp) - do this BEFORE processing the markdown
-    const userId = exportOptions.userId || req.body.userId || 'defaultUser';
-    const projectId = exportOptions.projectId || req.body.projectId || 'defaultProject';
-    
-    // Create a temporary markdown with just the {{IMAGE:...}} placeholders for image copying
-    let tempMarkdownForImages = '';
-    for (const section of validSections) {
-      tempMarkdownForImages += section.content + '\n\n';
-    }
-    copyImagesForExport(tempMarkdownForImages, userId, projectId, path.join(__dirname, 'temp'));
-    
     // Save debug copy
     saveDebugFile(processedMarkdown, 'standard_markdown.md');
     
@@ -377,8 +369,17 @@ app.post('/export/pdf', authenticateJWT, async (req, res) => {
 
     // Also write directly to temp for Pandoc
     try {
-      fs.writeFileSync(mdPath, processedMarkdown, 'utf8');
+      // NEW: Prepare markdown by downloading Cloudinary images temporarily for PDF generation
+      console.log(`[CLOUDINARY] Preparing markdown for PDF generation by downloading cloud images...`);
+      const finalMarkdown = await prepareMarkdownForPDF(processedMarkdown, tempDir);
+      
+      fs.writeFileSync(mdPath, finalMarkdown, 'utf8');
       console.log(`PANDOC INPUT: Saved markdown for PDF processing to ${mdPath}`);
+      
+      // Note: Image copying is now handled by prepareMarkdownForPDF for Cloudinary images
+      const userId = exportOptions.userId || req.body.userId || 'defaultUser';
+      const projectId = exportOptions.projectId || req.body.projectId || 'defaultProject';
+      console.log(`[IMAGE COPY] Image preparation completed for userId: ${userId}, projectId: ${projectId}`);
     } catch (err) {
       console.error('Error writing markdown file for PDF processing:', err);
     }
@@ -1783,42 +1784,19 @@ const imageUpload = multer({
   }
 });
 
-// POST /upload-image
-app.post('/upload-image', imageUpload.single('image'), (req, res) => {
-  const { userId, projectId } = req.body;
-  if (!req.file) {
-    return res.status(400).json({ error: 'No image uploaded' });
-  }
-  // Return the server-relative path for use in LaTeX
-  const relPath = path.relative(__dirname, req.file.path).replace(/\\/g, '/');
-
-  // Create a backup copy in the general uploads directory for easier access during exports
-  // This helps with deployment environments where directory structure might be different
-  const backupPath = path.join(__dirname, 'uploads', req.file.filename);
-  try {
-    fs.copyFileSync(req.file.path, backupPath);
-    console.log(`[UPLOAD] Created backup copy: ${backupPath}`);
-  } catch (err) {
-    console.warn(`[UPLOAD] Could not create backup copy: ${err.message}`);
-  }
+// POST /upload-image (Cloudinary Cloud Storage)
+app.post('/upload-image', cloudImageUpload, (req, res) => {
+  const result = req.cloudinaryResult;
   
-  // --- Begin: Copy to temp/admin for admin user (testing only) ---
-  if (userId === 'admin') {
-    const tempAdminDir = path.join(__dirname, 'temp', 'admin');
-    if (!fs.existsSync(tempAdminDir)) {
-      fs.mkdirSync(tempAdminDir, { recursive: true });
-    }
-    const destPath = path.join(tempAdminDir, req.file.filename);
-    try {
-      fs.copyFileSync(req.file.path, destPath);
-      console.log(`Copied uploaded image to temp/admin: ${destPath}`);
-    } catch (err) {
-      console.error('Failed to copy image to temp/admin:', err);
-    }
-  }
-  // --- End: Copy to temp/admin for admin user ---
-
-  res.json({ success: true, path: relPath });
+  console.log(`[CLOUDINARY] Image uploaded successfully: ${result.filename}`);
+  
+  res.json({ 
+    success: true, 
+    path: result.secure_url,  // Cloudinary URL for use in LaTeX/markdown
+    public_id: result.public_id,
+    url: result.secure_url,
+    filename: result.filename
+  });
 });
 
 // GET /list-images?userId=...&projectId=...
@@ -2004,6 +1982,7 @@ function copyImagesForExport(markdown, userId, projectId, exportDir) {
   console.log(`[IMAGE COPY] Server directory: ${__dirname}`);
   console.log(`[IMAGE COPY] Current working directory: ${process.cwd()}`);
   console.log(`[IMAGE COPY] NODE_ENV: ${process.env.NODE_ENV || 'not set'}`);
+  console.log(`[IMAGE COPY] Markdown content length: ${markdown.length}`);
   
   // Ensure export directory exists
   if (!fs.existsSync(exportDir)) {
@@ -2025,18 +2004,33 @@ function copyImagesForExport(markdown, userId, projectId, exportDir) {
   // First, handle LaTeX \includegraphics commands
   const latexImageRegex = /\\includegraphics.*?{([^}]+)}/g;
   let match;
+  let imageCount = 0;
+  console.log(`[IMAGE COPY] Searching for LaTeX \\includegraphics commands...`);
   while ((match = latexImageRegex.exec(markdown)) !== null) {
     const imageName = match[1];
+    imageCount++;
+    console.log(`[IMAGE COPY] Found LaTeX image ${imageCount}: ${imageName}`);
     copyImageFile(imageName, userId, projectId, exportDir, 'LaTeX');
   }
+  console.log(`[IMAGE COPY] Found ${imageCount} LaTeX images total`);
   
   // Then, handle {{IMAGE:...}} placeholders
   const placeholderImageRegex = /\{\{IMAGE:([^|}]+)\|([^|}]+)\|([^|}]+)\}\}/g;
+  let placeholderCount = 0;
+  console.log(`[IMAGE COPY] Searching for {{IMAGE:...}} placeholders...`);
   while ((match = placeholderImageRegex.exec(markdown)) !== null) {
     const imagePath = match[1];
+    placeholderCount++;
     // Extract just the filename from the path
     const imageName = path.basename(imagePath);
+    console.log(`[IMAGE COPY] Found placeholder image ${placeholderCount}: ${imagePath} -> ${imageName}`);
     copyImageFile(imageName, userId, projectId, exportDir, 'placeholder');
+  }
+  console.log(`[IMAGE COPY] Found ${placeholderCount} placeholder images total`);
+  
+  if (imageCount === 0 && placeholderCount === 0) {
+    console.log(`[IMAGE COPY] WARNING: No images found in markdown content!`);
+    console.log(`[IMAGE COPY] First 500 chars of markdown:`, markdown.substring(0, 500));
   }
 }
 
@@ -2050,83 +2044,118 @@ function copyImageFile(imageName, userId, projectId, exportDir, source) {
     return;
   }
   
-  // List of possible source locations to check
+  console.log(`[IMAGE COPY] Attempting to copy ${source} image: ${imageName}`);
+  console.log(`[IMAGE COPY] Looking for userId: ${userId}, projectId: ${projectId}`);
+  
+  // List of possible source locations to check - more comprehensive and organized
   const possibleSources = [
-    // Primary: User-specific project directory
+    // Primary: User-specific project directory (most common case)
     path.join(__dirname, 'uploads', userId, projectId, imageName),
-    // Fallback 1: User directory without project (for legacy uploads)
-    path.join(__dirname, 'uploads', userId, imageName),
-    // Fallback 2: Direct uploads directory
+    
+    // Fallback 1: Direct uploads directory (backup copies)
     path.join(__dirname, 'uploads', imageName),
-    // Fallback 3: For deployment environments - check if there's a different structure
+    
+    // Fallback 2: User directory without project (legacy uploads)
+    path.join(__dirname, 'uploads', userId, imageName),
+    
+    // Fallback 3: For deployment environments - different working directory
     path.join(process.cwd(), 'uploads', userId, projectId, imageName),
-    path.join(process.cwd(), 'uploads', userId, imageName),
     path.join(process.cwd(), 'uploads', imageName),
-    // Fallback 4: Check if uploads is at a different level (for Render deployment)
-    path.join(process.cwd(), '..', 'uploads', userId, projectId, imageName),
-    path.join(process.cwd(), '..', 'uploads', userId, imageName),
-    path.join(process.cwd(), '..', 'uploads', imageName),
-    // Fallback 5: Render-specific paths (app directory structure)
+    path.join(process.cwd(), 'uploads', userId, imageName),
+    
+    // Fallback 4: Backend app structure (one level up)
+    path.join(__dirname, '..', 'backend', 'uploads', userId, projectId, imageName),
+    path.join(__dirname, '..', 'backend', 'uploads', imageName),
+    
+    // Fallback 5: Alternative app structure
+    path.join(__dirname, '..', 'back_end', 'uploads', userId, projectId, imageName),
+    path.join(__dirname, '..', 'back_end', 'uploads', imageName),
+    
+    // Fallback 6: Render/deployment-specific paths
     path.join('/app', 'uploads', userId, projectId, imageName),
-    path.join('/app', 'uploads', userId, imageName),
     path.join('/app', 'uploads', imageName),
-    // Fallback 6: Alternative Render paths
-    path.join(process.cwd(), 'app', 'uploads', userId, projectId, imageName),
-    path.join(process.cwd(), 'app', 'uploads', userId, imageName),
-    path.join(process.cwd(), 'app', 'uploads', imageName),
-    // Fallback 7: Check for the file in any subdirectory of uploads (recursive search)
-    ...findImageInUploads(imageName)
+    path.join('/app', 'uploads', userId, imageName),
+    
+    // Fallback 7: Check if uploads is at a different level
+    path.join(process.cwd(), '..', 'uploads', userId, projectId, imageName),
+    path.join(process.cwd(), '..', 'uploads', imageName),
+    path.join(process.cwd(), '..', 'uploads', userId, imageName),
   ];
   
+  // Add recursive search results to the possibilities
+  const foundPaths = findImageInUploads(imageName);
+  possibleSources.push(...foundPaths);
+  
   // Try each possible source location
-  console.log(`[IMAGE COPY] Searching for ${source} image: ${imageName}`);
-  console.log(`[IMAGE COPY] Will check ${possibleSources.length} possible locations...`);
+  console.log(`[IMAGE COPY] Will check ${possibleSources.length} possible locations for ${imageName}`);
   
   for (let i = 0; i < possibleSources.length; i++) {
     const srcPath = possibleSources[i];
-    console.log(`[IMAGE COPY] [${i + 1}/${possibleSources.length}] Checking: ${srcPath}`);
     
     if (fs.existsSync(srcPath)) {
-      console.log(`[IMAGE COPY] ✓ File exists at: ${srcPath}`);
+      console.log(`[IMAGE COPY] ✓ Found ${imageName} at: ${srcPath}`);
       try {
         fs.copyFileSync(srcPath, destPath);
-        console.log(`[IMAGE COPY] ✓ Successfully copied ${source} image: ${imageName} from ${srcPath} to ${destPath}`);
+        console.log(`[IMAGE COPY] ✓ Successfully copied ${source} image: ${imageName}`);
+        console.log(`[IMAGE COPY]   From: ${srcPath}`);
+        console.log(`[IMAGE COPY]   To: ${destPath}`);
         return;
       } catch (err) {
         console.error(`[IMAGE COPY] ✗ Failed to copy ${imageName} from ${srcPath}:`, err.message);
       }
-    } else {
-      console.log(`[IMAGE COPY] ✗ File not found at: ${srcPath}`);
     }
   }
   
   // If we get here, the image wasn't found anywhere
-  console.warn(`[IMAGE COPY] ⚠️  Image not found: ${imageName} (checked ${possibleSources.length} locations)`);
-  console.warn(`[IMAGE COPY] All checked locations:`, possibleSources);
+  console.error(`[IMAGE COPY] ✗ FAILED: Image not found: ${imageName}`);
+  console.error(`[IMAGE COPY] Checked ${possibleSources.length} locations without success`);
   
-  // Additional debugging: try to find any uploads directories that exist
+  // Enhanced debugging: look for similar files
+  console.log(`[IMAGE COPY] === ENHANCED DEBUGGING FOR ${imageName} ===`);
+  
+  // Check all uploads directories that exist
   const debugDirs = [
-    __dirname,
-    process.cwd(),
-    '/app',
-    process.cwd() + '/app',
-    process.cwd() + '/..'
+    path.join(__dirname, 'uploads'),
+    path.join(process.cwd(), 'uploads'),
+    path.join(__dirname, '..', 'backend', 'uploads'),
+    path.join(__dirname, '..', 'back_end', 'uploads'),
+    path.join('/app', 'uploads')
   ];
   
-  console.log(`[IMAGE COPY] Environment debugging for ${imageName}:`);
-  for (const baseDir of debugDirs) {
-    try {
-      const uploadsPath = path.join(baseDir, 'uploads');
-      if (fs.existsSync(uploadsPath)) {
-        console.log(`[IMAGE COPY] Found uploads directory: ${uploadsPath}`);
-        const files = fs.readdirSync(uploadsPath);
-        const imageFiles = files.filter(f => f.includes(imageName) || f.includes('Vanquish'));
+  for (const uploadsDir of debugDirs) {
+    if (fs.existsSync(uploadsDir)) {
+      console.log(`[IMAGE COPY] Uploads directory exists: ${uploadsDir}`);
+      try {
+        // List all subdirectories in uploads
+        const items = fs.readdirSync(uploadsDir);
+        console.log(`[IMAGE COPY]   Contains: ${items.slice(0, 10).join(', ')}${items.length > 10 ? '...' : ''}`);
+        
+        // Look for the specific image name
+        const imageFiles = items.filter(item => {
+          const itemPath = path.join(uploadsDir, item);
+          if (fs.statSync(itemPath).isFile() && item === imageName) {
+            return true;
+          }
+          return false;
+        });
+        
         if (imageFiles.length > 0) {
-          console.log(`[IMAGE COPY] Related files found: ${imageFiles.join(', ')}`);
+          console.log(`[IMAGE COPY]   *** FOUND ${imageName} directly in ${uploadsDir} ***`);
         }
+        
+        // Look for files with similar names (for debugging)
+        const similarFiles = items.filter(item => 
+          item.toLowerCase().includes('vanquish') || 
+          item.includes(imageName.substring(0, 10))
+        );
+        
+        if (similarFiles.length > 0) {
+          console.log(`[IMAGE COPY]   Similar files: ${similarFiles.join(', ')}`);
+        }
+        
+      } catch (err) {
+        console.log(`[IMAGE COPY]   Could not list contents: ${err.message}`);
       }
-    } catch (err) {
-      console.log(`[IMAGE COPY] Could not check ${baseDir}/uploads: ${err.message}`);
     }
   }
 }
@@ -2639,79 +2668,36 @@ app.post('/api/debug/save-structure/:id', authenticateJWT, async (req, res) => {
   }
 });
 
-// POST /api/uploads (for WYSIWYG image upload, authenticated, user-specific, project ownership enforced, robust req.body handling)
-app.post('/api/uploads', authenticateJWT, (req, res) => {
+// POST /api/uploads (Cloudinary Cloud Storage with Authentication)
+app.post('/api/uploads', authenticateJWT, cloudImageUpload, async (req, res) => {
+  const result = req.cloudinaryResult;
   const userId = req.user.id;
-  // Use a temp directory for initial upload
-  const tempDir = path.join(__dirname, 'uploads', 'temp');
-  fs.mkdirSync(tempDir, { recursive: true });
-
-  const upload = multer({
-    storage: multer.diskStorage({
-      destination: (req, file, cb) => {
-        cb(null, tempDir);
-      },
-      filename: (req, file, cb) => {
-        cb(null, `${Date.now()}-${file.originalname}`);
-      }
-    }),
-    limits: { fileSize: 10 * 1024 * 1024 },
-    fileFilter: (req, file, cb) => {
-      if ([
-        'image/jpeg',
-        'image/png',
-        'image/gif',
-        'image/jpg'
-      ].includes(file.mimetype)) {
-        cb(null, true);
-      } else {
-        cb(new Error('Unsupported image type'), false);
-      }
-    }
-  }).single('file');
-
-  upload(req, res, async function(err) {
-    if (err) {
-      return res.status(400).json({ success: false, error: err.message });
-    }
-    if (!req.file) {
-      return res.status(400).json({ success: false, error: 'No file uploaded' });
-    }
-    const projectId = req.body && req.body.projectId;
-    if (!projectId) {
-      fs.unlinkSync(req.file.path);
-      return res.status(400).json({ success: false, error: 'Missing projectId in request body' });
-    }
-    // Check project ownership after multer has parsed req.body
-    let project;
-    try {
-      project = await Project.findOne({ _id: projectId, userId });
-    } catch (e) {
-      fs.unlinkSync(req.file.path);
-      return res.status(400).json({ success: false, error: 'Invalid projectId format' });
-    }
-    if (!project) {
-      fs.unlinkSync(req.file.path);
-      return res.status(403).json({ success: false, error: 'You do not have permission to upload images to this project.' });
-    }
-    // Move file to correct user/project directory
-    const userDir = path.join(__dirname, 'uploads', userId.toString(), projectId.toString());
-    fs.mkdirSync(userDir, { recursive: true });
-    const destPath = path.join(userDir, req.file.filename);
-    fs.renameSync(req.file.path, destPath);
-    
-    // Also create a backup copy in the general uploads directory for easier access during exports
-    // This helps with deployment environments where directory structure might be different
-    const backupPath = path.join(__dirname, 'uploads', req.file.filename);
-    try {
-      fs.copyFileSync(destPath, backupPath);
-      console.log(`[UPLOAD] Created backup copy: ${backupPath}`);
-    } catch (err) {
-      console.warn(`[UPLOAD] Could not create backup copy: ${err.message}`);
-    }
-    
-    const relPath = `uploads/${userId}/${projectId}/${req.file.filename}`;
-    res.json({ success: true, path: relPath });
+  
+  // Check project ownership
+  const projectId = req.body && req.body.projectId;
+  if (!projectId) {
+    return res.status(400).json({ success: false, error: 'Missing projectId in request body' });
+  }
+  
+  let project;
+  try {
+    project = await Project.findOne({ _id: projectId, userId });
+  } catch (e) {
+    return res.status(400).json({ success: false, error: 'Invalid projectId format' });
+  }
+  
+  if (!project) {
+    return res.status(403).json({ success: false, error: 'You do not have permission to upload images to this project.' });
+  }
+  
+  console.log(`[CLOUDINARY] Authenticated image upload for user ${userId}, project ${projectId}: ${result.filename}`);
+  
+  res.json({ 
+    success: true, 
+    path: result.secure_url,
+    public_id: result.public_id,
+    url: result.secure_url,
+    filename: result.filename
   });
 });
 
