@@ -1,7 +1,6 @@
 FROM ubuntu:22.04
 
 # Install Node.js and LaTeX with proper fonts
-# Yancy Dennis
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     curl \
     gnupg \
@@ -30,9 +29,9 @@ RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
 # Refresh font cache and verify fonts are available
 RUN fc-cache -f -v && \
     echo "=== AVAILABLE SERIF FONTS ===" && \
-    fc-list | grep -i "liberation serif" && \
-    fc-list | grep -i "dejavu serif" && \
-    fc-list | grep -i "times" && \
+    fc-list | grep -i "liberation serif" || true && \
+    fc-list | grep -i "dejavu serif" || true && \
+    fc-list | grep -i "times" || true && \
     echo "=== END FONT LIST ==="
 
 # Verify everything is installed
