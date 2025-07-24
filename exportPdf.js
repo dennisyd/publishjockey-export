@@ -9,33 +9,112 @@ const path = require('path');
  * @returns {string} Processed markdown with resolved image paths
  */
 function resolveImagePaths(markdown, basePath) {
+  console.log(`[IMAGE RESOLUTION] Starting image path resolution. basePath: ${basePath}`);
+  console.log(`[IMAGE RESOLUTION] Current working directory: ${process.cwd()}`);
+  
   // Match markdown image syntax: ![alt](path)
   return markdown.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, alt, imagePath) => {
+    console.log(`[IMAGE RESOLUTION] Processing image: ${imagePath}`);
+    
     // Skip if it's already an absolute path or URL
     if (path.isAbsolute(imagePath) || imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+      console.log(`[IMAGE RESOLUTION] Skipping absolute path or URL: ${imagePath}`);
       return match;
     }
     
-    // Resolve relative path to absolute path
-    const absolutePath = path.resolve(basePath, imagePath);
+    // List of possible search locations
+    const searchPaths = [
+      // 1. Relative to markdown file
+      path.resolve(basePath, imagePath),
+      // 2. Current working directory
+      path.resolve(process.cwd(), imagePath),
+      // 3. Just the filename in current directory (temp directory for exports)
+      path.resolve(process.cwd(), path.basename(imagePath)),
+      // 4. Temp directory (where export images are copied)
+      path.resolve(process.cwd(), 'temp', path.basename(imagePath)),
+      // 5. Uploads directory (common web app pattern)
+      path.resolve(process.cwd(), 'uploads', imagePath),
+      path.resolve(process.cwd(), 'uploads', path.basename(imagePath)),
+      // 6. Public/static directories
+      path.resolve(process.cwd(), 'public', imagePath),
+      path.resolve(process.cwd(), 'public', path.basename(imagePath)),
+      path.resolve(process.cwd(), 'static', imagePath),
+      path.resolve(process.cwd(), 'static', path.basename(imagePath)),
+      // 7. Check if it's relative to the base directory without the filename
+      path.resolve(path.dirname(basePath), imagePath),
+    ];
     
-    // Check if the file exists
-    if (fs.existsSync(absolutePath)) {
-      console.log(`Resolved image path: ${imagePath} -> ${absolutePath}`);
-      return `![${alt}](${absolutePath})`;
-    } else {
-      console.warn(`Warning: Image file not found: ${absolutePath}`);
-      // Try resolving from current working directory as fallback
-      const fallbackPath = path.resolve(process.cwd(), imagePath);
-      if (fs.existsSync(fallbackPath)) {
-        console.log(`Found image at fallback path: ${fallbackPath}`);
-        return `![${alt}](${fallbackPath})`;
+    // Try each search path
+    for (const searchPath of searchPaths) {
+      if (fs.existsSync(searchPath)) {
+        console.log(`[IMAGE RESOLUTION] ✓ Found image: ${imagePath} -> ${searchPath}`);
+        return `![${alt}](${searchPath})`;
+      } else {
+        console.log(`[IMAGE RESOLUTION] ✗ Not found: ${searchPath}`);
       }
-      console.error(`Error: Cannot find image file: ${imagePath}`);
-      // Return original if file not found - let Pandoc handle the error
-      return match;
     }
+    
+    // If we still can't find it, try to search recursively in common directories
+    const searchDirs = [process.cwd(), path.dirname(basePath)];
+    for (const searchDir of searchDirs) {
+      try {
+        const foundPath = findImageRecursively(searchDir, path.basename(imagePath));
+        if (foundPath) {
+          console.log(`[IMAGE RESOLUTION] ✓ Found image recursively: ${imagePath} -> ${foundPath}`);
+          return `![${alt}](${foundPath})`;
+        }
+      } catch (e) {
+        console.log(`[IMAGE RESOLUTION] Error searching in ${searchDir}: ${e.message}`);
+      }
+    }
+    
+    console.error(`[IMAGE RESOLUTION] ✗ FAILED to find image: ${imagePath}`);
+    console.error(`[IMAGE RESOLUTION] Searched paths:`, searchPaths);
+    
+    // As a last resort, try removing the image from the markdown to prevent PDF failure
+    console.warn(`[IMAGE RESOLUTION] Removing missing image from markdown: ${imagePath}`);
+    return `*[Image not found: ${imagePath}]*`;
   });
+}
+
+/**
+ * Recursively search for an image file by name
+ * @param {string} dir - Directory to search in
+ * @param {string} filename - Filename to search for
+ * @param {number} maxDepth - Maximum recursion depth (default 3)
+ * @returns {string|null} Full path to file if found, null otherwise
+ */
+function findImageRecursively(dir, filename, maxDepth = 3) {
+  if (maxDepth <= 0) return null;
+  
+  try {
+    const items = fs.readdirSync(dir);
+    
+    // First check files in current directory
+    for (const item of items) {
+      const fullPath = path.join(dir, item);
+      const stat = fs.statSync(fullPath);
+      
+      if (stat.isFile() && item === filename) {
+        return fullPath;
+      }
+    }
+    
+    // Then check subdirectories
+    for (const item of items) {
+      const fullPath = path.join(dir, item);
+      const stat = fs.statSync(fullPath);
+      
+      if (stat.isDirectory() && !item.startsWith('.') && item !== 'node_modules') {
+        const found = findImageRecursively(fullPath, filename, maxDepth - 1);
+        if (found) return found;
+      }
+    }
+  } catch (e) {
+    // Ignore permission errors, etc.
+  }
+  
+  return null;
 }
 
 // Page Size Mappings (width and height for common Amazon KDP book sizes)
@@ -559,4 +638,4 @@ function rewriteMarkdownWithStyledChapters(markdown) {
   return output.join('\n').replace(/^\s*\n/, '').replace(/\n\s*$/, '') + '\n';
 }
 
-module.exports = { exportPdf, pageSizes, getDynamicMargins, estimatePageCount, resolveImagePaths };
+module.exports = { exportPdf, pageSizes, getDynamicMargins, estimatePageCount, resolveImagePaths, findImageRecursively };
