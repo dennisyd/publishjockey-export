@@ -379,7 +379,7 @@ function exportPdf(assembledPath, outputPath, options = {}) {
       '-o', outputPath,
       '--from=markdown+fenced_divs+header_attributes+raw_tex+latex_macros+raw_html',
       '--to=latex',
-      '--pdf-engine=xelatex',
+      '--pdf-engine=pdflatex',
       '--template=templates/custom.tex',
       '--standalone',
       '--variable=links-as-notes',
