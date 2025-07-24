@@ -2,6 +2,42 @@ const { execFile, execFileSync } = require('child_process'); // Yancy Dennis
 const fs = require('fs');
 const path = require('path');
 
+/**
+ * Preprocess markdown to resolve image paths to absolute paths
+ * @param {string} markdown - The markdown content
+ * @param {string} basePath - Base path to resolve relative image paths from
+ * @returns {string} Processed markdown with resolved image paths
+ */
+function resolveImagePaths(markdown, basePath) {
+  // Match markdown image syntax: ![alt](path)
+  return markdown.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, alt, imagePath) => {
+    // Skip if it's already an absolute path or URL
+    if (path.isAbsolute(imagePath) || imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+      return match;
+    }
+    
+    // Resolve relative path to absolute path
+    const absolutePath = path.resolve(basePath, imagePath);
+    
+    // Check if the file exists
+    if (fs.existsSync(absolutePath)) {
+      console.log(`Resolved image path: ${imagePath} -> ${absolutePath}`);
+      return `![${alt}](${absolutePath})`;
+    } else {
+      console.warn(`Warning: Image file not found: ${absolutePath}`);
+      // Try resolving from current working directory as fallback
+      const fallbackPath = path.resolve(process.cwd(), imagePath);
+      if (fs.existsSync(fallbackPath)) {
+        console.log(`Found image at fallback path: ${fallbackPath}`);
+        return `![${alt}](${fallbackPath})`;
+      }
+      console.error(`Error: Cannot find image file: ${imagePath}`);
+      // Return original if file not found - let Pandoc handle the error
+      return match;
+    }
+  });
+}
+
 // Page Size Mappings (width and height for common Amazon KDP book sizes)
 const pageSizes = {
   "5x8": { width: "5in", height: "8in" },
@@ -422,6 +458,10 @@ function exportPdf(assembledPath, outputPath, options = {}) {
     // Minimal logging for key parameters
     console.log(`Using page size: ${pageSizeKey} (${geometry.width}in x ${geometry.height}in)`);
 
+    // --- Preprocess markdown to resolve image paths ---
+    const basePath = path.dirname(assembledPath);
+    markdown = resolveImagePaths(markdown, basePath);
+
     // --- Convert alignment divs to LaTeX environments ---
     let processedMarkdown = convertAlignmentDivsToLatex(markdown);
     fs.writeFileSync(assembledPath, processedMarkdown, 'utf8');
@@ -519,4 +559,4 @@ function rewriteMarkdownWithStyledChapters(markdown) {
   return output.join('\n').replace(/^\s*\n/, '').replace(/\n\s*$/, '') + '\n';
 }
 
-module.exports = { exportPdf, pageSizes, getDynamicMargins, estimatePageCount };
+module.exports = { exportPdf, pageSizes, getDynamicMargins, estimatePageCount, resolveImagePaths };
