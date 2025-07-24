@@ -1792,6 +1792,16 @@ app.post('/upload-image', imageUpload.single('image'), (req, res) => {
   // Return the server-relative path for use in LaTeX
   const relPath = path.relative(__dirname, req.file.path).replace(/\\/g, '/');
 
+  // Create a backup copy in the general uploads directory for easier access during exports
+  // This helps with deployment environments where directory structure might be different
+  const backupPath = path.join(__dirname, 'uploads', req.file.filename);
+  try {
+    fs.copyFileSync(req.file.path, backupPath);
+    console.log(`[UPLOAD] Created backup copy: ${backupPath}`);
+  } catch (err) {
+    console.warn(`[UPLOAD] Could not create backup copy: ${err.message}`);
+  }
+  
   // --- Begin: Copy to temp/admin for admin user (testing only) ---
   if (userId === 'admin') {
     const tempAdminDir = path.join(__dirname, 'temp', 'admin');
@@ -1988,6 +1998,17 @@ function getMetricSize(size) {
 
 // Utility to copy images referenced in markdown to export dir
 function copyImagesForExport(markdown, userId, projectId, exportDir) {
+  console.log(`[IMAGE COPY] Starting image copy process...`);
+  console.log(`[IMAGE COPY] userId: ${userId}, projectId: ${projectId}`);
+  console.log(`[IMAGE COPY] exportDir: ${exportDir}`);
+  console.log(`[IMAGE COPY] Server directory: ${__dirname}`);
+  
+  // Ensure export directory exists
+  if (!fs.existsSync(exportDir)) {
+    fs.mkdirSync(exportDir, { recursive: true });
+    console.log(`[IMAGE COPY] Created export directory: ${exportDir}`);
+  }
+  
   // Handle both LaTeX \includegraphics and {{IMAGE:...}} placeholders
   
   // First, handle LaTeX \includegraphics commands
@@ -1995,12 +2016,7 @@ function copyImagesForExport(markdown, userId, projectId, exportDir) {
   let match;
   while ((match = latexImageRegex.exec(markdown)) !== null) {
     const imageName = match[1];
-    const srcPath = path.join(__dirname, 'uploads', userId, projectId, imageName);
-    const destPath = path.join(exportDir, imageName);
-    if (fs.existsSync(srcPath) && !fs.existsSync(destPath)) {
-      fs.copyFileSync(srcPath, destPath);
-      console.log(`Copied LaTeX image: ${imageName}`);
-    }
+    copyImageFile(imageName, userId, projectId, exportDir, 'LaTeX');
   }
   
   // Then, handle {{IMAGE:...}} placeholders
@@ -2009,15 +2025,90 @@ function copyImagesForExport(markdown, userId, projectId, exportDir) {
     const imagePath = match[1];
     // Extract just the filename from the path
     const imageName = path.basename(imagePath);
-    const srcPath = path.join(__dirname, 'uploads', userId, projectId, imageName);
-    const destPath = path.join(exportDir, imageName);
-    if (fs.existsSync(srcPath) && !fs.existsSync(destPath)) {
-      fs.copyFileSync(srcPath, destPath);
-      console.log(`Copied placeholder image: ${imageName}`);
-    } else if (!fs.existsSync(srcPath)) {
-      console.warn(`Image not found: ${srcPath}`);
+    copyImageFile(imageName, userId, projectId, exportDir, 'placeholder');
+  }
+}
+
+// Helper function to copy a single image file with multiple fallback locations
+function copyImageFile(imageName, userId, projectId, exportDir, source) {
+  const destPath = path.join(exportDir, imageName);
+  
+  // Skip if already copied
+  if (fs.existsSync(destPath)) {
+    console.log(`[IMAGE COPY] ✓ ${source} image already exists: ${imageName}`);
+    return;
+  }
+  
+  // List of possible source locations to check
+  const possibleSources = [
+    // Primary: User-specific project directory
+    path.join(__dirname, 'uploads', userId, projectId, imageName),
+    // Fallback 1: User directory without project (for legacy uploads)
+    path.join(__dirname, 'uploads', userId, imageName),
+    // Fallback 2: Direct uploads directory
+    path.join(__dirname, 'uploads', imageName),
+    // Fallback 3: For deployment environments - check if there's a different structure
+    path.join(process.cwd(), 'uploads', userId, projectId, imageName),
+    path.join(process.cwd(), 'uploads', userId, imageName),
+    path.join(process.cwd(), 'uploads', imageName),
+    // Fallback 4: Check if uploads is at a different level (for Render deployment)
+    path.join(process.cwd(), '..', 'uploads', userId, projectId, imageName),
+    path.join(process.cwd(), '..', 'uploads', userId, imageName),
+    path.join(process.cwd(), '..', 'uploads', imageName),
+    // Fallback 5: Check for the file in any subdirectory of uploads (recursive search)
+    ...findImageInUploads(imageName)
+  ];
+  
+  // Try each possible source location
+  for (const srcPath of possibleSources) {
+    if (fs.existsSync(srcPath)) {
+      try {
+        fs.copyFileSync(srcPath, destPath);
+        console.log(`[IMAGE COPY] ✓ Copied ${source} image: ${imageName} from ${srcPath}`);
+        return;
+      } catch (err) {
+        console.error(`[IMAGE COPY] ✗ Failed to copy ${imageName} from ${srcPath}:`, err.message);
+      }
     }
   }
+  
+  // If we get here, the image wasn't found anywhere
+  console.warn(`[IMAGE COPY] ⚠️  Image not found: ${imageName} (checked ${possibleSources.length} locations)`);
+  console.warn(`[IMAGE COPY] Checked locations:`, possibleSources);
+}
+
+// Helper function to recursively search for an image in the uploads directory
+function findImageInUploads(imageName) {
+  const uploadsDir = path.join(__dirname, 'uploads');
+  const foundPaths = [];
+  
+  if (!fs.existsSync(uploadsDir)) {
+    return foundPaths;
+  }
+  
+  function searchRecursive(dir) {
+    try {
+      const items = fs.readdirSync(dir);
+      for (const item of items) {
+        const itemPath = path.join(dir, item);
+        const stat = fs.lstatSync(itemPath);
+        
+        if (stat.isDirectory()) {
+          // Recursively search subdirectories
+          searchRecursive(itemPath);
+        } else if (stat.isFile() && item === imageName) {
+          // Found the image file
+          foundPaths.push(itemPath);
+        }
+      }
+    } catch (err) {
+      // Ignore permission errors or inaccessible directories
+      console.log(`[IMAGE COPY] Cannot access directory ${dir}: ${err.message}`);
+    }
+  }
+  
+  searchRecursive(uploadsDir);
+  return foundPaths;
 }
 
 // Utility: Clean up LaTeX image includes to use only user-specified scale
@@ -2543,6 +2634,17 @@ app.post('/api/uploads', authenticateJWT, (req, res) => {
     fs.mkdirSync(userDir, { recursive: true });
     const destPath = path.join(userDir, req.file.filename);
     fs.renameSync(req.file.path, destPath);
+    
+    // Also create a backup copy in the general uploads directory for easier access during exports
+    // This helps with deployment environments where directory structure might be different
+    const backupPath = path.join(__dirname, 'uploads', req.file.filename);
+    try {
+      fs.copyFileSync(destPath, backupPath);
+      console.log(`[UPLOAD] Created backup copy: ${backupPath}`);
+    } catch (err) {
+      console.warn(`[UPLOAD] Could not create backup copy: ${err.message}`);
+    }
+    
     const relPath = `uploads/${userId}/${projectId}/${req.file.filename}`;
     res.json({ success: true, path: relPath });
   });
