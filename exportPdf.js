@@ -295,7 +295,7 @@ function getPandocVariables(options) {
   }
   
   // Main font
-  vars.push('mainfont=Times New Roman');
+  vars.push('mainfont=Liberation Serif');
   // Section style
   vars.push('secstyle=\\Large\\bfseries\\filcenter');
   
