@@ -1,6 +1,6 @@
 FROM ubuntu:22.04
 
-# Install Node.js and LaTeX with proper fonts
+# Install Node.js and LaTeX
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     curl \
     gnupg \
@@ -13,26 +13,11 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     pandoc \
     fontconfig \
     lmodern \
-    fonts-liberation \
-    fonts-liberation2 \
-    fonts-dejavu \
-    fonts-dejavu-core \
-    fonts-dejavu-extra \
-    fonts-noto \
-    fonts-noto-core \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Node.js 18
 RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
     && apt-get install -y nodejs
-
-# Refresh font cache and verify fonts are available
-RUN fc-cache -f -v && \
-    echo "=== AVAILABLE SERIF FONTS ===" && \
-    fc-list | grep -i "liberation serif" && \
-    fc-list | grep -i "dejavu serif" && \
-    fc-list | grep -i "times" && \
-    echo "=== END FONT LIST ==="
 
 # Verify everything is installed
 RUN echo "=== INSTALLATION VERIFICATION ===" && \
@@ -43,8 +28,6 @@ RUN echo "=== INSTALLATION VERIFICATION ===" && \
     echo "=== LaTeX ENGINES AVAILABLE ===" && \
     which pdflatex && \
     which xelatex && \
-    echo "=== FONT VERIFICATION ===" && \
-    fc-list | wc -l && echo "total fonts installed" && \
     echo "=== VERIFICATION COMPLETE ==="
 
 WORKDIR /app
