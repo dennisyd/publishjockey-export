@@ -2002,11 +2002,22 @@ function copyImagesForExport(markdown, userId, projectId, exportDir) {
   console.log(`[IMAGE COPY] userId: ${userId}, projectId: ${projectId}`);
   console.log(`[IMAGE COPY] exportDir: ${exportDir}`);
   console.log(`[IMAGE COPY] Server directory: ${__dirname}`);
+  console.log(`[IMAGE COPY] Current working directory: ${process.cwd()}`);
+  console.log(`[IMAGE COPY] NODE_ENV: ${process.env.NODE_ENV || 'not set'}`);
   
   // Ensure export directory exists
   if (!fs.existsSync(exportDir)) {
     fs.mkdirSync(exportDir, { recursive: true });
     console.log(`[IMAGE COPY] Created export directory: ${exportDir}`);
+  } else {
+    console.log(`[IMAGE COPY] Export directory already exists: ${exportDir}`);
+    // List existing files in export directory
+    try {
+      const existingFiles = fs.readdirSync(exportDir);
+      console.log(`[IMAGE COPY] Existing files in export directory: ${existingFiles.join(', ')}`);
+    } catch (err) {
+      console.log(`[IMAGE COPY] Could not list export directory: ${err.message}`);
+    }
   }
   
   // Handle both LaTeX \includegraphics and {{IMAGE:...}} placeholders
@@ -2055,36 +2066,83 @@ function copyImageFile(imageName, userId, projectId, exportDir, source) {
     path.join(process.cwd(), '..', 'uploads', userId, projectId, imageName),
     path.join(process.cwd(), '..', 'uploads', userId, imageName),
     path.join(process.cwd(), '..', 'uploads', imageName),
-    // Fallback 5: Check for the file in any subdirectory of uploads (recursive search)
+    // Fallback 5: Render-specific paths (app directory structure)
+    path.join('/app', 'uploads', userId, projectId, imageName),
+    path.join('/app', 'uploads', userId, imageName),
+    path.join('/app', 'uploads', imageName),
+    // Fallback 6: Alternative Render paths
+    path.join(process.cwd(), 'app', 'uploads', userId, projectId, imageName),
+    path.join(process.cwd(), 'app', 'uploads', userId, imageName),
+    path.join(process.cwd(), 'app', 'uploads', imageName),
+    // Fallback 7: Check for the file in any subdirectory of uploads (recursive search)
     ...findImageInUploads(imageName)
   ];
   
   // Try each possible source location
-  for (const srcPath of possibleSources) {
+  console.log(`[IMAGE COPY] Searching for ${source} image: ${imageName}`);
+  console.log(`[IMAGE COPY] Will check ${possibleSources.length} possible locations...`);
+  
+  for (let i = 0; i < possibleSources.length; i++) {
+    const srcPath = possibleSources[i];
+    console.log(`[IMAGE COPY] [${i + 1}/${possibleSources.length}] Checking: ${srcPath}`);
+    
     if (fs.existsSync(srcPath)) {
+      console.log(`[IMAGE COPY] ✓ File exists at: ${srcPath}`);
       try {
         fs.copyFileSync(srcPath, destPath);
-        console.log(`[IMAGE COPY] ✓ Copied ${source} image: ${imageName} from ${srcPath}`);
+        console.log(`[IMAGE COPY] ✓ Successfully copied ${source} image: ${imageName} from ${srcPath} to ${destPath}`);
         return;
       } catch (err) {
         console.error(`[IMAGE COPY] ✗ Failed to copy ${imageName} from ${srcPath}:`, err.message);
       }
+    } else {
+      console.log(`[IMAGE COPY] ✗ File not found at: ${srcPath}`);
     }
   }
   
   // If we get here, the image wasn't found anywhere
   console.warn(`[IMAGE COPY] ⚠️  Image not found: ${imageName} (checked ${possibleSources.length} locations)`);
-  console.warn(`[IMAGE COPY] Checked locations:`, possibleSources);
+  console.warn(`[IMAGE COPY] All checked locations:`, possibleSources);
+  
+  // Additional debugging: try to find any uploads directories that exist
+  const debugDirs = [
+    __dirname,
+    process.cwd(),
+    '/app',
+    process.cwd() + '/app',
+    process.cwd() + '/..'
+  ];
+  
+  console.log(`[IMAGE COPY] Environment debugging for ${imageName}:`);
+  for (const baseDir of debugDirs) {
+    try {
+      const uploadsPath = path.join(baseDir, 'uploads');
+      if (fs.existsSync(uploadsPath)) {
+        console.log(`[IMAGE COPY] Found uploads directory: ${uploadsPath}`);
+        const files = fs.readdirSync(uploadsPath);
+        const imageFiles = files.filter(f => f.includes(imageName) || f.includes('Vanquish'));
+        if (imageFiles.length > 0) {
+          console.log(`[IMAGE COPY] Related files found: ${imageFiles.join(', ')}`);
+        }
+      }
+    } catch (err) {
+      console.log(`[IMAGE COPY] Could not check ${baseDir}/uploads: ${err.message}`);
+    }
+  }
 }
 
 // Helper function to recursively search for an image in the uploads directory
 function findImageInUploads(imageName) {
-  const uploadsDir = path.join(__dirname, 'uploads');
   const foundPaths = [];
   
-  if (!fs.existsSync(uploadsDir)) {
-    return foundPaths;
-  }
+  // Multiple potential uploads directories for different deployment environments
+  const uploadsDirectories = [
+    path.join(__dirname, 'uploads'),
+    path.join(process.cwd(), 'uploads'),
+    path.join('/app', 'uploads'),
+    path.join(process.cwd(), 'app', 'uploads'),
+    path.join(process.cwd(), '..', 'uploads')
+  ];
   
   function searchRecursive(dir) {
     try {
@@ -2107,7 +2165,14 @@ function findImageInUploads(imageName) {
     }
   }
   
-  searchRecursive(uploadsDir);
+  // Search in each potential uploads directory
+  for (const uploadsDir of uploadsDirectories) {
+    if (fs.existsSync(uploadsDir)) {
+      console.log(`[IMAGE COPY] Searching in uploads directory: ${uploadsDir}`);
+      searchRecursive(uploadsDir);
+    }
+  }
+  
   return foundPaths;
 }
 
