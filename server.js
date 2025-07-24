@@ -327,6 +327,17 @@ app.post('/export/pdf', authenticateJWT, async (req, res) => {
     // Do not add YAML metadata here; let assembleBookPdf handle it
     const processedMarkdown = cleanMarkdown;
     
+    // Copy images to export dir (temp) - do this BEFORE processing the markdown
+    const userId = exportOptions.userId || req.body.userId || 'defaultUser';
+    const projectId = exportOptions.projectId || req.body.projectId || 'defaultProject';
+    
+    // Create a temporary markdown with just the {{IMAGE:...}} placeholders for image copying
+    let tempMarkdownForImages = '';
+    for (const section of validSections) {
+      tempMarkdownForImages += section.content + '\n\n';
+    }
+    copyImagesForExport(tempMarkdownForImages, userId, projectId, path.join(__dirname, 'temp'));
+    
     // Save debug copy
     saveDebugFile(processedMarkdown, 'standard_markdown.md');
     
@@ -368,10 +379,6 @@ app.post('/export/pdf', authenticateJWT, async (req, res) => {
     try {
       fs.writeFileSync(mdPath, processedMarkdown, 'utf8');
       console.log(`PANDOC INPUT: Saved markdown for PDF processing to ${mdPath}`);
-      // Copy images to export dir (temp)
-      const userId = exportOptions.userId || req.body.userId || 'defaultUser';
-      const projectId = exportOptions.projectId || req.body.projectId || 'defaultProject';
-      copyImagesForExport(processedMarkdown, userId, projectId, path.join(__dirname, 'temp'));
     } catch (err) {
       console.error('Error writing markdown file for PDF processing:', err);
     }
@@ -1981,14 +1988,34 @@ function getMetricSize(size) {
 
 // Utility to copy images referenced in markdown to export dir
 function copyImagesForExport(markdown, userId, projectId, exportDir) {
-  const imageRegex = /\\includegraphics.*?{([^}]+)}/g;
+  // Handle both LaTeX \includegraphics and {{IMAGE:...}} placeholders
+  
+  // First, handle LaTeX \includegraphics commands
+  const latexImageRegex = /\\includegraphics.*?{([^}]+)}/g;
   let match;
-  while ((match = imageRegex.exec(markdown)) !== null) {
+  while ((match = latexImageRegex.exec(markdown)) !== null) {
     const imageName = match[1];
     const srcPath = path.join(__dirname, 'uploads', userId, projectId, imageName);
     const destPath = path.join(exportDir, imageName);
     if (fs.existsSync(srcPath) && !fs.existsSync(destPath)) {
       fs.copyFileSync(srcPath, destPath);
+      console.log(`Copied LaTeX image: ${imageName}`);
+    }
+  }
+  
+  // Then, handle {{IMAGE:...}} placeholders
+  const placeholderImageRegex = /\{\{IMAGE:([^|}]+)\|([^|}]+)\|([^|}]+)\}\}/g;
+  while ((match = placeholderImageRegex.exec(markdown)) !== null) {
+    const imagePath = match[1];
+    // Extract just the filename from the path
+    const imageName = path.basename(imagePath);
+    const srcPath = path.join(__dirname, 'uploads', userId, projectId, imageName);
+    const destPath = path.join(exportDir, imageName);
+    if (fs.existsSync(srcPath) && !fs.existsSync(destPath)) {
+      fs.copyFileSync(srcPath, destPath);
+      console.log(`Copied placeholder image: ${imageName}`);
+    } else if (!fs.existsSync(srcPath)) {
+      console.warn(`Image not found: ${srcPath}`);
     }
   }
 }

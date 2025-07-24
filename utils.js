@@ -44,11 +44,15 @@ function replaceCustomImages(markdown, format) {
   return markdown.replace(/\{\{IMAGE:([^|}]+)\|([^|}]+)\|([^|}]+)\}\}/g, (match, src, alt, scale) => {
     src = src.replace(/\\/g, '/'); // Always use forward slashes
     scale = parseFloat(scale);
+    
+    // Extract just the filename from the path for PDF (since images are copied to temp dir)
+    const imageFilename = format === 'pdf' ? path.basename(src) : src;
+    
     if (format === 'pdf') {
       // For PDF, use a non-floating approach with raw centering and caption
       return `
 \\begin{center}
-\\includegraphics[width=${scale}\\textwidth]{${src}}
+\\includegraphics[width=${scale}\\textwidth]{${imageFilename}}
 
 {\\itshape ${alt.replace(/([%#&{}_])/g, '\\$1')}}
 \\end{center}
