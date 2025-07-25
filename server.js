@@ -376,9 +376,11 @@ app.post('/export/pdf', authenticateJWT, async (req, res) => {
       fs.writeFileSync(mdPath, finalMarkdown, 'utf8');
       console.log(`PANDOC INPUT: Saved markdown for PDF processing to ${mdPath}`);
       
-      // Note: Image copying is now handled by prepareMarkdownForPDF for Cloudinary images
+      // IMPORTANT: Also copy local uploaded images to temp directory
       const userId = exportOptions.userId || req.body.userId || 'defaultUser';
       const projectId = exportOptions.projectId || req.body.projectId || 'defaultProject';
+      console.log(`[IMAGE COPY] Copying local uploaded images for userId: ${userId}, projectId: ${projectId}`);
+      copyImagesForExport(finalMarkdown, userId, projectId, tempDir);
       console.log(`[IMAGE COPY] Image preparation completed for userId: ${userId}, projectId: ${projectId}`);
     } catch (err) {
       console.error('Error writing markdown file for PDF processing:', err);
@@ -2015,7 +2017,7 @@ function copyImagesForExport(markdown, userId, projectId, exportDir) {
   console.log(`[IMAGE COPY] Found ${imageCount} LaTeX images total`);
   
   // Then, handle {{IMAGE:...}} placeholders
-  const placeholderImageRegex = /\{\{IMAGE:([^|}]+)\|([^|}]+)\|([^|}]+)\}\}/g;
+  const placeholderImageRegex = /\{\{IMAGE:([^|}]*)\|([^|}]*)\|([^|}]*)\}\}/g;
   let placeholderCount = 0;
   console.log(`[IMAGE COPY] Searching for {{IMAGE:...}} placeholders...`);
   while ((match = placeholderImageRegex.exec(markdown)) !== null) {
