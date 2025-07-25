@@ -82,21 +82,27 @@ function replaceCustomImages(markdown, format) {
     markdown = translateAlignmentDivsForDocx(markdown);
   }
   
-  return markdown.replace(/\{\{IMAGE:([^|}]+)\|([^|}]+)\|([^|}]+)\}\}/g, (match, src, alt, scale) => {
+  return markdown.replace(/\{\{IMAGE:([^|}]*)\|([^|}]*)\|([^|}]*)\}\}/g, (match, src, alt, scale) => {
     src = src.replace(/\\/g, '/'); // Always use forward slashes
-    scale = parseFloat(scale);
+    scale = parseFloat(scale) || 0.6; // Default scale if empty or invalid
+    
+    // Provide default alt text if empty
+    if (!alt || alt.trim() === '') {
+      alt = 'Image';
+    }
     
     // Apply Cloudinary transformations if applicable
     const optimizedSrc = getCloudinaryTransformation(src, format, scale);
     
-    // Extract just the filename from the path for PDF (since images are copied to temp dir)
-    const imageFilename = format === 'pdf' ? path.basename(optimizedSrc) : optimizedSrc;
+    // For PDF: Keep full URL so prepareMarkdownForPDF can download it, then replace with local filename
+    // For other formats: Use the optimized URL directly
+    const imageSrc = optimizedSrc;
     
     if (format === 'pdf') {
       // For PDF, use a non-floating approach with raw centering and caption
       return `
 \\begin{center}
-\\includegraphics[width=${scale}\\textwidth]{${imageFilename}}
+\\includegraphics[width=${scale}\\textwidth]{${imageSrc}}
 
 {\\itshape ${alt.replace(/([%#&{}_])/g, '\\$1')}}
 \\end{center}
@@ -104,10 +110,10 @@ function replaceCustomImages(markdown, format) {
     } else if (format === 'epub') {
       // HTML: center both image and caption with responsive design
       const percent = Math.round(scale * 100);
-      return `<div style="text-align: center;">\n  <img src="${optimizedSrc}" alt="${alt}" style="max-width:${percent}%; height:auto;" loading="lazy" />\n  <div style="text-align: center;"><em>${alt}</em></div>\n</div>`;
+      return `<div style="text-align: center;">\n  <img src="${imageSrc}" alt="${alt}" style="max-width:${percent}%; height:auto;" loading="lazy" />\n  <div style="text-align: center;"><em>${alt}</em></div>\n</div>`;
     } else if (format === 'docx') {
       // Markdown image only (caption handled by alt text)
-      return `\n![${alt}](${optimizedSrc})\n`;
+      return `\n![${alt}](${imageSrc})\n`;
     } else {
       return match;
     }
