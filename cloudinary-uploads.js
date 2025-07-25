@@ -189,7 +189,7 @@ const cloudinaryUpload = multer({
  * Usage: app.post('/upload', cloudImageUpload, async (req, res) => { ... })
  */
 const cloudImageUpload = (req, res, next) => {
-  cloudinaryUpload.single('image')(req, res, async (err) => {
+  cloudinaryUpload.single('file')(req, res, async (err) => {
     if (err) {
       return res.status(400).json({ success: false, error: err.message });
     }
