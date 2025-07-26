@@ -31,18 +31,31 @@ function downloadCloudinaryImage(imageUrl, tempDir, options = {}) {
     cleanUrl = cleanUrl.replace(/\/upload\/,/g, '/upload/');
     cleanUrl = cleanUrl.replace(/\/upload\/([^\/]*),\//g, '/upload/$1/');
     
-    // Extract public ID and generate a clean, optimized URL for PDF
-    const publicIdMatch = cleanUrl.match(/\/(?:v\d+\/)?([^\/\?]+)(?:\.[^\/\?]*)?(?:\?|$)/);
-    if (publicIdMatch) {
-      const publicId = publicIdMatch[1];
-      const cloudName = cleanUrl.match(/\/\/res\.cloudinary\.com\/([^\/]+)\//)?.[1];
-      
-      if (cloudName) {
-        // Generate a clean, PDF-optimized URL
-        cleanUrl = `https://res.cloudinary.com/${cloudName}/image/upload/f_png,q_95/${publicId}.png`;
-        console.log(`[CLOUDINARY] Optimized URL: ${cleanUrl}`);
-      }
-    }
+         // Extract public ID and generate a clean, optimized URL for PDF
+     console.log(`[CLOUDINARY] Processing URL: ${cleanUrl}`);
+     const publicIdMatch = cleanUrl.match(/\/(?:v\d+\/)?([^\/\?]+)(?:\.[^\/\?]*)?(?:\?|$)/);
+     if (publicIdMatch) {
+       const publicId = publicIdMatch[1];
+       const cloudName = cleanUrl.match(/\/\/res\.cloudinary\.com\/([^\/]+)\//)?.[1];
+       
+       console.log(`[CLOUDINARY] Extracted - cloudName: ${cloudName}, publicId: ${publicId}`);
+       
+       if (cloudName && publicId) {
+         // Generate a clean, PDF-optimized URL
+         cleanUrl = `https://res.cloudinary.com/${cloudName}/image/upload/f_png,q_95/${publicId}.png`;
+         console.log(`[CLOUDINARY] Optimized URL: ${cleanUrl}`);
+       } else {
+         console.warn(`[CLOUDINARY] Could not extract cloudName or publicId from URL: ${imageUrl}`);
+         // Try a simpler approach - just remove query parameters
+         cleanUrl = imageUrl.split('?')[0];
+         console.log(`[CLOUDINARY] Fallback URL (no query): ${cleanUrl}`);
+       }
+     } else {
+       console.warn(`[CLOUDINARY] Could not parse URL structure: ${imageUrl}`);
+       // Try a simpler approach - just remove query parameters
+       cleanUrl = imageUrl.split('?')[0];
+       console.log(`[CLOUDINARY] Fallback URL (no query): ${cleanUrl}`);
+     }
     
     // Generate filename based on clean URL
     const hash = crypto.createHash('md5').update(cleanUrl).digest('hex');
@@ -125,10 +138,19 @@ function downloadCloudinaryImage(imageUrl, tempDir, options = {}) {
  * @param {string} tempDir - Temporary directory for downloaded images
  * @returns {Promise<string>} Processed markdown with local image paths
  */
-async function processCloudinaryImages(markdown, tempDir) {
-  console.log(`[CLOUDINARY] Starting comprehensive image processing`);
-  
-  // Enhanced regex patterns to catch all Cloudinary URL variations
+ async function processCloudinaryImages(markdown, tempDir) {
+   console.log(`[CLOUDINARY] Starting comprehensive image processing`);
+   console.log(`[CLOUDINARY] Markdown length: ${markdown.length} characters`);
+   
+   // Debug: Show first few lines that contain cloudinary
+   const lines = markdown.split('\n');
+   const cloudinaryLines = lines.filter(line => line.includes('cloudinary.com'));
+   console.log(`[CLOUDINARY] Found ${cloudinaryLines.length} lines containing 'cloudinary.com':`);
+   cloudinaryLines.slice(0, 5).forEach((line, i) => {
+     console.log(`[CLOUDINARY] Line ${i + 1}: ${line}`);
+   });
+   
+   // Enhanced regex patterns to catch all Cloudinary URL variations
   const patterns = [
     // Standard markdown images: ![alt](url)
     /!\[([^\]]*)\]\((https:\/\/res\.cloudinary\.com\/[^)]+)\)/g,
@@ -149,23 +171,34 @@ async function processCloudinaryImages(markdown, tempDir) {
   const allMatches = new Set();
   let processedMarkdown = markdown;
   
-  // Find all unique Cloudinary URLs
-  patterns.forEach(pattern => {
-    let match;
-    const tempMarkdown = markdown;
-    while ((match = pattern.exec(tempMarkdown)) !== null) {
-      // Extract URL (might be in different capture groups depending on pattern)
-      const url = match[1]?.startsWith('https://') ? match[1] : 
-                  match[2]?.startsWith('https://') ? match[2] : 
-                  match[0]?.startsWith('https://') ? match[0] : null;
-      
-      if (url) {
-        allMatches.add(url);
-      }
-    }
-    // Reset regex state
-    pattern.lastIndex = 0;
-  });
+     // Find all unique Cloudinary URLs with enhanced debugging
+   patterns.forEach((pattern, index) => {
+     console.log(`[CLOUDINARY] Testing pattern ${index + 1}: ${pattern.source}`);
+     let match;
+     const tempMarkdown = markdown;
+     let patternMatches = 0;
+     
+     while ((match = pattern.exec(tempMarkdown)) !== null) {
+       patternMatches++;
+       console.log(`[CLOUDINARY] Pattern ${index + 1} match ${patternMatches}:`, match);
+       
+       // Extract URL (might be in different capture groups depending on pattern)
+       const url = match[1]?.startsWith('https://') ? match[1] : 
+                   match[2]?.startsWith('https://') ? match[2] : 
+                   match[0]?.startsWith('https://') ? match[0] : null;
+       
+       if (url) {
+         console.log(`[CLOUDINARY] Found URL: ${url}`);
+         allMatches.add(url);
+       } else {
+         console.log(`[CLOUDINARY] No valid URL found in match:`, match);
+       }
+     }
+     
+     console.log(`[CLOUDINARY] Pattern ${index + 1} found ${patternMatches} matches`);
+     // Reset regex state
+     pattern.lastIndex = 0;
+   });
   
   const uniqueUrls = Array.from(allMatches);
   console.log(`[CLOUDINARY] Found ${uniqueUrls.length} unique Cloudinary URLs`);
@@ -229,40 +262,72 @@ async function processCloudinaryImages(markdown, tempDir) {
     }
   }
   
-  // Replace URLs with local filenames using a more robust approach
-  results.forEach(result => {
-    if (result.success) {
-      console.log(`[CLOUDINARY] Replacing: ${result.original} -> ${result.filename}`);
-      
-      // Use a simpler, more reliable replacement approach
-      // Replace all occurrences of the exact URL with just the filename
-      const urlToReplace = result.original;
-      let replacementCount = 0;
-      
-      // Split and replace to handle all occurrences
-      while (processedMarkdown.includes(urlToReplace)) {
-        processedMarkdown = processedMarkdown.replace(urlToReplace, result.filename);
-        replacementCount++;
-        
-        // Safety check to prevent infinite loops
-        if (replacementCount > 100) {
-          console.warn(`[CLOUDINARY] Too many replacements for ${urlToReplace}, stopping to prevent infinite loop`);
-          break;
-        }
-      }
-      
-             console.log(`[CLOUDINARY] ✓ Replaced ${replacementCount} instances: ${result.original} -> ${result.filename}`);
-     } else {
-       // Handle failed downloads by replacing with placeholder text
-       console.log(`[CLOUDINARY] Replacing failed download with placeholder: ${result.original}`);
-       const urlToReplace = result.original;
-       const placeholder = `*[Image unavailable: ${path.basename(result.original)}]*`;
+     // Replace URLs with local filenames using context-aware approach
+   results.forEach(result => {
+     if (result.success) {
+       console.log(`[CLOUDINARY] Replacing: ${result.original} -> ${result.filename}`);
        
+       // Use a simpler, more reliable replacement approach
+       // Replace all occurrences of the exact URL with just the filename
+       const urlToReplace = result.original;
+       let replacementCount = 0;
+       
+       // Split and replace to handle all occurrences
        while (processedMarkdown.includes(urlToReplace)) {
-         processedMarkdown = processedMarkdown.replace(urlToReplace, placeholder);
+         processedMarkdown = processedMarkdown.replace(urlToReplace, result.filename);
+         replacementCount++;
+         
+         // Safety check to prevent infinite loops
+         if (replacementCount > 100) {
+           console.warn(`[CLOUDINARY] Too many replacements for ${urlToReplace}, stopping to prevent infinite loop`);
+           break;
+         }
        }
        
-       console.log(`[CLOUDINARY] ✓ Replaced failed download with placeholder: ${result.original}`);
+       console.log(`[CLOUDINARY] ✓ Replaced ${replacementCount} instances: ${result.original} -> ${result.filename}`);
+     } else {
+       // Handle failed downloads by replacing the entire image syntax, not just the URL
+       console.log(`[CLOUDINARY] Replacing failed download with LaTeX text: ${result.original}`);
+       const urlToReplace = result.original;
+       const cleanFilename = path.basename(result.original).replace(/\?.*$/, '');
+       const placeholderText = `\\textit{[Image unavailable: ${cleanFilename}]}`;
+       
+       // Handle different image contexts
+       const imagePatterns = [
+         // Markdown images: ![alt](url) -> LaTeX text
+         {
+           pattern: new RegExp(`!\\[([^\\]]*)\\]\\(${urlToReplace.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\)`, 'g'),
+           replacement: placeholderText
+         },
+         // LaTeX includegraphics: \includegraphics{url} -> LaTeX text
+         {
+           pattern: new RegExp(`\\\\includegraphics(?:\\[[^\\]]*\\])?\\{${urlToReplace.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\}`, 'g'),
+           replacement: placeholderText
+         },
+         // HTML img tags: <img src="url"> -> LaTeX text
+         {
+           pattern: new RegExp(`<img[^>]*src=["']${urlToReplace.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["'][^>]*>`, 'g'),
+           replacement: placeholderText
+         }
+       ];
+       
+       let replaced = false;
+       imagePatterns.forEach(({ pattern, replacement }) => {
+         if (pattern.test(processedMarkdown)) {
+           processedMarkdown = processedMarkdown.replace(pattern, replacement);
+           replaced = true;
+         }
+       });
+       
+       // Fallback: if no specific pattern matched, do simple URL replacement
+       if (!replaced && processedMarkdown.includes(urlToReplace)) {
+         while (processedMarkdown.includes(urlToReplace)) {
+           processedMarkdown = processedMarkdown.replace(urlToReplace, placeholderText);
+         }
+         replaced = true;
+       }
+       
+       console.log(`[CLOUDINARY] ✓ Replaced failed download: ${result.original} -> ${replaced ? 'LaTeX text' : 'not found'}`);
      }
    });
   
@@ -298,15 +363,39 @@ async function processCloudinaryImages(markdown, tempDir) {
     console.log(`[CLOUDINARY] ✓ All URLs successfully processed`);
   }
   
-  const successful = results.filter(r => r.success).length;
-  const failed = results.length - successful;
-  console.log(`[CLOUDINARY] Processing complete: ${successful} successful, ${failed} failed`);
-  
-  return {
-    markdown: processedMarkdown,
-    downloadedFiles: results.filter(r => r.success).map(r => r.localPath),
-    stats: { successful, failed, total: results.length }
-  };
+     const successful = results.filter(r => r.success).length;
+   const failed = results.length - successful;
+   console.log(`[CLOUDINARY] Processing complete: ${successful} successful, ${failed} failed`);
+   
+   // Final safety check: remove any remaining problematic patterns
+   console.log(`[CLOUDINARY] Running final safety checks...`);
+   
+   // Remove any LaTeX commands that might still contain problematic URLs
+   const problemPatterns = [
+     // Remove any includegraphics commands with URLs or problematic characters
+     /\\includegraphics(?:\[[^\]]*\])?\{[^}]*cloudinary\.com[^}]*\}/g,
+     /\\includegraphics(?:\[[^\]]*\])?\{[^}]*\?[^}]*\}/g,
+     // Remove any markdown images with problematic URLs
+     /!\[[^\]]*\]\([^)]*cloudinary\.com[^)]*\)/g,
+     /!\[[^\]]*\]\([^)]*\?[^)]*\)/g
+   ];
+   
+   problemPatterns.forEach((pattern, index) => {
+     const matches = processedMarkdown.match(pattern);
+     if (matches) {
+       console.warn(`[CLOUDINARY] Safety check ${index + 1}: Found ${matches.length} problematic patterns`);
+       matches.forEach(match => console.warn(`[CLOUDINARY] Problematic pattern: ${match}`));
+       processedMarkdown = processedMarkdown.replace(pattern, '\\textit{[Image processing error]}');
+     }
+   });
+   
+   console.log(`[CLOUDINARY] Final safety checks complete`);
+   
+   return {
+     markdown: processedMarkdown,
+     downloadedFiles: results.filter(r => r.success).map(r => r.localPath),
+     stats: { successful, failed, total: results.length }
+   };
 }
 
 /**
