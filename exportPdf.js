@@ -138,8 +138,12 @@ async function processCloudinaryImages(markdown, tempDir) {
     /\\includegraphics\[([^\]]*)\]\{(https:\/\/res\.cloudinary\.com\/[^}]+)\}/g,
     // HTML img tags
     /<img[^>]*src=["'](https:\/\/res\.cloudinary\.com\/[^"']+)["'][^>]*>/g,
-    // Raw URLs that might be in the text
-    /(https:\/\/res\.cloudinary\.com\/[^\s\[\](){}'"<>]+)/g
+    // Raw URLs that might be in the text - more comprehensive patterns
+    /(https:\/\/res\.cloudinary\.com\/[^\s\[\](){}'"<>]+)/g,
+    // URLs with query parameters and fragments
+    /(https:\/\/res\.cloudinary\.com\/[^)\s}'"]*(?:\?[^)\s}'"]*)?(?:#[^)\s}'"]*)?)/g,
+    // Broader pattern to catch any cloudinary URL format
+    /(https:\/\/res\.cloudinary\.com\/[^\s]*)/g
   ];
   
   const allMatches = new Set();
@@ -168,7 +172,11 @@ async function processCloudinaryImages(markdown, tempDir) {
   
   if (uniqueUrls.length === 0) {
     console.log(`[CLOUDINARY] No Cloudinary images found`);
-    return markdown;
+    return {
+      markdown: markdown,
+      downloadedFiles: [],
+      stats: { successful: 0, failed: 0, total: 0 }
+    };
   }
   
   // Log first few URLs for debugging
@@ -221,42 +229,71 @@ async function processCloudinaryImages(markdown, tempDir) {
     }
   }
   
-  // Replace URLs with local filenames
+  // Replace URLs with local filenames using a more robust approach
   results.forEach(result => {
     if (result.success) {
-      const escapedUrl = result.original.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      console.log(`[CLOUDINARY] Replacing: ${result.original} -> ${result.filename}`);
       
-      // Replace in all contexts
-      const replacements = [
-        // Markdown images
-        new RegExp(`(!\\[[^\\]]*\\]\\()${escapedUrl}(\\))`, 'g'),
-        // LaTeX includegraphics
-        new RegExp(`(\\\\includegraphics(?:\\[[^\\]]*\\])?\\{)${escapedUrl}(\\})`, 'g'),
-        // HTML img tags
-        new RegExp(`(<img[^>]*src=["'])${escapedUrl}(["'][^>]*>)`, 'g'),
-        // Raw URLs
-        new RegExp(escapedUrl, 'g')
-      ];
+      // Use a simpler, more reliable replacement approach
+      // Replace all occurrences of the exact URL with just the filename
+      const urlToReplace = result.original;
+      let replacementCount = 0;
       
-      replacements.forEach(regex => {
-        if (regex.source.includes('(') && regex.source.includes(')')) {
-          // Has capture groups
-          processedMarkdown = processedMarkdown.replace(regex, `$1${result.filename}$2`);
-        } else {
-          // No capture groups
-          processedMarkdown = processedMarkdown.replace(regex, result.filename);
+      // Split and replace to handle all occurrences
+      while (processedMarkdown.includes(urlToReplace)) {
+        processedMarkdown = processedMarkdown.replace(urlToReplace, result.filename);
+        replacementCount++;
+        
+        // Safety check to prevent infinite loops
+        if (replacementCount > 100) {
+          console.warn(`[CLOUDINARY] Too many replacements for ${urlToReplace}, stopping to prevent infinite loop`);
+          break;
         }
-      });
+      }
       
-      console.log(`[CLOUDINARY] ✓ Replaced: ${result.original} -> ${result.filename}`);
+             console.log(`[CLOUDINARY] ✓ Replaced ${replacementCount} instances: ${result.original} -> ${result.filename}`);
+     } else {
+       // Handle failed downloads by replacing with placeholder text
+       console.log(`[CLOUDINARY] Replacing failed download with placeholder: ${result.original}`);
+       const urlToReplace = result.original;
+       const placeholder = `*[Image unavailable: ${path.basename(result.original)}]*`;
+       
+       while (processedMarkdown.includes(urlToReplace)) {
+         processedMarkdown = processedMarkdown.replace(urlToReplace, placeholder);
+       }
+       
+       console.log(`[CLOUDINARY] ✓ Replaced failed download with placeholder: ${result.original}`);
+     }
+   });
+  
+  // Final verification with enhanced URL detection
+  const remainingUrlPatterns = [
+    /https:\/\/res\.cloudinary\.com\/[^\s\[\](){}'"<>]+/g,
+    /https:\/\/res\.cloudinary\.com\/[^)\s}'"]+/g,
+    /res\.cloudinary\.com\/[^)\s}'"]+/g
+  ];
+  
+  let allRemainingUrls = new Set();
+  remainingUrlPatterns.forEach(pattern => {
+    const matches = processedMarkdown.match(pattern);
+    if (matches) {
+      matches.forEach(url => allRemainingUrls.add(url));
     }
   });
   
-  // Final verification
-  const remainingUrls = processedMarkdown.match(/https:\/\/res\.cloudinary\.com\/[^\s\[\](){}'"<>]+/g);
-  if (remainingUrls && remainingUrls.length > 0) {
-    console.warn(`[CLOUDINARY] WARNING: ${remainingUrls.length} URLs still remain:`);
-    remainingUrls.forEach(url => console.warn(`  - ${url}`));
+  if (allRemainingUrls.size > 0) {
+    console.warn(`[CLOUDINARY] WARNING: ${allRemainingUrls.size} URLs still remain:`);
+    Array.from(allRemainingUrls).forEach(url => console.warn(`  - ${url}`));
+    
+    // Try to understand why they weren't replaced
+    allRemainingUrls.forEach(url => {
+      const matchingResult = results.find(r => r.original === url);
+      if (matchingResult) {
+        console.warn(`  > This URL was processed but not replaced: success=${matchingResult.success}`);
+      } else {
+        console.warn(`  > This URL was not found in processing results`);
+      }
+    });
   } else {
     console.log(`[CLOUDINARY] ✓ All URLs successfully processed`);
   }
@@ -641,6 +678,15 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
       // STEP 4: Write processed markdown back to file
       fs.writeFileSync(assembledPath, markdown, 'utf8');
       console.log(`[PDF EXPORT] Updated markdown file with processed content`);
+      
+      // Additional verification: Check if any Cloudinary URLs remain in the final markdown
+      const finalCheck = markdown.match(/https:\/\/res\.cloudinary\.com\/[^\s]*/g);
+      if (finalCheck && finalCheck.length > 0) {
+        console.error(`[PDF EXPORT] ERROR: ${finalCheck.length} Cloudinary URLs still present in final markdown:`);
+        finalCheck.forEach(url => console.error(`  - ${url}`));
+      } else {
+        console.log(`[PDF EXPORT] ✓ No Cloudinary URLs detected in final markdown`);
+      }
       
       // STEP 5: Setup Pandoc arguments
       console.log(`[PDF EXPORT] Step 4: Setting up Pandoc arguments...`);
