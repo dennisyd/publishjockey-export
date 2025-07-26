@@ -31,42 +31,46 @@ function translateAlignmentDivsForDocx(markdown) {
 }
 
 /**
- * Gets Cloudinary transformation URL for specific book format
- * @param {string} cloudinaryUrl - Original Cloudinary URL
- * @param {string} format - 'pdf', 'epub', or 'docx'
+ * Applies format-specific Cloudinary transformations to image URLs
+ * @param {string} imageSrc - Original image URL
+ * @param {string} format - Target format (pdf, epub, docx)
  * @param {number} scale - Image scale factor
- * @returns {string} - Optimized Cloudinary URL
+ * @returns {string} - Transformed URL
  */
-function getCloudinaryTransformation(cloudinaryUrl, format, scale = 0.6) {
-  // Check if this is a Cloudinary URL
-  if (!cloudinaryUrl.includes('cloudinary.com')) {
-    return cloudinaryUrl; // Return unchanged if not Cloudinary
+function getCloudinaryTransformation(imageSrc, format, scale = 0.6) {
+  // Only apply transformations to Cloudinary URLs
+  if (!imageSrc.includes('cloudinary.com')) {
+    return imageSrc;
   }
   
-  // Extract the transformation part and image path
-  const urlParts = cloudinaryUrl.split('/upload/');
-  if (urlParts.length !== 2) return cloudinaryUrl;
-  
-  const baseUrl = urlParts[0] + '/upload/';
-  const imagePath = urlParts[1];
+  // Parse URL to inject transformations
+  const urlParts = imageSrc.split('/upload/');
+  if (urlParts.length !== 2) {
+    return imageSrc; // Invalid Cloudinary URL structure
+  }
   
   let transformation = '';
   
   if (format === 'pdf') {
-    // High-quality for print: DPI-aware, lossless compression
-    const widthPx = Math.round(scale * 800); // Assume 800px max width for PDF
-    transformation = `w_${widthPx},c_limit,f_auto,q_auto:best,dpr_2.0`;
+    // High-quality for print, avoid auto parameters that cause issues
+    const widthPx = Math.round(800 * scale);
+    transformation = `w_${widthPx},c_limit,q_90`;
   } else if (format === 'epub') {
-    // Web-optimized: smaller file size, progressive loading
-    const widthPx = Math.round(scale * 600); // Smaller for EPUB
-    transformation = `w_${widthPx},c_limit,f_auto,q_auto:good,fl_progressive`;
+    // Web-optimized for e-readers
+    const widthPx = Math.round(600 * scale);
+    transformation = `w_${widthPx},c_limit,q_80`;
   } else if (format === 'docx') {
-    // Balanced: good quality, reasonable file size
-    const widthPx = Math.round(scale * 700);
-    transformation = `w_${widthPx},c_limit,f_auto,q_auto:good`;
+    // Document embedding
+    const widthPx = Math.round(400 * scale);
+    transformation = `w_${widthPx},c_limit,q_80`;
   }
   
-  return `${baseUrl}${transformation}/${imagePath}`;
+  if (!transformation) {
+    return imageSrc;
+  }
+  
+  // Construct the transformed URL
+  return `${urlParts[0]}/upload/${transformation}/${urlParts[1]}`;
 }
 
 /**
