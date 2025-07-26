@@ -27,7 +27,7 @@ const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_ACCESS_TOKEN_SECRET || process.env.JWT_SECRET || 'changeme';
 
 // Import Cloudinary upload solution
-const { cloudImageUpload, prepareMarkdownForPDF } = require('./cloudinary-uploads');
+const { optimizedImageUpload, optimizeMarkdownForPDF } = require('./cloudinary-uploads');
 
 // Debug JWT secret loading
 console.log('Export backend JWT_SECRET loaded:', JWT_SECRET ? `${JWT_SECRET.substring(0, 10)}...` : 'NOT FOUND');
@@ -369,9 +369,9 @@ app.post('/export/pdf', authenticateJWT, async (req, res) => {
 
     // Also write directly to temp for Pandoc
     try {
-      // NEW: Prepare markdown by downloading Cloudinary images temporarily for PDF generation
-      console.log(`[CLOUDINARY] Preparing markdown for PDF generation by downloading cloud images...`);
-      const finalMarkdown = await prepareMarkdownForPDF(processedMarkdown, tempDir);
+          // NEW: Optimize markdown by replacing Cloudinary URLs with PDF-optimized versions
+    console.log(`[CLOUDINARY] Optimizing markdown for PDF generation with enhanced transformations...`);
+    const finalMarkdown = optimizeMarkdownForPDF(processedMarkdown, 'pdf');
       
       fs.writeFileSync(mdPath, finalMarkdown, 'utf8');
       console.log(`PANDOC INPUT: Saved markdown for PDF processing to ${mdPath}`);
@@ -1787,7 +1787,7 @@ const imageUpload = multer({
 });
 
 // POST /upload-image (Cloudinary Cloud Storage)
-app.post('/upload-image', cloudImageUpload, (req, res) => {
+app.post('/upload-image', optimizedImageUpload, (req, res) => {
   const result = req.cloudinaryResult;
   
   console.log(`[CLOUDINARY] Image uploaded successfully: ${result.filename}`);
@@ -2671,7 +2671,7 @@ app.post('/api/debug/save-structure/:id', authenticateJWT, async (req, res) => {
 });
 
 // POST /api/uploads (Cloudinary Cloud Storage with Authentication)
-app.post('/api/uploads', authenticateJWT, cloudImageUpload, async (req, res) => {
+app.post('/api/uploads', authenticateJWT, optimizedImageUpload, async (req, res) => {
   try {
     console.log('[UPLOAD DEBUG] Starting authenticated upload process');
     console.log('[UPLOAD DEBUG] User:', req.user?.id);
