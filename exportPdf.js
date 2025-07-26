@@ -142,34 +142,62 @@ function downloadCloudinaryImage(imageUrl, tempDir, options = {}) {
    console.log(`[CLOUDINARY] Starting comprehensive image processing`);
    console.log(`[CLOUDINARY] Markdown length: ${markdown.length} characters`);
    
-   // Debug: Show first few lines that contain cloudinary
-   const lines = markdown.split('\n');
-   const cloudinaryLines = lines.filter(line => line.includes('cloudinary.com'));
-   console.log(`[CLOUDINARY] Found ${cloudinaryLines.length} lines containing 'cloudinary.com':`);
-   cloudinaryLines.slice(0, 5).forEach((line, i) => {
-     console.log(`[CLOUDINARY] Line ${i + 1}: ${line}`);
+       // Debug: Show first few lines that contain cloudinary or custom image syntax
+    const lines = markdown.split('\n');
+    const cloudinaryLines = lines.filter(line => line.includes('cloudinary.com'));
+    const customImageLines = lines.filter(line => line.includes('{{IMAGE:'));
+    console.log(`[CLOUDINARY] Found ${cloudinaryLines.length} lines containing 'cloudinary.com':`);
+    console.log(`[CLOUDINARY] Found ${customImageLines.length} lines containing '{{IMAGE:':`);
+    
+    // Show custom image lines first
+    customImageLines.slice(0, 5).forEach((line, i) => {
+      console.log(`[CLOUDINARY] Custom Image Line ${i + 1}: ${line}`);
+    });
+    
+    // Show cloudinary lines
+    cloudinaryLines.slice(0, 5).forEach((line, i) => {
+      console.log(`[CLOUDINARY] Cloudinary Line ${i + 1}: ${line}`);
+    });
+   
+       // Enhanced regex patterns to catch all Cloudinary URL variations
+   const patterns = [
+     // Custom {{IMAGE:url|alt|scale}} syntax - MOST IMPORTANT for this system
+     /\{\{IMAGE:(https:\/\/res\.cloudinary\.com\/[^|]+)\|([^|]*)\|([^}]*)\}\}/g,
+     // Standard markdown images: ![alt](url)
+     /!\[([^\]]*)\]\((https:\/\/res\.cloudinary\.com\/[^)]+)\)/g,
+     // LaTeX includegraphics: \includegraphics{url}
+     /\\includegraphics(?:\[[^\]]*\])?\{(https:\/\/res\.cloudinary\.com\/[^}]+)\}/g,
+     // LaTeX includegraphics with optional parameters
+     /\\includegraphics\[([^\]]*)\]\{(https:\/\/res\.cloudinary\.com\/[^}]+)\}/g,
+     // HTML img tags
+     /<img[^>]*src=["'](https:\/\/res\.cloudinary\.com\/[^"']+)["'][^>]*>/g,
+     // Raw URLs that might be in the text - more comprehensive patterns
+     /(https:\/\/res\.cloudinary\.com\/[^\s\[\](){}'"<>]+)/g,
+     // URLs with query parameters and fragments
+     /(https:\/\/res\.cloudinary\.com\/[^)\s}'"]*(?:\?[^)\s}'"]*)?(?:#[^)\s}'"]*)?)/g,
+     // Broader pattern to catch any cloudinary URL format
+     /(https:\/\/res\.cloudinary\.com\/[^\s]*)/g
+   ];
+  
+     const allMatches = new Set();
+   let processedMarkdown = markdown;
+   
+   // STEP 1: Convert custom {{IMAGE:...}} syntax to standard markdown
+   console.log(`[CLOUDINARY] Step 1: Converting custom {{IMAGE:...}} syntax to markdown`);
+   const customImagePattern = /\{\{IMAGE:(https:\/\/res\.cloudinary\.com\/[^|]+)\|([^|]*)\|([^}]*)\}\}/g;
+   let customImageMatches = 0;
+   
+   processedMarkdown = processedMarkdown.replace(customImagePattern, (match, url, alt, scale) => {
+     customImageMatches++;
+     console.log(`[CLOUDINARY] Converting custom image ${customImageMatches}: ${alt} (scale: ${scale})`);
+     console.log(`[CLOUDINARY] URL: ${url}`);
+     
+     // Convert to markdown with scale information in a comment for later processing
+     const scaleValue = parseFloat(scale) || 1.0;
+     return `![${alt}](${url})<!-- scale:${scaleValue} -->`;
    });
    
-   // Enhanced regex patterns to catch all Cloudinary URL variations
-  const patterns = [
-    // Standard markdown images: ![alt](url)
-    /!\[([^\]]*)\]\((https:\/\/res\.cloudinary\.com\/[^)]+)\)/g,
-    // LaTeX includegraphics: \includegraphics{url}
-    /\\includegraphics(?:\[[^\]]*\])?\{(https:\/\/res\.cloudinary\.com\/[^}]+)\}/g,
-    // LaTeX includegraphics with optional parameters
-    /\\includegraphics\[([^\]]*)\]\{(https:\/\/res\.cloudinary\.com\/[^}]+)\}/g,
-    // HTML img tags
-    /<img[^>]*src=["'](https:\/\/res\.cloudinary\.com\/[^"']+)["'][^>]*>/g,
-    // Raw URLs that might be in the text - more comprehensive patterns
-    /(https:\/\/res\.cloudinary\.com\/[^\s\[\](){}'"<>]+)/g,
-    // URLs with query parameters and fragments
-    /(https:\/\/res\.cloudinary\.com\/[^)\s}'"]*(?:\?[^)\s}'"]*)?(?:#[^)\s}'"]*)?)/g,
-    // Broader pattern to catch any cloudinary URL format
-    /(https:\/\/res\.cloudinary\.com\/[^\s]*)/g
-  ];
-  
-  const allMatches = new Set();
-  let processedMarkdown = markdown;
+   console.log(`[CLOUDINARY] Converted ${customImageMatches} custom image(s) to markdown format`);
   
      // Find all unique Cloudinary URLs with enhanced debugging
    patterns.forEach((pattern, index) => {
@@ -182,10 +210,15 @@ function downloadCloudinaryImage(imageUrl, tempDir, options = {}) {
        patternMatches++;
        console.log(`[CLOUDINARY] Pattern ${index + 1} match ${patternMatches}:`, match);
        
-       // Extract URL (might be in different capture groups depending on pattern)
-       const url = match[1]?.startsWith('https://') ? match[1] : 
-                   match[2]?.startsWith('https://') ? match[2] : 
-                   match[0]?.startsWith('https://') ? match[0] : null;
+               // Extract URL (might be in different capture groups depending on pattern)
+        let url = null;
+        if (match[1]?.startsWith('https://')) {
+          url = match[1]; // Custom {{IMAGE:...}} syntax, standard markdown, LaTeX, HTML
+        } else if (match[2]?.startsWith('https://')) {
+          url = match[2]; // Some LaTeX patterns with parameters
+        } else if (match[0]?.startsWith('https://')) {
+          url = match[0]; // Raw URL patterns
+        }
        
        if (url) {
          console.log(`[CLOUDINARY] Found URL: ${url}`);
@@ -262,17 +295,42 @@ function downloadCloudinaryImage(imageUrl, tempDir, options = {}) {
     }
   }
   
-     // Replace URLs with local filenames using context-aware approach
+        // Replace URLs with local filenames and handle scaling
    results.forEach(result => {
      if (result.success) {
        console.log(`[CLOUDINARY] Replacing: ${result.original} -> ${result.filename}`);
        
-       // Use a simpler, more reliable replacement approach
-       // Replace all occurrences of the exact URL with just the filename
+       // Look for markdown images with this URL and handle scaling
        const urlToReplace = result.original;
+       const escapedUrl = urlToReplace.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+       
+       // Pattern to find markdown images with scale comments
+       const markdownWithScale = new RegExp(`!\\[([^\\]]*)\\]\\(${escapedUrl}\\)<!-- scale:([0-9.]+) -->`, 'g');
+       
        let replacementCount = 0;
        
-       // Split and replace to handle all occurrences
+       // Replace markdown images with scaling
+       processedMarkdown = processedMarkdown.replace(markdownWithScale, (match, alt, scale) => {
+         replacementCount++;
+         const scaleValue = parseFloat(scale);
+         console.log(`[CLOUDINARY] Applying scale ${scaleValue} to image: ${alt}`);
+         
+         // Create LaTeX with proper scaling
+         if (scaleValue && scaleValue !== 1.0) {
+           return `\\includegraphics[width=${scaleValue}\\textwidth]{${result.filename}}`;
+         } else {
+           return `\\includegraphics{${result.filename}}`;
+         }
+       });
+       
+       // Replace any remaining instances without scale info
+       const basicMarkdown = new RegExp(`!\\[([^\\]]*)\\]\\(${escapedUrl}\\)`, 'g');
+       processedMarkdown = processedMarkdown.replace(basicMarkdown, (match, alt) => {
+         replacementCount++;
+         return `\\includegraphics{${result.filename}}`;
+       });
+       
+       // Replace any remaining raw URLs
        while (processedMarkdown.includes(urlToReplace)) {
          processedMarkdown = processedMarkdown.replace(urlToReplace, result.filename);
          replacementCount++;
@@ -289,32 +347,30 @@ function downloadCloudinaryImage(imageUrl, tempDir, options = {}) {
        // Handle failed downloads by replacing the entire image syntax, not just the URL
        console.log(`[CLOUDINARY] Replacing failed download with LaTeX text: ${result.original}`);
        const urlToReplace = result.original;
+       const escapedUrl = urlToReplace.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
        const cleanFilename = path.basename(result.original).replace(/\?.*$/, '');
        const placeholderText = `\\textit{[Image unavailable: ${cleanFilename}]}`;
        
-       // Handle different image contexts
+       // Handle markdown images with scale comments
+       const markdownWithScale = new RegExp(`!\\[([^\\]]*)\\]\\(${escapedUrl}\\)<!-- scale:([0-9.]+) -->`, 'g');
+       processedMarkdown = processedMarkdown.replace(markdownWithScale, placeholderText);
+       
+       // Handle basic markdown images
+       const basicMarkdown = new RegExp(`!\\[([^\\]]*)\\]\\(${escapedUrl}\\)`, 'g');
+       processedMarkdown = processedMarkdown.replace(basicMarkdown, placeholderText);
+       
+       // Handle other image contexts
        const imagePatterns = [
-         // Markdown images: ![alt](url) -> LaTeX text
-         {
-           pattern: new RegExp(`!\\[([^\\]]*)\\]\\(${urlToReplace.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\)`, 'g'),
-           replacement: placeholderText
-         },
          // LaTeX includegraphics: \includegraphics{url} -> LaTeX text
-         {
-           pattern: new RegExp(`\\\\includegraphics(?:\\[[^\\]]*\\])?\\{${urlToReplace.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\}`, 'g'),
-           replacement: placeholderText
-         },
+         new RegExp(`\\\\includegraphics(?:\\[[^\\]]*\\])?\\{${escapedUrl}\\}`, 'g'),
          // HTML img tags: <img src="url"> -> LaTeX text
-         {
-           pattern: new RegExp(`<img[^>]*src=["']${urlToReplace.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["'][^>]*>`, 'g'),
-           replacement: placeholderText
-         }
+         new RegExp(`<img[^>]*src=["']${escapedUrl}["'][^>]*>`, 'g')
        ];
        
        let replaced = false;
-       imagePatterns.forEach(({ pattern, replacement }) => {
+       imagePatterns.forEach(pattern => {
          if (pattern.test(processedMarkdown)) {
-           processedMarkdown = processedMarkdown.replace(pattern, replacement);
+           processedMarkdown = processedMarkdown.replace(pattern, placeholderText);
            replaced = true;
          }
        });
@@ -370,15 +426,17 @@ function downloadCloudinaryImage(imageUrl, tempDir, options = {}) {
    // Final safety check: remove any remaining problematic patterns
    console.log(`[CLOUDINARY] Running final safety checks...`);
    
-   // Remove any LaTeX commands that might still contain problematic URLs
-   const problemPatterns = [
-     // Remove any includegraphics commands with URLs or problematic characters
-     /\\includegraphics(?:\[[^\]]*\])?\{[^}]*cloudinary\.com[^}]*\}/g,
-     /\\includegraphics(?:\[[^\]]*\])?\{[^}]*\?[^}]*\}/g,
-     // Remove any markdown images with problematic URLs
-     /!\[[^\]]*\]\([^)]*cloudinary\.com[^)]*\)/g,
-     /!\[[^\]]*\]\([^)]*\?[^)]*\)/g
-   ];
+       // Remove any LaTeX commands that might still contain problematic URLs
+    const problemPatterns = [
+      // Remove any remaining custom {{IMAGE:...}} syntax
+      /\{\{IMAGE:[^}]*\}\}/g,
+      // Remove any includegraphics commands with URLs or problematic characters
+      /\\includegraphics(?:\[[^\]]*\])?\{[^}]*cloudinary\.com[^}]*\}/g,
+      /\\includegraphics(?:\[[^\]]*\])?\{[^}]*\?[^}]*\}/g,
+      // Remove any markdown images with problematic URLs
+      /!\[[^\]]*\]\([^)]*cloudinary\.com[^)]*\)/g,
+      /!\[[^\]]*\]\([^)]*\?[^)]*\)/g
+    ];
    
    problemPatterns.forEach((pattern, index) => {
      const matches = processedMarkdown.match(pattern);
@@ -401,44 +459,52 @@ function downloadCloudinaryImage(imageUrl, tempDir, options = {}) {
 /**
  * Enhanced image path resolution with better error handling
  */
-function resolveImagePaths(markdown, basePath) {
-  console.log(`[IMAGE RESOLUTION] Starting resolution from: ${basePath}`);
-  
-  return markdown.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, alt, imagePath) => {
-    // Skip URLs (should already be processed)
-    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
-      return match;
-    }
-    
-    // Skip if already absolute
-    if (path.isAbsolute(imagePath)) {
-      if (fs.existsSync(imagePath)) {
-        return match;
-      } else {
-        console.warn(`[IMAGE RESOLUTION] Absolute path not found: ${imagePath}`);
-        return `*[Image not found: ${imagePath}]*`;
-      }
-    }
-    
-    // Search locations
-    const searchPaths = [
-      path.resolve(basePath, imagePath),
-      path.resolve(process.cwd(), imagePath),
-      path.resolve(process.cwd(), path.basename(imagePath)),
-      path.resolve(basePath, path.basename(imagePath))
-    ];
-    
-    for (const searchPath of searchPaths) {
-      if (fs.existsSync(searchPath)) {
-        console.log(`[IMAGE RESOLUTION] ✓ Found: ${imagePath} -> ${searchPath}`);
-        return `![${alt}](${searchPath})`;
-      }
-    }
-    
-    console.warn(`[IMAGE RESOLUTION] ✗ Not found: ${imagePath}`);
-    return `*[Image not found: ${imagePath}]*`;
-  });
-}
+ function resolveImagePaths(markdown, basePath) {
+   console.log(`[IMAGE RESOLUTION] Starting resolution from: ${basePath}`);
+   
+   // Only process remaining markdown images (not LaTeX includegraphics)
+   return markdown.replace(/!\[([^\]]*)\]\(([^)]+)\)(?!<!-- scale)/g, (match, alt, imagePath) => {
+     // Skip URLs (should already be processed)
+     if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+       console.log(`[IMAGE RESOLUTION] Skipping URL: ${imagePath}`);
+       return match;
+     }
+     
+     // Skip if it looks like a processed filename (img_hash.png)
+     if (imagePath.match(/^img_[a-f0-9]+\.png$/)) {
+       console.log(`[IMAGE RESOLUTION] Skipping processed image: ${imagePath}`);
+       return `\\includegraphics{${imagePath}}`;
+     }
+     
+     // Skip if already absolute
+     if (path.isAbsolute(imagePath)) {
+       if (fs.existsSync(imagePath)) {
+         return `\\includegraphics{${imagePath}}`;
+       } else {
+         console.warn(`[IMAGE RESOLUTION] Absolute path not found: ${imagePath}`);
+         return `\\textit{[Image not found: ${path.basename(imagePath)}]}`;
+       }
+     }
+     
+     // Search locations
+     const searchPaths = [
+       path.resolve(basePath, imagePath),
+       path.resolve(process.cwd(), imagePath),
+       path.resolve(process.cwd(), path.basename(imagePath)),
+       path.resolve(basePath, path.basename(imagePath))
+     ];
+     
+     for (const searchPath of searchPaths) {
+       if (fs.existsSync(searchPath)) {
+         console.log(`[IMAGE RESOLUTION] ✓ Found: ${imagePath} -> ${searchPath}`);
+         return `\\includegraphics{${searchPath}}`;
+       }
+     }
+     
+     console.warn(`[IMAGE RESOLUTION] ✗ Not found: ${imagePath}`);
+     return `\\textit{[Image not found: ${path.basename(imagePath)}]}`;
+   });
+ }
 
 // Page Size Mappings (same as original)
 const pageSizes = {
