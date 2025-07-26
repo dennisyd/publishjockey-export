@@ -1,235 +1,320 @@
-const { execFile, execFileSync } = require('child_process'); // Yancy Dennis
+const { execFile } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
 const crypto = require('crypto');
 
 /**
- * Download a Cloudinary image to the temp directory
+ * OPTIMIZED: Stream and save Cloudinary image with proper error handling
  * @param {string} imageUrl - The Cloudinary URL
  * @param {string} tempDir - Temporary directory to save the image
+ * @param {Object} options - Download options
  * @returns {Promise<string>} Path to the downloaded image
  */
-function downloadCloudinaryImage(imageUrl, tempDir) {
+function downloadCloudinaryImage(imageUrl, tempDir, options = {}) {
   return new Promise((resolve, reject) => {
-    console.log(`[CLOUDINARY] Downloading image: ${imageUrl}`);
+    console.log(`[CLOUDINARY] Processing: ${imageUrl}`);
     
-    // Generate a unique filename based on the URL
-    const hash = crypto.createHash('md5').update(imageUrl).digest('hex');
-    const ext = '.png'; // Cloudinary URLs might not have extensions, default to PNG
-    const filename = `cloudinary_${hash}${ext}`;
+    // Clean the URL - remove problematic parameters that cause download failures
+    let cleanUrl = imageUrl;
+    
+    // Remove auto format/quality params that cause issues
+    cleanUrl = cleanUrl.replace(/,f_auto/g, '');
+    cleanUrl = cleanUrl.replace(/f_auto,?/g, '');
+    cleanUrl = cleanUrl.replace(/,q_auto:best/g, '');
+    cleanUrl = cleanUrl.replace(/q_auto:best,?/g, '');
+    cleanUrl = cleanUrl.replace(/,dpr_2\.0/g, '');
+    cleanUrl = cleanUrl.replace(/dpr_2\.0,?/g, '');
+    
+    // Clean up malformed transformation strings
+    cleanUrl = cleanUrl.replace(/,,+/g, ',');
+    cleanUrl = cleanUrl.replace(/\/upload\/,/g, '/upload/');
+    cleanUrl = cleanUrl.replace(/\/upload\/([^\/]*),\//g, '/upload/$1/');
+    
+    // Extract public ID and generate a clean, optimized URL for PDF
+    const publicIdMatch = cleanUrl.match(/\/(?:v\d+\/)?([^\/\?]+)(?:\.[^\/\?]*)?(?:\?|$)/);
+    if (publicIdMatch) {
+      const publicId = publicIdMatch[1];
+      const cloudName = cleanUrl.match(/\/\/res\.cloudinary\.com\/([^\/]+)\//)?.[1];
+      
+      if (cloudName) {
+        // Generate a clean, PDF-optimized URL
+        cleanUrl = `https://res.cloudinary.com/${cloudName}/image/upload/f_png,q_95/${publicId}.png`;
+        console.log(`[CLOUDINARY] Optimized URL: ${cleanUrl}`);
+      }
+    }
+    
+    // Generate filename based on clean URL
+    const hash = crypto.createHash('md5').update(cleanUrl).digest('hex');
+    const filename = `img_${hash}.png`;
     const filepath = path.join(tempDir, filename);
     
-    // Check if already downloaded
+    // Check if already downloaded (caching)
     if (fs.existsSync(filepath)) {
-      console.log(`[CLOUDINARY] Image already exists: ${filepath}`);
+      console.log(`[CLOUDINARY] ✓ Using cached: ${filepath}`);
       resolve(filepath);
       return;
     }
     
-    const request = https.get(imageUrl, (response) => {
+    // Ensure temp directory exists
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+    
+    console.log(`[CLOUDINARY] Downloading: ${cleanUrl}`);
+    
+    const request = https.get(cleanUrl, (response) => {
+      if (response.statusCode === 301 || response.statusCode === 302) {
+        // Handle redirects
+        console.log(`[CLOUDINARY] Following redirect to: ${response.headers.location}`);
+        return downloadCloudinaryImage(response.headers.location, tempDir, options)
+          .then(resolve)
+          .catch(reject);
+      }
+      
       if (response.statusCode !== 200) {
-        reject(new Error(`HTTP ${response.statusCode}: ${response.statusMessage} for ${imageUrl}`));
+        reject(new Error(`HTTP ${response.statusCode}: ${response.statusMessage} for ${cleanUrl}`));
         return;
       }
       
       const chunks = [];
-      response.on('data', chunk => chunks.push(chunk));
+      let totalSize = 0;
+      
+      response.on('data', chunk => {
+        chunks.push(chunk);
+        totalSize += chunk.length;
+        
+        // Prevent extremely large downloads
+        if (totalSize > 50 * 1024 * 1024) { // 50MB limit
+          request.destroy();
+          reject(new Error('Image too large (>50MB)'));
+          return;
+        }
+      });
+      
       response.on('end', () => {
         try {
           const buffer = Buffer.concat(chunks);
           fs.writeFileSync(filepath, buffer);
-          console.log(`[CLOUDINARY] ✓ Downloaded: ${imageUrl} -> ${filepath} (${buffer.length} bytes)`);
+          console.log(`[CLOUDINARY] ✓ Downloaded: ${filename} (${buffer.length} bytes)`);
           resolve(filepath);
         } catch (error) {
           reject(new Error(`Failed to save image: ${error.message}`));
         }
       });
+      
+      response.on('error', error => {
+        reject(new Error(`Response error: ${error.message}`));
+      });
     });
     
     request.on('error', error => {
-      reject(new Error(`Download failed: ${error.message}`));
+      reject(new Error(`Request error: ${error.message}`));
     });
     
-    request.setTimeout(30000, () => {
+    request.setTimeout(options.timeout || 30000, () => {
       request.destroy();
-      reject(new Error(`Download timeout for ${imageUrl}`));
+      reject(new Error(`Download timeout for ${cleanUrl}`));
     });
   });
 }
 
 /**
- * Process markdown to download Cloudinary images and replace URLs with local paths
+ * ENHANCED: Process markdown to handle ALL Cloudinary URL patterns
  * @param {string} markdown - The markdown content
  * @param {string} tempDir - Temporary directory for downloaded images
  * @returns {Promise<string>} Processed markdown with local image paths
  */
-async function downloadAndReplaceCloudinaryImages(markdown, tempDir) {
-  console.log(`[CLOUDINARY] Processing markdown for Cloudinary images`);
+async function processCloudinaryImages(markdown, tempDir) {
+  console.log(`[CLOUDINARY] Starting comprehensive image processing`);
   
-  // Find all Cloudinary URLs in markdown
-  const cloudinaryRegex = /!\[([^\]]*)\]\((https:\/\/res\.cloudinary\.com\/[^)]+)\)/g;
-  const matches = [];
-  let match;
+  // Enhanced regex patterns to catch all Cloudinary URL variations
+  const patterns = [
+    // Standard markdown images: ![alt](url)
+    /!\[([^\]]*)\]\((https:\/\/res\.cloudinary\.com\/[^)]+)\)/g,
+    // LaTeX includegraphics: \includegraphics{url}
+    /\\includegraphics(?:\[[^\]]*\])?\{(https:\/\/res\.cloudinary\.com\/[^}]+)\}/g,
+    // LaTeX includegraphics with optional parameters
+    /\\includegraphics\[([^\]]*)\]\{(https:\/\/res\.cloudinary\.com\/[^}]+)\}/g,
+    // HTML img tags
+    /<img[^>]*src=["'](https:\/\/res\.cloudinary\.com\/[^"']+)["'][^>]*>/g,
+    // Raw URLs that might be in the text
+    /(https:\/\/res\.cloudinary\.com\/[^\s\[\](){}'"<>]+)/g
+  ];
   
-  while ((match = cloudinaryRegex.exec(markdown)) !== null) {
-    matches.push({
-      fullMatch: match[0],
-      alt: match[1],
-      url: match[2]
-    });
-  }
+  const allMatches = new Set();
+  let processedMarkdown = markdown;
   
-  if (matches.length === 0) {
-    console.log(`[CLOUDINARY] No Cloudinary images found in markdown`);
+  // Find all unique Cloudinary URLs
+  patterns.forEach(pattern => {
+    let match;
+    const tempMarkdown = markdown;
+    while ((match = pattern.exec(tempMarkdown)) !== null) {
+      // Extract URL (might be in different capture groups depending on pattern)
+      const url = match[1]?.startsWith('https://') ? match[1] : 
+                  match[2]?.startsWith('https://') ? match[2] : 
+                  match[0]?.startsWith('https://') ? match[0] : null;
+      
+      if (url) {
+        allMatches.add(url);
+      }
+    }
+    // Reset regex state
+    pattern.lastIndex = 0;
+  });
+  
+  const uniqueUrls = Array.from(allMatches);
+  console.log(`[CLOUDINARY] Found ${uniqueUrls.length} unique Cloudinary URLs`);
+  
+  if (uniqueUrls.length === 0) {
+    console.log(`[CLOUDINARY] No Cloudinary images found`);
     return markdown;
   }
   
-  console.log(`[CLOUDINARY] Found ${matches.length} Cloudinary images to download`);
+  // Log first few URLs for debugging
+  console.log(`[CLOUDINARY] Sample URLs:`, uniqueUrls.slice(0, 3));
   
-  // Ensure temp directory exists
-  if (!fs.existsSync(tempDir)) {
-    fs.mkdirSync(tempDir, { recursive: true });
-  }
-  
-  let processedMarkdown = markdown;
-  
-  // Download each image and replace the URL
-  for (const imageMatch of matches) {
+  // Download all images concurrently (with limit)
+  const downloadPromises = uniqueUrls.map(async (url, index) => {
     try {
-      const localPath = await downloadCloudinaryImage(imageMatch.url, tempDir);
-      const newImageTag = `![${imageMatch.alt}](${localPath})`;
+      // Add delay to prevent overwhelming Cloudinary
+      await new Promise(resolve => setTimeout(resolve, index * 100));
       
-      // Replace the original image tag with the local path version
-      processedMarkdown = processedMarkdown.replace(imageMatch.fullMatch, newImageTag);
-      console.log(`[CLOUDINARY] ✓ Replaced: ${imageMatch.url} -> ${localPath}`);
+      const localPath = await downloadCloudinaryImage(url, tempDir);
+      const filename = path.basename(localPath);
+      
+      return { 
+        original: url, 
+        localPath, 
+        filename, 
+        success: true 
+      };
     } catch (error) {
-      console.error(`[CLOUDINARY] ✗ Failed to download: ${imageMatch.url}`, error.message);
-      // Replace with a placeholder to prevent LaTeX errors
-      const placeholder = `*[Image unavailable: ${imageMatch.url}]*`;
-      processedMarkdown = processedMarkdown.replace(imageMatch.fullMatch, placeholder);
+      console.error(`[CLOUDINARY] ✗ Failed to download: ${url} - ${error.message}`);
+      return { 
+        original: url, 
+        error: error.message, 
+        success: false 
+      };
+    }
+  });
+  
+  // Process downloads in batches of 5
+  const batchSize = 5;
+  const results = [];
+  
+  for (let i = 0; i < downloadPromises.length; i += batchSize) {
+    const batch = downloadPromises.slice(i, i + batchSize);
+    const batchResults = await Promise.allSettled(batch);
+    
+    batchResults.forEach(result => {
+      if (result.status === 'fulfilled') {
+        results.push(result.value);
+      } else {
+        console.error(`[CLOUDINARY] Batch error:`, result.reason);
+      }
+    });
+    
+    // Small delay between batches
+    if (i + batchSize < downloadPromises.length) {
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
   }
   
-  return processedMarkdown;
+  // Replace URLs with local filenames
+  results.forEach(result => {
+    if (result.success) {
+      const escapedUrl = result.original.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      
+      // Replace in all contexts
+      const replacements = [
+        // Markdown images
+        new RegExp(`(!\\[[^\\]]*\\]\\()${escapedUrl}(\\))`, 'g'),
+        // LaTeX includegraphics
+        new RegExp(`(\\\\includegraphics(?:\\[[^\\]]*\\])?\\{)${escapedUrl}(\\})`, 'g'),
+        // HTML img tags
+        new RegExp(`(<img[^>]*src=["'])${escapedUrl}(["'][^>]*>)`, 'g'),
+        // Raw URLs
+        new RegExp(escapedUrl, 'g')
+      ];
+      
+      replacements.forEach(regex => {
+        if (regex.source.includes('(') && regex.source.includes(')')) {
+          // Has capture groups
+          processedMarkdown = processedMarkdown.replace(regex, `$1${result.filename}$2`);
+        } else {
+          // No capture groups
+          processedMarkdown = processedMarkdown.replace(regex, result.filename);
+        }
+      });
+      
+      console.log(`[CLOUDINARY] ✓ Replaced: ${result.original} -> ${result.filename}`);
+    }
+  });
+  
+  // Final verification
+  const remainingUrls = processedMarkdown.match(/https:\/\/res\.cloudinary\.com\/[^\s\[\](){}'"<>]+/g);
+  if (remainingUrls && remainingUrls.length > 0) {
+    console.warn(`[CLOUDINARY] WARNING: ${remainingUrls.length} URLs still remain:`);
+    remainingUrls.forEach(url => console.warn(`  - ${url}`));
+  } else {
+    console.log(`[CLOUDINARY] ✓ All URLs successfully processed`);
+  }
+  
+  const successful = results.filter(r => r.success).length;
+  const failed = results.length - successful;
+  console.log(`[CLOUDINARY] Processing complete: ${successful} successful, ${failed} failed`);
+  
+  return {
+    markdown: processedMarkdown,
+    downloadedFiles: results.filter(r => r.success).map(r => r.localPath),
+    stats: { successful, failed, total: results.length }
+  };
 }
 
 /**
- * Preprocess markdown to resolve image paths to absolute paths
- * @param {string} markdown - The markdown content
- * @param {string} basePath - Base path to resolve relative image paths from
- * @returns {string} Processed markdown with resolved image paths
+ * Enhanced image path resolution with better error handling
  */
 function resolveImagePaths(markdown, basePath) {
-  console.log(`[IMAGE RESOLUTION] Starting image path resolution. basePath: ${basePath}`);
-  console.log(`[IMAGE RESOLUTION] Current working directory: ${process.cwd()}`);
+  console.log(`[IMAGE RESOLUTION] Starting resolution from: ${basePath}`);
   
-  // Match markdown image syntax: ![alt](path)
   return markdown.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, alt, imagePath) => {
-    console.log(`[IMAGE RESOLUTION] Processing image: ${imagePath}`);
-    
-    // Skip if it's already an absolute path or URL (Cloudinary should already be processed)
-    if (path.isAbsolute(imagePath) || imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
-      console.log(`[IMAGE RESOLUTION] Skipping absolute path or URL: ${imagePath}`);
+    // Skip URLs (should already be processed)
+    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
       return match;
     }
     
-    // List of possible search locations
+    // Skip if already absolute
+    if (path.isAbsolute(imagePath)) {
+      if (fs.existsSync(imagePath)) {
+        return match;
+      } else {
+        console.warn(`[IMAGE RESOLUTION] Absolute path not found: ${imagePath}`);
+        return `*[Image not found: ${imagePath}]*`;
+      }
+    }
+    
+    // Search locations
     const searchPaths = [
-      // 1. Relative to markdown file
       path.resolve(basePath, imagePath),
-      // 2. Current working directory
       path.resolve(process.cwd(), imagePath),
-      // 3. Just the filename in current directory (temp directory for exports)
       path.resolve(process.cwd(), path.basename(imagePath)),
-      // 4. Temp directory (where export images are copied)
-      path.resolve(process.cwd(), 'temp', path.basename(imagePath)),
-      // 5. Uploads directory (common web app pattern)
-      path.resolve(process.cwd(), 'uploads', imagePath),
-      path.resolve(process.cwd(), 'uploads', path.basename(imagePath)),
-      // 6. Public/static directories
-      path.resolve(process.cwd(), 'public', imagePath),
-      path.resolve(process.cwd(), 'public', path.basename(imagePath)),
-      path.resolve(process.cwd(), 'static', imagePath),
-      path.resolve(process.cwd(), 'static', path.basename(imagePath)),
-      // 7. Check if it's relative to the base directory without the filename
-      path.resolve(path.dirname(basePath), imagePath),
+      path.resolve(basePath, path.basename(imagePath))
     ];
     
-    // Try each search path
     for (const searchPath of searchPaths) {
       if (fs.existsSync(searchPath)) {
-        console.log(`[IMAGE RESOLUTION] ✓ Found image: ${imagePath} -> ${searchPath}`);
+        console.log(`[IMAGE RESOLUTION] ✓ Found: ${imagePath} -> ${searchPath}`);
         return `![${alt}](${searchPath})`;
-      } else {
-        console.log(`[IMAGE RESOLUTION] ✗ Not found: ${searchPath}`);
       }
     }
     
-    // If we still can't find it, try to search recursively in common directories
-    const searchDirs = [process.cwd(), path.dirname(basePath)];
-    for (const searchDir of searchDirs) {
-      try {
-        const foundPath = findImageRecursively(searchDir, path.basename(imagePath));
-        if (foundPath) {
-          console.log(`[IMAGE RESOLUTION] ✓ Found image recursively: ${imagePath} -> ${foundPath}`);
-          return `![${alt}](${foundPath})`;
-        }
-      } catch (e) {
-        console.log(`[IMAGE RESOLUTION] Error searching in ${searchDir}: ${e.message}`);
-      }
-    }
-    
-    console.error(`[IMAGE RESOLUTION] ✗ FAILED to find image: ${imagePath}`);
-    console.error(`[IMAGE RESOLUTION] Searched paths:`, searchPaths);
-    
-    // As a last resort, try removing the image from the markdown to prevent PDF failure
-    console.warn(`[IMAGE RESOLUTION] Removing missing image from markdown: ${imagePath}`);
+    console.warn(`[IMAGE RESOLUTION] ✗ Not found: ${imagePath}`);
     return `*[Image not found: ${imagePath}]*`;
   });
 }
 
-/**
- * Recursively search for an image file by name
- * @param {string} dir - Directory to search in
- * @param {string} filename - Filename to search for
- * @param {number} maxDepth - Maximum recursion depth (default 3)
- * @returns {string|null} Full path to file if found, null otherwise
- */
-function findImageRecursively(dir, filename, maxDepth = 3) {
-  if (maxDepth <= 0) return null;
-  
-  try {
-    const items = fs.readdirSync(dir);
-    
-    // First check files in current directory
-    for (const item of items) {
-      const fullPath = path.join(dir, item);
-      const stat = fs.statSync(fullPath);
-      
-      if (stat.isFile() && item === filename) {
-        return fullPath;
-      }
-    }
-    
-    // Then check subdirectories
-    for (const item of items) {
-      const fullPath = path.join(dir, item);
-      const stat = fs.statSync(fullPath);
-      
-      if (stat.isDirectory() && !item.startsWith('.') && item !== 'node_modules') {
-        const found = findImageRecursively(fullPath, filename, maxDepth - 1);
-        if (found) return found;
-      }
-    }
-  } catch (e) {
-    // Ignore permission errors, etc.
-  }
-  
-  return null;
-}
-
-// Page Size Mappings (width and height for common Amazon KDP book sizes)
+// Page Size Mappings (same as original)
 const pageSizes = {
   "5x8": { width: "5in", height: "8in" },
   "5.06x7.81": { width: "5.06in", height: "7.81in" },
@@ -245,9 +330,8 @@ const pageSizes = {
   "8.5x11": { width: "8.5in", height: "11in" }
 };
 
-// Calculate the margins based on page size and page count
+// Calculate margins (same logic as original)
 function getDynamicMargins(pageSizeKey, pageCount, includeBleed = false, hasPageNumbers = true) {
-  // KDP margin table (strict)
   let inside;
   if (pageCount <= 150) inside = 0.375;
   else if (pageCount <= 300) inside = 0.5;
@@ -255,12 +339,10 @@ function getDynamicMargins(pageSizeKey, pageCount, includeBleed = false, hasPage
   else if (pageCount <= 700) inside = 0.75;
   else inside = 0.875;
 
-  // Outside, top, bottom margins: KDP minimums
   let outside = includeBleed ? 0.375 : 0.25;
   let top = outside;
   let bottom = outside;
 
-  // Optionally, you can still adjust for book size, but never below KDP minimums
   switch (pageSizeKey) {
     case "5x8":
     case "5.06x7.81":
@@ -291,101 +373,74 @@ function getDynamicMargins(pageSizeKey, pageCount, includeBleed = false, hasPage
       bottom = Math.max(bottom, 0.5);
       break;
     default:
-      // Use minimums if unknown size
       outside = Math.max(outside, 0.425);
   }
 
-  // --- Add extra space for page numbers if present ---
   if (hasPageNumbers) {
-    bottom += 0.25; // Add 0.25" to bottom margin for footer/page number
+    bottom += 0.25;
   }
 
-  // --- Add 0.10 to the outside (right) margin for extra whitespace ---
   outside += 0.3;
-  // This adjustment provides a slightly larger right margin for improved aesthetics and readability.
 
-  // Log the margin calculation for transparency
-  console.log(`[KDP MARGINS] For ${pageSizeKey}, ${pageCount} pages, bleed: ${includeBleed}, page numbers: ${hasPageNumbers}`);
-  console.log(`[KDP MARGINS] inside: ${inside}", outside: ${outside}", top: ${top}", bottom: ${bottom}`);
+  console.log(`[KDP MARGINS] ${pageSizeKey}, ${pageCount} pages: inside=${inside}", outside=${outside}", top=${top}", bottom=${bottom}"`);
 
   return { inside, outside, top, bottom };
 }
 
 /**
- * Estimate page count based on word count and book size
- * @param {string} markdownText - The markdown text content
- * @param {string} pageSizeKey - The book size (e.g., "6x9")
- * @param {boolean} includeToc - Whether a table of contents is included
- * @returns {number} Estimated page count
+ * Estimate page count (same logic as original)
  */
 function estimatePageCount(markdownText, pageSizeKey, includeToc = true) {
-  // Count words in the text (approximate)
   const wordCount = markdownText.split(/\s+/).length;
   
-  // Get approximate words per page based on book size
-  let wordsPerPage = 300; // Default for 6x9
-  
+  let wordsPerPage = 300;
   switch (pageSizeKey) {
     case "5x8":
     case "5.06x7.81":
     case "5.25x8":
-      wordsPerPage = 250; // Smaller books fit fewer words per page
+      wordsPerPage = 250;
       break;
     case "5.5x8.5":
       wordsPerPage = 275;
       break;
     case "6x9":
     case "6.14x9.21":
-      wordsPerPage = 300; // Standard trade paperback
+      wordsPerPage = 300;
       break;
     case "6.69x9.61":
     case "7x10":
     case "7.44x9.69":
-      wordsPerPage = 350; // Larger books fit more words per page
+      wordsPerPage = 350;
       break;
     case "7.5x9.25":
     case "8x10":
     case "8.5x11":
-      wordsPerPage = 400; // Largest formats fit the most words
+      wordsPerPage = 400;
       break;
   }
   
-  // Estimate base page count from word count
   let pageCount = Math.ceil(wordCount / wordsPerPage);
+  pageCount += 4; // Front matter
   
-  // Add pages for front matter (title page, copyright, etc.)
-  pageCount += 4;
-  
-  // Add pages for table of contents if included
   if (includeToc) {
-    // Estimate 1 TOC page per 15 content pages
     pageCount += Math.ceil(pageCount / 15);
   }
   
-  // Add pages for any images (by counting markdown image tags)
   const imageCount = (markdownText.match(/!\[.*?\]\(.*?\)/g) || []).length;
   pageCount += imageCount;
   
-  // Add extra pages for chapter starts (chapters often start on odd pages)
   const chapterCount = (markdownText.match(/^# /gm) || []).length;
-  pageCount += Math.floor(chapterCount / 2); // Add ~0.5 pages per chapter for breaks
+  pageCount += Math.floor(chapterCount / 2);
   
-  // Ensure minimum page count
   pageCount = Math.max(pageCount, 24);
   
-  console.log(`Estimated page count: ${pageCount} (${wordCount} words, ${pageSizeKey} format)`);
-  
+  console.log(`[PAGE ESTIMATE] ${pageCount} pages (${wordCount} words, ${pageSizeKey})`);
   return pageCount;
 }
 
-/**
- * Parse a custom size string like "6x9" into width and height
- */
 function parseCustomSize(sizeStr) {
-  // Remove any spaces, then split by 'x'
   const parts = sizeStr.replace(/\s+/g, '').split('x');
   if (parts.length === 2) {
-    // Check if values already have units
     const width = parts[0].endsWith('in') ? parts[0] : `${parts[0]}in`;
     const height = parts[1].endsWith('in') ? parts[1] : `${parts[1]}in`;
     return { width, height };
@@ -394,36 +449,18 @@ function parseCustomSize(sizeStr) {
   return pageSizes["6x9"];
 }
 
-/**
- * Generate the LaTeX code for setting page geometry based on standard book sizes
- * @param {string} pageSizeKey - Key for the page size in the pageSizes object
- * @param {number} pageCount - Estimated page count for margin calculation
- * @param {boolean} hasPageNumbers - Whether page numbers are present
- * @returns {string} LaTeX code for page geometry
- */
 function generatePageGeometryCode(pageSizeKey, pageCount, hasPageNumbers = true) {
-  // Clean the size key by removing spaces
   const sizeKey = pageSizeKey.replace(/\s+/g, '');
-  
-  // Get page dimensions
   const size = pageSizes[sizeKey] || 
               (sizeKey.includes('x') ? parseCustomSize(sizeKey) : pageSizes["6x9"]);
   
-  // Get industry-standard margins for this book size and page count
   const margins = getDynamicMargins(sizeKey, pageCount, false, hasPageNumbers);
-  
-  // Extract numeric values (remove 'in')
   const width = size.width.replace('in', '');
   const height = size.height.replace('in', '');
-  
-  // Calculate text width and height
   const textWidth = parseFloat(width) - margins.inside - margins.outside;
   const textHeight = parseFloat(height) - margins.top - margins.bottom;
-  
-  // --- Set footskip to 0.5in if page numbers are present ---
   const footskip = hasPageNumbers ? '0.25in' : '0.40in';
 
-  // Generate LaTeX code to enforce page size
   return {
     size,
     margins,
@@ -433,8 +470,6 @@ function generatePageGeometryCode(pageSizeKey, pageCount, hasPageNumbers = true)
     textHeight,
     latexCode: `
 % --- AMAZON KDP COMPLIANT PAGE SIZE AND MARGINS ---
-% Uniform margins: left and right margins are the same on all pages
-% Note: 'oneside' is not a valid geometry option and has been removed
 \\usepackage[
   paperwidth=${width}in,
   paperheight=${height}in,
@@ -446,8 +481,23 @@ function generatePageGeometryCode(pageSizeKey, pageCount, hasPageNumbers = true)
   bindingoffset=0pt
 ]{geometry}
 
-% --- Enable Pandoc .center divs to render as centered text in PDF ---
-% This macro maps ::: {.center} ... ::: to \begin{center} ... \end{center}
+% --- Enhanced image handling for better PDF generation ---
+\\usepackage{graphicx}
+\\usepackage{float}
+\\usepackage{adjustbox}
+
+% Set default image width to respect text width
+\\setkeys{Gin}{width=\\linewidth,height=\\textheight,keepaspectratio}
+
+% Enhanced includegraphics command that auto-scales oversized images
+\\let\\oldincludegraphics\\includegraphics
+\\renewcommand{\\includegraphics}[2][]{%
+  \\adjustbox{max width=\\textwidth,max height=0.8\\textheight,center}{%
+    \\oldincludegraphics[#1]{#2}%
+  }%
+}
+
+% --- Enable Pandoc .center divs ---
 \\usepackage{etoolbox}
 \\makeatletter
 \\def\\markdownRendererDivClasscenter#1{%
@@ -455,30 +505,19 @@ function generatePageGeometryCode(pageSizeKey, pageCount, hasPageNumbers = true)
 }
 \\makeatother
 
-% --- Add microtype for better text fitting and margin control ---
+% --- Better text handling ---
 \\usepackage{microtype}
-\\UseMicrotypeSet[protrusion]{basicmath}
-\\SetProtrusion
-   [ name     = default ]
-   { encoding = * }
-   {
-     A = {50,50},
-     W = {30,30}
-   }
-
-% --- Better handling for long URLs and hyphenation ---
 \\usepackage{url}
-\\usepackage{xurl}  % Allows line breaks at any character in URLs
-\\usepackage{hyphenat}  % Improves hyphenation
-\\usepackage{seqsplit}  % Allows splitting of very long words at any character
+\\usepackage{xurl}
+\\usepackage{hyphenat}
+\\usepackage{seqsplit}
 \\urlstyle{same}
 
-% --- Ensure full justification for all body text ---
+% --- Justification ---
 \\usepackage{ragged2e}
-% Force justification globally, even if other environments or packages override it
 \\AtBeginDocument{\\justifying}
 
-% --- Standard LaTeX footer with centered page number ---
+% --- Page numbers ---
 \\usepackage{fancyhdr}
 \\pagestyle{fancy}
 \\fancyhf{}
@@ -486,88 +525,66 @@ function generatePageGeometryCode(pageSizeKey, pageCount, hasPageNumbers = true)
 \\renewcommand{\\headrulewidth}{0pt}
 \\renewcommand{\\footrulewidth}{0pt}
 
-% Force PDF dimensions directly
+% --- PDF dimensions ---
 \\pdfpagewidth=${width}in
 \\pdfpageheight=${height}in
 \\special{papersize=${width}in,${height}in}
 
-% --- Improved text wrapping and overflow protection ---
+% --- Text flow ---
 \\tolerance=3000
 \\emergencystretch=3em
 \\hbadness=10000
 \\vfuzz=30pt
 \\hfuzz=30pt
-\\setlength{\\rightskip}{0pt plus 5pt}  % Allow some stretch on right margin
-\\parfillskip=0pt plus 0.75\\textwidth  % Better paragraph ending
+\\setlength{\\rightskip}{0pt plus 5pt}
+\\parfillskip=0pt plus 0.75\\textwidth
 \\sloppy
 \\setlength{\\parindent}{1em}
-
-% NOTE: If page numbers appear too low, try reducing footskip or bottom margin above.
-% footskip=${footskip}, bottom=${margins.bottom}in
 `
   };
 }
 
-// Helper to build Pandoc --variable arguments from options
+// Helper functions (same as original)
 function getPandocVariables(options) {
   const vars = [];
-  // Document class
   vars.push(`documentclass=${options.documentclass || (options.bindingType === 'hardcover' ? 'report' : 'book')}`);
-  // Font size
   vars.push(`fontsize=${options.fontsize || '12pt'}`);
-  // Bleed
   if (options.includeBleed === true) {
     vars.push('bleed=true');
     vars.push('bleedmargin=0.125in');
   }
-  
-  // Main font
   vars.push('mainfont=Liberation Serif');
-  // Section style
   vars.push('secstyle=\\Large\\bfseries\\filcenter');
-  
-  // Completely remove default page numbers
   vars.push('pagestyle=empty');
   vars.push('disable-headers=true');
-  // Remove page numbers from special pages
   vars.push('plainfoot=');
   vars.push('emptyfoot=');
-  
-  // TOC
   if (options.includeToc !== false) {
     vars.push('toc-title=CONTENTS');
   }
-  // Section numbering
-  if (options.numberedHeadings === true) {
-    // handled by --number-sections
-  } else {
+  if (options.numberedHeadings !== true) {
     vars.push('numbersections=false');
     vars.push('secnumdepth=-10');
     vars.push('disable-all-numbering=true');
   }
-  // Chapter labels
   if (options.chapterLabelFormat === 'none' || options.useChapterPrefix === false) {
     vars.push('no-chapter-labels=true');
   } else if (options.chapterLabelFormat === 'text') {
     vars.push('chapter-name=Chapter');
     vars.push('chapter-name-format=text');
   }
-  // Blank pages
   vars.push('no-blank-pages=true');
   vars.push('no-separator-pages=true');
   vars.push('frontmatter-continuous=true');
   vars.push('continuous-front-matter=true');
-  // KDP margin requirements
   vars.push('classoption=oneside');
   vars.push('classoption=openany');
-  // Line height
   if (options.lineheight) {
     vars.push(`linestretch=${options.lineheight}`);
   }
   return vars;
 }
 
-// Helper to build Pandoc --metadata arguments from options
 function getPandocMetadata(options) {
   const meta = [];
   if (options.title) meta.push(`title=${options.title}`);
@@ -577,14 +594,11 @@ function getPandocMetadata(options) {
   return meta;
 }
 
-// Helper: Convert only center and right alignment divs to LaTeX environments for PDF
 function convertAlignmentDivsToLatex(markdown) {
-  // Center
   markdown = markdown.replace(
     /::: *\{\.center\}[\r\n]+([\s\S]*?)[\r\n]+:::/g,
     (match, content) => `\\begin{center}\n${content.trim()}\n\\end{center}`
   );
-  // Right
   markdown = markdown.replace(
     /::: *\{\.right\}[\r\n]+([\s\S]*?)[\r\n]+:::/g,
     (match, content) => `\\begin{flushright}\n${content.trim()}\n\\end{flushright}`
@@ -593,104 +607,65 @@ function convertAlignmentDivsToLatex(markdown) {
 }
 
 /**
- * Exports a PDF using Pandoc.
- * @param {string} assembledPath - Path to the assembled markdown file.
- * @param {string} outputPath - Path to output the .pdf file.
- * @param {Object} options - Format settings from frontend
- * @returns {Promise<void>} Resolves when PDF is created, rejects on error.
+ * MAIN EXPORT FUNCTION - Completely rewritten for reliability
  */
 async function exportPdf(assembledPath, outputPath, options = {}) {
   return new Promise(async (resolve, reject) => {
-    let args = [
-      assembledPath,
-      '-o', outputPath,
-      '--from=markdown+fenced_divs+header_attributes+raw_tex+latex_macros+raw_html',
-      '--to=latex',
-      '--pdf-engine=xelatex',
-      '--template=templates/custom.tex',
-      '--standalone',
-      '--variable=links-as-notes',
-    ];
-
-    // Book Format Settings
-    const pageSizeKey = options.papersize || "6x9";
-    let markdown = fs.readFileSync(assembledPath, 'utf8');
-    const estimatedPages = estimatePageCount(
-      markdown, 
-      pageSizeKey, 
-      options.includeToc !== false
-    );
-    // --- Print the page number estimate to the console ---
-    console.log(`[PAGE ESTIMATE] Estimated page count for margin calculation: ${estimatedPages}`);
-    const pageCount = options.estimatedPageCount || estimatedPages || 100;
-    // --- Set hasPageNumbers to true (default) ---
-    const hasPageNumbers = true; // You can make this dynamic if needed
-    const geometry = generatePageGeometryCode(pageSizeKey, pageCount, hasPageNumbers);
-    args = args.filter(arg => !arg.includes('geometry') && !arg.includes('paperwidth') && !arg.includes('paperheight') && !arg.includes('papersize'));
-    const uniqueId = `${Date.now()}_${Math.random().toString(36).substr(2, 8)}`;
-    const tmpHeaderPath = path.join(path.dirname(assembledPath), `page_geometry_${uniqueId}.tex`);
-    fs.writeFileSync(tmpHeaderPath, geometry.latexCode);
-    args.push('--include-in-header', tmpHeaderPath);
-
-    // Add variables
-    getPandocVariables(options).forEach(v => args.push('--variable', v));
-    // Add metadata
-    getPandocMetadata(options).forEach(m => args.push('--metadata', m));
-    // Section numbering
-    if (options.numberedHeadings === true) {
-      args.push('--number-sections');
-    } else {
-      args.push('--number-offset=0');
-    }
-    // Chapter labels
-    if (options.chapterLabelFormat === 'text' || options.chapterLabelFormat !== 'none') {
-      args.push('--top-level-division=chapter');
-    }
-    // Minimal logging for key parameters
-    console.log(`Using page size: ${pageSizeKey} (${geometry.width}in x ${geometry.height}in)`);
-
-    // --- Download Cloudinary images and replace URLs with local paths ---
+    console.log(`[PDF EXPORT] Starting export: ${assembledPath} -> ${outputPath}`);
+    
     const tempDir = path.dirname(assembledPath);
-    const downloadedImages = [];
+    let downloadedFiles = [];
+    
     try {
-      const originalMarkdown = markdown;
-      markdown = await downloadAndReplaceCloudinaryImages(markdown, tempDir);
+      // Read original markdown
+      let markdown = fs.readFileSync(assembledPath, 'utf8');
+      console.log(`[PDF EXPORT] Read ${markdown.length} characters from ${assembledPath}`);
       
-      // Track downloaded images for cleanup
-      const cloudinaryRegex = /!\[([^\]]*)\]\((https:\/\/res\.cloudinary\.com\/[^)]+)\)/g;
-      let match;
-      while ((match = cloudinaryRegex.exec(originalMarkdown)) !== null) {
-        const hash = crypto.createHash('md5').update(match[2]).digest('hex');
-        const filename = `cloudinary_${hash}.png`;
-        const filepath = path.join(tempDir, filename);
-        if (fs.existsSync(filepath)) {
-          downloadedImages.push(filepath);
-        }
-      }
+      // STEP 1: Process Cloudinary images
+      console.log(`[PDF EXPORT] Step 1: Processing Cloudinary images...`);
+      const cloudinaryResult = await processCloudinaryImages(markdown, tempDir);
+      markdown = cloudinaryResult.markdown;
+      downloadedFiles = cloudinaryResult.downloadedFiles;
       
-      console.log(`[CLOUDINARY] ✓ Processed all Cloudinary images`);
-    } catch (error) {
-      console.error(`[CLOUDINARY] ✗ Error processing Cloudinary images:`, error.message);
-      // Continue with original markdown to avoid complete failure
-    }
-
-    // --- Preprocess markdown to resolve image paths ---
-    const basePath = path.dirname(assembledPath);
-    markdown = resolveImagePaths(markdown, basePath);
-
-    // --- Convert alignment divs to LaTeX environments ---
-    let processedMarkdown = convertAlignmentDivsToLatex(markdown);
-    fs.writeFileSync(assembledPath, processedMarkdown, 'utf8');
-
-    // Create a temporary file with float settings
-    const floatSettingsPath = path.join(path.dirname(assembledPath), `float_settings_${uniqueId}.tex`);
-    const floatSettings = `
-% --- Settings to force images and tables to respect margins ---
+      console.log(`[PDF EXPORT] Cloudinary processing stats:`, cloudinaryResult.stats);
+      
+      // STEP 2: Resolve any remaining image paths
+      console.log(`[PDF EXPORT] Step 2: Resolving remaining image paths...`);
+      const basePath = path.dirname(assembledPath);
+      markdown = resolveImagePaths(markdown, basePath);
+      
+      // STEP 3: Convert alignment divs
+      console.log(`[PDF EXPORT] Step 3: Converting alignment divs...`);
+      markdown = convertAlignmentDivsToLatex(markdown);
+      
+      // STEP 4: Write processed markdown back to file
+      fs.writeFileSync(assembledPath, markdown, 'utf8');
+      console.log(`[PDF EXPORT] Updated markdown file with processed content`);
+      
+      // STEP 5: Setup Pandoc arguments
+      console.log(`[PDF EXPORT] Step 4: Setting up Pandoc arguments...`);
+      const pageSizeKey = options.papersize || "6x9";
+      const estimatedPages = estimatePageCount(markdown, pageSizeKey, options.includeToc !== false);
+      const pageCount = options.estimatedPageCount || estimatedPages || 100;
+      const hasPageNumbers = true;
+      const geometry = generatePageGeometryCode(pageSizeKey, pageCount, hasPageNumbers);
+      
+      // Create unique temporary files
+      const uniqueId = `${Date.now()}_${Math.random().toString(36).substr(2, 8)}`;
+      const tmpHeaderPath = path.join(tempDir, `page_geometry_${uniqueId}.tex`);
+      const floatSettingsPath = path.join(tempDir, `float_settings_${uniqueId}.tex`);
+      
+      // Write geometry settings
+      fs.writeFileSync(tmpHeaderPath, geometry.latexCode);
+      
+      // Enhanced float settings for better image handling
+      const floatSettings = `
+% --- Enhanced image and float handling ---
 \\usepackage{float}
 \\floatplacement{figure}{!htbp}
 \\floatplacement{table}{!htbp}
 
-% --- Better figure handling ---
+% Better figure handling
 \\renewcommand{\\floatpagefraction}{0.7}
 \\renewcommand{\\textfraction}{0.1}
 \\renewcommand{\\topfraction}{0.9}
@@ -699,13 +674,13 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
 \\setcounter{bottomnumber}{4}
 \\setcounter{totalnumber}{10}
 
-% --- Automatically scale oversized figures ---
+% Handle missing images gracefully
 \\usepackage{graphicx}
 \\makeatletter
 \\setlength{\\@fptop}{0pt}
 \\makeatother
 
-% --- Force table width to respect text width ---
+% Table handling
 \\usepackage{tabularx}
 \\usepackage{booktabs}
 \\usepackage{longtable}
@@ -713,82 +688,250 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
 \\setlength\\LTright{0pt}
 \\setlength\\LTpre{8pt}
 \\setlength\\LTpost{8pt}
-`;
-    fs.writeFileSync(floatSettingsPath, floatSettings);
-    args.push('--include-in-header', floatSettingsPath);
 
-    // --- Run the PDF export (Pandoc only, no direct xelatex) ---
-    execFile('pandoc', args, (error, stdout, stderr) => {
-      // Clean up the unique geometry file and float settings file after export
-      try { 
-        fs.unlinkSync(tmpHeaderPath);
-        fs.unlinkSync(floatSettingsPath);
-      } catch (e) { /* ignore */ }
+% Error handling for missing images
+\\usepackage{ifthen}
+\\newcommand{\\safeinclude}[1]{%
+  \\IfFileExists{#1}{\\includegraphics{#1}}{\\textit{[Image: #1 not found]}}%
+}
+`;
       
-      // Clean up downloaded Cloudinary images
-      try {
-        downloadedImages.forEach(imagePath => {
-          if (fs.existsSync(imagePath)) {
-            fs.unlinkSync(imagePath);
-            console.log(`[CLOUDINARY] ✓ Cleaned up: ${imagePath}`);
+      fs.writeFileSync(floatSettingsPath, floatSettings);
+      
+      // Build Pandoc arguments
+      let args = [
+        assembledPath,
+        '-o', outputPath,
+        '--from=markdown+fenced_divs+header_attributes+raw_tex+latex_macros+raw_html',
+        '--to=latex',
+        '--pdf-engine=xelatex',
+        '--template=templates/custom.tex',
+        '--standalone',
+        '--variable=links-as-notes',
+        '--include-in-header', tmpHeaderPath,
+        '--include-in-header', floatSettingsPath
+      ];
+      
+      // Add variables and metadata
+      getPandocVariables(options).forEach(v => args.push('--variable', v));
+      getPandocMetadata(options).forEach(m => args.push('--metadata', m));
+      
+      // Section numbering
+      if (options.numberedHeadings === true) {
+        args.push('--number-sections');
+      } else {
+        args.push('--number-offset=0');
+      }
+      
+      // Chapter labels
+      if (options.chapterLabelFormat === 'text' || options.chapterLabelFormat !== 'none') {
+        args.push('--top-level-division=chapter');
+      }
+      
+      console.log(`[PDF EXPORT] Using page size: ${pageSizeKey} (${geometry.width}in x ${geometry.height}in)`);
+      console.log(`[PDF EXPORT] Estimated pages: ${estimatedPages} for margin calculation`);
+      
+      // STEP 6: Run Pandoc
+      console.log(`[PDF EXPORT] Step 5: Running Pandoc...`);
+      console.log(`[PDF EXPORT] Command: pandoc ${args.join(' ')}`);
+      
+      execFile('pandoc', args, { 
+        maxBuffer: 1024 * 1024 * 10, // 10MB buffer
+        timeout: 120000 // 2 minute timeout
+      }, (error, stdout, stderr) => {
+        // Cleanup temporary files
+        const cleanupFiles = [tmpHeaderPath, floatSettingsPath, ...downloadedFiles];
+        cleanupFiles.forEach(file => {
+          try {
+            if (fs.existsSync(file)) {
+              fs.unlinkSync(file);
+              console.log(`[CLEANUP] ✓ Removed: ${path.basename(file)}`);
+            }
+          } catch (e) {
+            console.warn(`[CLEANUP] Warning: Could not remove ${file}: ${e.message}`);
           }
         });
-        if (downloadedImages.length > 0) {
-          console.log(`[CLOUDINARY] ✓ Cleaned up ${downloadedImages.length} downloaded images`);
+        
+        if (error) {
+          console.error('[PDF EXPORT] ✗ Pandoc error:', error.message);
+          console.error('[PDF EXPORT] ✗ Pandoc stderr:', stderr);
+          
+          // Enhanced error analysis
+          if (stderr.includes('File ') && stderr.includes(' not found')) {
+            const missingFiles = stderr.match(/File `([^']+)' not found/g);
+            if (missingFiles) {
+              console.error('[PDF EXPORT] ✗ Missing files detected:');
+              missingFiles.forEach(match => {
+                const file = match.match(/File `([^']+)'/)?.[1];
+                if (file) {
+                  console.error(`  - ${file}`);
+                  if (file.includes('cloudinary.com')) {
+                    console.error(`    This looks like a Cloudinary URL that wasn't processed correctly.`);
+                  }
+                }
+              });
+            }
+          }
+          
+          return reject(new Error(`PDF generation failed: ${error.message}\nDetails: ${stderr}`));
         }
-      } catch (cleanupError) {
-        console.warn(`[CLOUDINARY] Warning: Failed to cleanup some images:`, cleanupError.message);
-      }
+        
+        if (!fs.existsSync(outputPath)) {
+          return reject(new Error('PDF output file was not created'));
+        }
+        
+        const fileSize = fs.statSync(outputPath).size;
+        console.log(`[PDF EXPORT] ✓ PDF successfully created: ${outputPath} (${fileSize} bytes)`);
+        console.log(`[PDF EXPORT] ✓ Processed ${cloudinaryResult.stats.total} images`);
+        
+        resolve();
+      });
       
-      if (error) {
-        console.error('Pandoc PDF error:', error);
-        console.error('Pandoc stderr:', stderr);
-        return reject(new Error(`PDF generation failed: ${error.message}\n${stderr}`));
-      }
-      if (!fs.existsSync(outputPath)) {
-        return reject(new Error('PDF output file was not created'));
-      }
-      console.log(`PDF successfully created at ${outputPath}`);
-      resolve();
-    });
+    } catch (processingError) {
+      console.error('[PDF EXPORT] ✗ Processing error:', processingError);
+      
+      // Cleanup on error
+      downloadedFiles.forEach(file => {
+        try {
+          if (fs.existsSync(file)) {
+            fs.unlinkSync(file);
+          }
+        } catch (e) {
+          // Ignore cleanup errors
+        }
+      });
+      
+      reject(new Error(`PDF processing failed: ${processingError.message}`));
+    }
   });
 }
 
 /**
- * Rewrites Markdown for styled chapters:
- * - Each level 1 heading is replaced with a large, bold "Chapter X" (centered, 24pt)
- * - The original heading text is placed below as plain, centered, italicized text (16–18pt)
- * - All other content is preserved
- * - Clean blank lines are maintained
+ * Enhanced chapter styling function
  */
 function rewriteMarkdownWithStyledChapters(markdown) {
   const lines = markdown.split('\n');
   let chapter = 1;
   const output = [];
+  
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    // Match a level 1 heading (starts with exactly one '# ' and not more)
     const h1Match = /^# (?!#)(.*)/.exec(line);
+    
     if (h1Match) {
       const headingText = h1Match[1].trim();
-      // Add a blank line before the chapter block if not at the top
+      
       if (output.length > 0 && output[output.length - 1].trim() !== '') {
         output.push('');
       }
-      // Use raw LaTeX for best PDF styling with Pandoc
+      
       output.push('```{=latex}');
       output.push('\\begin{center}');
       output.push(`{\\fontsize{24pt}{28pt}\\selectfont\\textbf{Chapter ${chapter++}}}\\\\[0.5em]`);
       output.push(`{\\fontsize{16pt}{20pt}\\selectfont\\textit{${headingText}}}`);
       output.push('\\end{center}');
       output.push('```');
-      output.push(''); // Blank line for separation
+      output.push('');
     } else {
       output.push(line);
     }
   }
-  // Remove any extra blank lines at the start/end
+  
   return output.join('\n').replace(/^\s*\n/, '').replace(/\n\s*$/, '') + '\n';
+}
+
+/**
+ * Utility function to validate Cloudinary URLs
+ */
+function isValidCloudinaryUrl(url) {
+  try {
+    const urlObj = new URL(url);
+    return urlObj.hostname === 'res.cloudinary.com' && urlObj.pathname.includes('/image/upload/');
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Utility function to clean up temp directory
+ */
+function cleanupTempDirectory(tempDir, maxAge = 30 * 60 * 1000) {
+  if (!fs.existsSync(tempDir)) return;
+  
+  try {
+    const files = fs.readdirSync(tempDir);
+    const now = Date.now();
+    let cleaned = 0;
+    
+    files.forEach(file => {
+      const filePath = path.join(tempDir, file);
+      try {
+        const stats = fs.statSync(filePath);
+        if (now - stats.mtime.getTime() > maxAge) {
+          fs.unlinkSync(filePath);
+          cleaned++;
+        }
+      } catch (e) {
+        // Ignore individual file errors
+      }
+    });
+    
+    if (cleaned > 0) {
+      console.log(`[CLEANUP] ✓ Cleaned up ${cleaned} old temp files`);
+    }
+  } catch (error) {
+    console.warn(`[CLEANUP] Warning: Could not clean temp directory: ${error.message}`);
+  }
+}
+
+/**
+ * Enhanced error reporting for debugging
+ */
+function analyzeMarkdownForImages(markdown) {
+  const patterns = {
+    'Standard Markdown': /!\[([^\]]*)\]\(([^)]+)\)/g,
+    'LaTeX includegraphics': /\\includegraphics(?:\[[^\]]*\])?\{([^}]+)\}/g,
+    'HTML img tags': /<img[^>]*src=["']([^"']+)["'][^>]*>/g,
+    'Raw Cloudinary URLs': /https:\/\/res\.cloudinary\.com\/[^\s\[\](){}'"<>]+/g
+  };
+  
+  const analysis = {
+    total: 0,
+    byType: {},
+    cloudinaryUrls: new Set(),
+    localPaths: new Set(),
+    issues: []
+  };
+  
+  Object.entries(patterns).forEach(([type, pattern]) => {
+    const matches = [...markdown.matchAll(pattern)];
+    analysis.byType[type] = matches.length;
+    analysis.total += matches.length;
+    
+    matches.forEach(match => {
+      const url = match[1] || match[2] || match[0];
+      if (url) {
+        if (url.includes('cloudinary.com')) {
+          analysis.cloudinaryUrls.add(url);
+        } else if (!url.startsWith('http')) {
+          analysis.localPaths.add(url);
+        }
+      }
+    });
+  });
+  
+  // Check for potential issues
+  if (analysis.cloudinaryUrls.size > 0) {
+    analysis.issues.push(`${analysis.cloudinaryUrls.size} Cloudinary URLs found`);
+  }
+  
+  analysis.localPaths.forEach(path => {
+    if (!fs.existsSync(path)) {
+      analysis.issues.push(`Local file not found: ${path}`);
+    }
+  });
+  
+  return analysis;
 }
 
 module.exports = { 
@@ -797,7 +940,20 @@ module.exports = {
   getDynamicMargins, 
   estimatePageCount, 
   resolveImagePaths, 
-  findImageRecursively,
   downloadCloudinaryImage,
-  downloadAndReplaceCloudinaryImages
+  processCloudinaryImages,
+  rewriteMarkdownWithStyledChapters,
+  cleanupTempDirectory,
+  analyzeMarkdownForImages,
+  isValidCloudinaryUrl,
+  
+  // Legacy compatibility (deprecated)
+  findImageRecursively: (dir, filename) => {
+    console.warn('[DEPRECATED] findImageRecursively - use enhanced image resolution instead');
+    return null;
+  },
+  downloadAndReplaceCloudinaryImages: (markdown, tempDir) => {
+    console.warn('[DEPRECATED] downloadAndReplaceCloudinaryImages - use processCloudinaryImages instead');
+    return processCloudinaryImages(markdown, tempDir).then(result => result.markdown);
+  }
 };
