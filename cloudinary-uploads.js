@@ -111,13 +111,6 @@ function uploadToCloudinary(buffer, options = {}) {
       transformation: options.transformation || null,
       // Use specific quality instead of auto
       quality: '80',
-      // Temporarily remove eager transformations to avoid errors
-      // eager: [
-      //   { ...BOOK_TRANSFORMATIONS.pdf, width: 800 },
-      //   { ...BOOK_TRANSFORMATIONS.epub, width: 600 },
-      //   { ...BOOK_TRANSFORMATIONS.thumbnail }
-      // ],
-      // eager_async: true,
       ...options.cloudinaryOptions
     };
 
@@ -393,10 +386,6 @@ async function prepareMarkdownForPDF(markdown, tempDir, options = {}) {
   const failed = results.length - successful;
   
   console.log(`[CLOUDINARY] PDF preparation complete: ${successful} successful, ${failed} failed`);
-  
-  if (failed > 0) {
-    console.warn(`[CLOUDINARY] Some images failed to download. PDF generation may have missing images.`);
-  }
   
   return processedMarkdown;
 }
