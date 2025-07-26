@@ -321,15 +321,29 @@ async function downloadImageForPDF(imageUrl, tempDir, options = {}) {
  * @returns {Promise<string>} - Modified markdown with local paths
  */
 async function prepareMarkdownForPDF(markdown, tempDir, options = {}) {
-  // Find all Cloudinary image URLs in the markdown - updated regex to handle transformation parameters
-  const cloudinaryUrlRegex = /https:\/\/res\.cloudinary\.com\/[^)\s"']+/g;
-  const imageUrls = [...new Set(markdown.match(cloudinaryUrlRegex) || [])]; // Remove duplicates
+  // Find all Cloudinary image URLs in the markdown - updated regex to handle LaTeX syntax and transformation parameters
+  // First try the general regex
+  const cloudinaryUrlRegex = /https:\/\/res\.cloudinary\.com\/[^)\s"'{}]+/g;
+  let imageUrls = [...new Set(markdown.match(cloudinaryUrlRegex) || [])]; // Remove duplicates
+  
+  // Also try to find URLs within LaTeX includegraphics commands specifically
+  const latexImageRegex = /\\includegraphics(?:\[[^\]]*\])?\{([^}]*https:\/\/res\.cloudinary\.com\/[^}]*)\}/g;
+  let match;
+  while ((match = latexImageRegex.exec(markdown)) !== null) {
+    if (!imageUrls.includes(match[1])) {
+      imageUrls.push(match[1]);
+    }
+  }
   
   console.log(`[CLOUDINARY] Found ${imageUrls.length} unique Cloudinary images to process for PDF`);
   console.log(`[CLOUDINARY] URLs found:`, imageUrls);
+  console.log(`[CLOUDINARY] Sample markdown content (first 500 chars):`, markdown.substring(0, 500));
   
   if (imageUrls.length === 0) {
     console.log(`[CLOUDINARY] No Cloudinary URLs found in markdown`);
+    console.log(`[CLOUDINARY] Searching for any includegraphics commands...`);
+    const anyIncludeGraphics = markdown.match(/\\includegraphics[^}]*\{[^}]+\}/g);
+    console.log(`[CLOUDINARY] Found includegraphics commands:`, anyIncludeGraphics);
     return markdown;
   }
   
@@ -360,15 +374,30 @@ async function prepareMarkdownForPDF(markdown, tempDir, options = {}) {
         
         console.log(`[CLOUDINARY] Original URL: ${imageUrl}`);
         console.log(`[CLOUDINARY] Cleaned URL: ${cleanUrl}`);
+        console.log(`[CLOUDINARY] Temp directory: ${tempDir}`);
         
         const localPath = await downloadImageForPDF(cleanUrl, tempDir);
         const filename = path.basename(localPath);
         
+        console.log(`[CLOUDINARY] Downloaded to: ${localPath}`);
+        console.log(`[CLOUDINARY] File size: ${fs.existsSync(localPath) ? fs.statSync(localPath).size : 'N/A'} bytes`);
+        
         // Replace all instances of the ORIGINAL URL in the markdown with the local filename
-        const regex = new RegExp(imageUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
-        processedMarkdown = processedMarkdown.replace(regex, filename);
+        // Handle both general cases and LaTeX \includegraphics specifically
+        const escapedUrl = imageUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const generalRegex = new RegExp(escapedUrl, 'g');
+        
+        // Also specifically handle LaTeX includegraphics commands
+        const latexRegex = new RegExp(`(\\\\includegraphics(?:\\[[^\\]]*\\])?\\{)${escapedUrl}(\\})`, 'g');
+        
+        // First try the general replacement
+        processedMarkdown = processedMarkdown.replace(generalRegex, filename);
+        
+        // Then ensure LaTeX syntax is handled correctly
+        processedMarkdown = processedMarkdown.replace(latexRegex, `$1${filename}$2`);
         
         console.log(`[CLOUDINARY] ✓ Processed: ${imageUrl} -> ${filename}`);
+        console.log(`[CLOUDINARY] ✓ Local file exists: ${fs.existsSync(localPath)}`);
         
         return { url: imageUrl, localPath, filename };
       } catch (downloadError) {
@@ -386,6 +415,15 @@ async function prepareMarkdownForPDF(markdown, tempDir, options = {}) {
   const failed = results.length - successful;
   
   console.log(`[CLOUDINARY] PDF preparation complete: ${successful} successful, ${failed} failed`);
+  
+  // Final verification: check if any Cloudinary URLs remain in the processed markdown
+  const remainingUrls = processedMarkdown.match(/https:\/\/res\.cloudinary\.com\/[^)\s"'{}]+/g);
+  if (remainingUrls && remainingUrls.length > 0) {
+    console.warn(`[CLOUDINARY] WARNING: ${remainingUrls.length} Cloudinary URLs still remain in processed markdown:`, remainingUrls);
+    console.log(`[CLOUDINARY] Sample of processed markdown with remaining URLs:`, processedMarkdown.substring(0, 1000));
+  } else {
+    console.log(`[CLOUDINARY] ✓ All Cloudinary URLs successfully replaced with local filenames`);
+  }
   
   return processedMarkdown;
 }
