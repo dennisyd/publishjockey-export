@@ -17,6 +17,19 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
+// Validate Cloudinary configuration on startup
+const config = cloudinary.config();
+console.log('[CLOUDINARY] Configuration loaded:');
+console.log('[CLOUDINARY] Cloud name:', config.cloud_name ? 'SET' : 'NOT SET');
+console.log('[CLOUDINARY] API key:', config.api_key ? 'SET' : 'NOT SET');
+console.log('[CLOUDINARY] API secret:', config.api_secret ? 'SET' : 'NOT SET');
+
+if (!config.cloud_name || !config.api_key || !config.api_secret) {
+  console.error('[CLOUDINARY ERROR] Missing required environment variables!');
+  console.error('[CLOUDINARY ERROR] Required: CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET');
+  throw new Error('Cloudinary configuration incomplete');
+}
+
 /**
  * Advanced transformation presets for different book formats
  */
@@ -189,23 +202,39 @@ const cloudinaryUpload = multer({
  * Usage: app.post('/upload', cloudImageUpload, async (req, res) => { ... })
  */
 const cloudImageUpload = (req, res, next) => {
+  console.log('[CLOUDINARY MIDDLEWARE] Starting image upload process');
+  console.log('[CLOUDINARY MIDDLEWARE] Content-Type:', req.headers['content-type']);
+  
   cloudinaryUpload.single('file')(req, res, async (err) => {
     if (err) {
+      console.error('[CLOUDINARY MIDDLEWARE] Multer error:', err);
       return res.status(400).json({ success: false, error: err.message });
     }
     
     if (!req.file) {
+      console.error('[CLOUDINARY MIDDLEWARE] No file found in request');
+      console.log('[CLOUDINARY MIDDLEWARE] Request body keys:', Object.keys(req.body || {}));
       return res.status(400).json({ success: false, error: 'No file uploaded' });
     }
+
+    console.log('[CLOUDINARY MIDDLEWARE] File received:', {
+      originalname: req.file.originalname,
+      mimetype: req.file.mimetype,
+      size: req.file.buffer?.length
+    });
 
     try {
       // Extract user/project info
       const userId = req.user?.id || req.body.userId || 'anonymous';
       const projectId = req.body.projectId || 'default';
       
+      console.log('[CLOUDINARY MIDDLEWARE] Upload info:', { userId, projectId });
+      
       // Create organized folder structure
       const folder = `publishjockey/${userId}/${projectId}`;
       const public_id = `${Date.now()}-${req.file.originalname.replace(/\.[^/.]+$/, "")}`;
+      
+      console.log('[CLOUDINARY MIDDLEWARE] Upload parameters:', { folder, public_id });
       
       // Upload to Cloudinary
       const result = await uploadToCloudinary(req.file.buffer, {
@@ -214,12 +243,15 @@ const cloudImageUpload = (req, res, next) => {
         tags: [userId, projectId, 'book-image']
       });
       
+      console.log('[CLOUDINARY MIDDLEWARE] Upload successful:', result.public_id);
+      
       // Attach result to request for further processing
       req.cloudinaryResult = result;
       next();
       
     } catch (uploadError) {
-      console.error('Cloud upload failed:', uploadError);
+      console.error('[CLOUDINARY MIDDLEWARE] Upload failed:', uploadError);
+      console.error('[CLOUDINARY MIDDLEWARE] Upload error stack:', uploadError.stack);
       return res.status(500).json({ 
         success: false, 
         error: 'Cloud upload failed',

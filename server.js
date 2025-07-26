@@ -2672,35 +2672,67 @@ app.post('/api/debug/save-structure/:id', authenticateJWT, async (req, res) => {
 
 // POST /api/uploads (Cloudinary Cloud Storage with Authentication)
 app.post('/api/uploads', authenticateJWT, cloudImageUpload, async (req, res) => {
-  const result = req.cloudinaryResult;
-  const userId = req.user.id;
-  
-  // Check project ownership
-  const projectId = req.body && req.body.projectId;
-  if (!projectId) {
-    return res.status(400).json({ success: false, error: 'Missing projectId in request body' });
-  }
-  
-  let project;
   try {
-    project = await Project.findOne({ _id: projectId, userId });
-  } catch (e) {
-    return res.status(400).json({ success: false, error: 'Invalid projectId format' });
+    console.log('[UPLOAD DEBUG] Starting authenticated upload process');
+    console.log('[UPLOAD DEBUG] User:', req.user?.id);
+    console.log('[UPLOAD DEBUG] Request body:', req.body);
+    console.log('[UPLOAD DEBUG] Cloudinary result exists:', !!req.cloudinaryResult);
+    
+    const result = req.cloudinaryResult;
+    if (!result) {
+      console.error('[UPLOAD ERROR] No cloudinary result found in request');
+      return res.status(500).json({ success: false, error: 'Upload processing failed - no result from cloudinary' });
+    }
+    
+    const userId = req.user.id;
+    console.log('[UPLOAD DEBUG] User ID:', userId);
+    
+    // Check project ownership
+    const projectId = req.body && req.body.projectId;
+    if (!projectId) {
+      console.error('[UPLOAD ERROR] Missing projectId in request body');
+      return res.status(400).json({ success: false, error: 'Missing projectId in request body' });
+    }
+    
+    console.log('[UPLOAD DEBUG] Project ID:', projectId);
+    
+    let project;
+    try {
+      console.log('[UPLOAD DEBUG] Attempting to find project in database');
+      project = await Project.findOne({ _id: projectId, userId });
+      console.log('[UPLOAD DEBUG] Project found:', !!project);
+    } catch (e) {
+      console.error('[UPLOAD ERROR] Database error finding project:', e);
+      return res.status(400).json({ success: false, error: 'Invalid projectId format', details: e.message });
+    }
+    
+    if (!project) {
+      console.error('[UPLOAD ERROR] Project not found or user does not have permission');
+      return res.status(403).json({ success: false, error: 'You do not have permission to upload images to this project.' });
+    }
+    
+    console.log(`[CLOUDINARY] Authenticated image upload for user ${userId}, project ${projectId}: ${result.filename || result.original_filename}`);
+    
+    const response = { 
+      success: true, 
+      path: result.secure_url,
+      public_id: result.public_id,
+      url: result.secure_url,
+      filename: result.filename || result.original_filename
+    };
+    
+    console.log('[UPLOAD DEBUG] Sending successful response:', response);
+    res.json(response);
+    
+  } catch (error) {
+    console.error('[UPLOAD ERROR] Unexpected error in /api/uploads:', error);
+    console.error('[UPLOAD ERROR] Error stack:', error.stack);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Internal server error during upload',
+      details: error.message 
+    });
   }
-  
-  if (!project) {
-    return res.status(403).json({ success: false, error: 'You do not have permission to upload images to this project.' });
-  }
-  
-  console.log(`[CLOUDINARY] Authenticated image upload for user ${userId}, project ${projectId}: ${result.filename}`);
-  
-  res.json({ 
-    success: true, 
-    path: result.secure_url,
-    public_id: result.public_id,
-    url: result.secure_url,
-    filename: result.filename
-  });
 });
 
 // Helper to estimate page count from markdown/sections
@@ -2913,5 +2945,44 @@ app.get('/api/files/:fileId', (req, res) => {
   } else {
     console.log(`File ID ${fileId} not found in tracking system`);
     return res.status(404).json({ error: 'File ID not found' });
+  }
+});
+
+// Test endpoint for Cloudinary connectivity
+app.get('/test/cloudinary', async (req, res) => {
+  try {
+    console.log('[CLOUDINARY TEST] Testing Cloudinary connection...');
+    
+    const cloudinary = require('cloudinary').v2;
+    const config = cloudinary.config();
+    
+    console.log('[CLOUDINARY TEST] Configuration check:', {
+      cloud_name: config.cloud_name ? 'SET' : 'NOT SET',
+      api_key: config.api_key ? 'SET' : 'NOT SET', 
+      api_secret: config.api_secret ? 'SET' : 'NOT SET'
+    });
+    
+    // Test API connectivity
+    const result = await cloudinary.api.ping();
+    console.log('[CLOUDINARY TEST] Ping successful:', result);
+    
+    res.json({
+      success: true,
+      message: 'Cloudinary connection test successful',
+      config: {
+        cloud_name: config.cloud_name ? 'SET' : 'NOT SET',
+        api_key: config.api_key ? 'SET' : 'NOT SET',
+        api_secret: config.api_secret ? 'SET' : 'NOT SET'
+      },
+      ping: result
+    });
+    
+  } catch (error) {
+    console.error('[CLOUDINARY TEST] Connection test failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Cloudinary connection test failed',
+      details: error.message
+    });
   }
 });
