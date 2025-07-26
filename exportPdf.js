@@ -1,6 +1,118 @@
 const { execFile, execFileSync } = require('child_process'); // Yancy Dennis
 const fs = require('fs');
 const path = require('path');
+const https = require('https');
+const crypto = require('crypto');
+
+/**
+ * Download a Cloudinary image to the temp directory
+ * @param {string} imageUrl - The Cloudinary URL
+ * @param {string} tempDir - Temporary directory to save the image
+ * @returns {Promise<string>} Path to the downloaded image
+ */
+function downloadCloudinaryImage(imageUrl, tempDir) {
+  return new Promise((resolve, reject) => {
+    console.log(`[CLOUDINARY] Downloading image: ${imageUrl}`);
+    
+    // Generate a unique filename based on the URL
+    const hash = crypto.createHash('md5').update(imageUrl).digest('hex');
+    const ext = '.png'; // Cloudinary URLs might not have extensions, default to PNG
+    const filename = `cloudinary_${hash}${ext}`;
+    const filepath = path.join(tempDir, filename);
+    
+    // Check if already downloaded
+    if (fs.existsSync(filepath)) {
+      console.log(`[CLOUDINARY] Image already exists: ${filepath}`);
+      resolve(filepath);
+      return;
+    }
+    
+    const request = https.get(imageUrl, (response) => {
+      if (response.statusCode !== 200) {
+        reject(new Error(`HTTP ${response.statusCode}: ${response.statusMessage} for ${imageUrl}`));
+        return;
+      }
+      
+      const chunks = [];
+      response.on('data', chunk => chunks.push(chunk));
+      response.on('end', () => {
+        try {
+          const buffer = Buffer.concat(chunks);
+          fs.writeFileSync(filepath, buffer);
+          console.log(`[CLOUDINARY] ✓ Downloaded: ${imageUrl} -> ${filepath} (${buffer.length} bytes)`);
+          resolve(filepath);
+        } catch (error) {
+          reject(new Error(`Failed to save image: ${error.message}`));
+        }
+      });
+    });
+    
+    request.on('error', error => {
+      reject(new Error(`Download failed: ${error.message}`));
+    });
+    
+    request.setTimeout(30000, () => {
+      request.destroy();
+      reject(new Error(`Download timeout for ${imageUrl}`));
+    });
+  });
+}
+
+/**
+ * Process markdown to download Cloudinary images and replace URLs with local paths
+ * @param {string} markdown - The markdown content
+ * @param {string} tempDir - Temporary directory for downloaded images
+ * @returns {Promise<string>} Processed markdown with local image paths
+ */
+async function downloadAndReplaceCloudinaryImages(markdown, tempDir) {
+  console.log(`[CLOUDINARY] Processing markdown for Cloudinary images`);
+  
+  // Find all Cloudinary URLs in markdown
+  const cloudinaryRegex = /!\[([^\]]*)\]\((https:\/\/res\.cloudinary\.com\/[^)]+)\)/g;
+  const matches = [];
+  let match;
+  
+  while ((match = cloudinaryRegex.exec(markdown)) !== null) {
+    matches.push({
+      fullMatch: match[0],
+      alt: match[1],
+      url: match[2]
+    });
+  }
+  
+  if (matches.length === 0) {
+    console.log(`[CLOUDINARY] No Cloudinary images found in markdown`);
+    return markdown;
+  }
+  
+  console.log(`[CLOUDINARY] Found ${matches.length} Cloudinary images to download`);
+  
+  // Ensure temp directory exists
+  if (!fs.existsSync(tempDir)) {
+    fs.mkdirSync(tempDir, { recursive: true });
+  }
+  
+  let processedMarkdown = markdown;
+  
+  // Download each image and replace the URL
+  for (const imageMatch of matches) {
+    try {
+      const localPath = await downloadCloudinaryImage(imageMatch.url, tempDir);
+      const newImageTag = `![${imageMatch.alt}](${localPath})`;
+      
+      // Replace the original image tag with the local path version
+      processedMarkdown = processedMarkdown.replace(imageMatch.fullMatch, newImageTag);
+      console.log(`[CLOUDINARY] ✓ Replaced: ${imageMatch.url} -> ${localPath}`);
+    } catch (error) {
+      console.error(`[CLOUDINARY] ✗ Failed to download: ${imageMatch.url}`, error.message);
+      // Replace with a placeholder to prevent LaTeX errors
+      const placeholder = `*[Image unavailable: ${imageMatch.url}]*`;
+      processedMarkdown = processedMarkdown.replace(imageMatch.fullMatch, placeholder);
+    }
+  }
+  
+  return processedMarkdown;
+}
 
 /**
  * Preprocess markdown to resolve image paths to absolute paths
@@ -16,7 +128,7 @@ function resolveImagePaths(markdown, basePath) {
   return markdown.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, alt, imagePath) => {
     console.log(`[IMAGE RESOLUTION] Processing image: ${imagePath}`);
     
-    // Skip if it's already an absolute path or URL
+    // Skip if it's already an absolute path or URL (Cloudinary should already be processed)
     if (path.isAbsolute(imagePath) || imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
       console.log(`[IMAGE RESOLUTION] Skipping absolute path or URL: ${imagePath}`);
       return match;
@@ -487,8 +599,8 @@ function convertAlignmentDivsToLatex(markdown) {
  * @param {Object} options - Format settings from frontend
  * @returns {Promise<void>} Resolves when PDF is created, rejects on error.
  */
-function exportPdf(assembledPath, outputPath, options = {}) {
-  return new Promise((resolve, reject) => {
+async function exportPdf(assembledPath, outputPath, options = {}) {
+  return new Promise(async (resolve, reject) => {
     let args = [
       assembledPath,
       '-o', outputPath,
@@ -536,6 +648,31 @@ function exportPdf(assembledPath, outputPath, options = {}) {
     }
     // Minimal logging for key parameters
     console.log(`Using page size: ${pageSizeKey} (${geometry.width}in x ${geometry.height}in)`);
+
+    // --- Download Cloudinary images and replace URLs with local paths ---
+    const tempDir = path.dirname(assembledPath);
+    const downloadedImages = [];
+    try {
+      const originalMarkdown = markdown;
+      markdown = await downloadAndReplaceCloudinaryImages(markdown, tempDir);
+      
+      // Track downloaded images for cleanup
+      const cloudinaryRegex = /!\[([^\]]*)\]\((https:\/\/res\.cloudinary\.com\/[^)]+)\)/g;
+      let match;
+      while ((match = cloudinaryRegex.exec(originalMarkdown)) !== null) {
+        const hash = crypto.createHash('md5').update(match[2]).digest('hex');
+        const filename = `cloudinary_${hash}.png`;
+        const filepath = path.join(tempDir, filename);
+        if (fs.existsSync(filepath)) {
+          downloadedImages.push(filepath);
+        }
+      }
+      
+      console.log(`[CLOUDINARY] ✓ Processed all Cloudinary images`);
+    } catch (error) {
+      console.error(`[CLOUDINARY] ✗ Error processing Cloudinary images:`, error.message);
+      // Continue with original markdown to avoid complete failure
+    }
 
     // --- Preprocess markdown to resolve image paths ---
     const basePath = path.dirname(assembledPath);
@@ -587,6 +724,22 @@ function exportPdf(assembledPath, outputPath, options = {}) {
         fs.unlinkSync(tmpHeaderPath);
         fs.unlinkSync(floatSettingsPath);
       } catch (e) { /* ignore */ }
+      
+      // Clean up downloaded Cloudinary images
+      try {
+        downloadedImages.forEach(imagePath => {
+          if (fs.existsSync(imagePath)) {
+            fs.unlinkSync(imagePath);
+            console.log(`[CLOUDINARY] ✓ Cleaned up: ${imagePath}`);
+          }
+        });
+        if (downloadedImages.length > 0) {
+          console.log(`[CLOUDINARY] ✓ Cleaned up ${downloadedImages.length} downloaded images`);
+        }
+      } catch (cleanupError) {
+        console.warn(`[CLOUDINARY] Warning: Failed to cleanup some images:`, cleanupError.message);
+      }
+      
       if (error) {
         console.error('Pandoc PDF error:', error);
         console.error('Pandoc stderr:', stderr);
@@ -638,4 +791,13 @@ function rewriteMarkdownWithStyledChapters(markdown) {
   return output.join('\n').replace(/^\s*\n/, '').replace(/\n\s*$/, '') + '\n';
 }
 
-module.exports = { exportPdf, pageSizes, getDynamicMargins, estimatePageCount, resolveImagePaths, findImageRecursively };
+module.exports = { 
+  exportPdf, 
+  pageSizes, 
+  getDynamicMargins, 
+  estimatePageCount, 
+  resolveImagePaths, 
+  findImageRecursively,
+  downloadCloudinaryImage,
+  downloadAndReplaceCloudinaryImages
+};
