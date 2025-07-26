@@ -38,7 +38,6 @@ const BOOK_TRANSFORMATIONS = {
     // High-resolution for print quality
     quality: '90',
     format: 'png',
-    dpr: '2.0',
     flags: 'immutable_cache'
   },
   epub: {
@@ -329,13 +328,15 @@ async function downloadImageForPDF(imageUrl, tempDir, options = {}) {
  * @returns {Promise<string>} - Modified markdown with local paths
  */
 async function prepareMarkdownForPDF(markdown, tempDir, options = {}) {
-  // Find all Cloudinary image URLs in the markdown
-  const cloudinaryUrlRegex = /https:\/\/res\.cloudinary\.com\/[^)\s]+/g;
+  // Find all Cloudinary image URLs in the markdown - updated regex to handle transformation parameters
+  const cloudinaryUrlRegex = /https:\/\/res\.cloudinary\.com\/[^)\s"']+/g;
   const imageUrls = [...new Set(markdown.match(cloudinaryUrlRegex) || [])]; // Remove duplicates
   
   console.log(`[CLOUDINARY] Found ${imageUrls.length} unique Cloudinary images to process for PDF`);
+  console.log(`[CLOUDINARY] URLs found:`, imageUrls);
   
   if (imageUrls.length === 0) {
+    console.log(`[CLOUDINARY] No Cloudinary URLs found in markdown`);
     return markdown;
   }
   
@@ -346,23 +347,31 @@ async function prepareMarkdownForPDF(markdown, tempDir, options = {}) {
   for (const imageUrl of imageUrls) {
     const promise = (async () => {
       try {
-        // Optimize URL for PDF format if it's not already optimized
-        let optimizedUrl = imageUrl;
-        if (!imageUrl.includes('q_auto:best') && !imageUrl.includes('dpr_2.0')) {
-          // Apply PDF-specific optimizations
-          const urlParts = imageUrl.split('/upload/');
-          if (urlParts.length === 2) {
-            const baseUrl = urlParts[0] + '/upload/';
-            const imagePath = urlParts[1];
-            optimizedUrl = `${baseUrl}q_auto:best,f_auto,dpr_2.0/${imagePath}`;
-            console.log(`[CLOUDINARY] Optimized URL for PDF: ${optimizedUrl}`);
-          }
-        }
+        // Clean the URL by removing problematic auto transformations
+        let cleanUrl = imageUrl;
         
-        const localPath = await downloadImageForPDF(optimizedUrl, tempDir);
+        // Remove problematic auto parameters that cause download failures
+        cleanUrl = cleanUrl.replace(/,f_auto/g, '');
+        cleanUrl = cleanUrl.replace(/f_auto,?/g, '');
+        cleanUrl = cleanUrl.replace(/,q_auto:best/g, '');
+        cleanUrl = cleanUrl.replace(/q_auto:best,?/g, '');
+        cleanUrl = cleanUrl.replace(/,dpr_2\.0/g, '');
+        cleanUrl = cleanUrl.replace(/dpr_2\.0,?/g, '');
+        
+        // Clean up any double commas
+        cleanUrl = cleanUrl.replace(/,,+/g, ',');
+        
+        // Remove trailing commas in transformation string
+        cleanUrl = cleanUrl.replace(/\/upload\/,/g, '/upload/');
+        cleanUrl = cleanUrl.replace(/\/upload\/([^\/]*),\//g, '/upload/$1/');
+        
+        console.log(`[CLOUDINARY] Original URL: ${imageUrl}`);
+        console.log(`[CLOUDINARY] Cleaned URL: ${cleanUrl}`);
+        
+        const localPath = await downloadImageForPDF(cleanUrl, tempDir);
         const filename = path.basename(localPath);
         
-        // Replace all instances of this URL in the markdown
+        // Replace all instances of the ORIGINAL URL in the markdown with the local filename
         const regex = new RegExp(imageUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
         processedMarkdown = processedMarkdown.replace(regex, filename);
         
