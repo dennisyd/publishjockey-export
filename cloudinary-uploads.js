@@ -39,20 +39,20 @@ const BOOK_TRANSFORMATIONS = {
     // High-resolution PNG for crisp PDF embedding
     format: 'png',
     quality: '95',
-    flags: 'immutable_cache',
+    flags: 'immutable',
     dpr: '2.0'  // High DPI for print
   },
   epub: {
     // Balanced quality for e-readers
     format: 'jpg',
     quality: '85',
-    flags: 'progressive,immutable_cache'
+    flags: 'progressive,immutable'
   },
   docx: {
     // Optimized for Word documents
     format: 'png',
     quality: '90',
-    flags: 'immutable_cache'
+    flags: 'immutable'
   },
   thumbnail: {
     width: 200,
@@ -60,13 +60,13 @@ const BOOK_TRANSFORMATIONS = {
     crop: 'fill',
     quality: '75',
     format: 'jpg',
-    flags: 'immutable_cache'
+    flags: 'immutable'
   },
   // New: Streaming optimized versions
   stream: {
     format: 'jpg',
     quality: '80',
-    flags: 'streaming_profile,immutable_cache'
+    flags: 'immutable'
   }
 };
 
@@ -100,7 +100,7 @@ function uploadToCloudinary(buffer, options = {}) {
       // Auto-optimize on upload
       quality: 'auto:good',
       fetch_format: 'auto',
-      flags: 'immutable_cache',
+      flags: 'immutable',
       eager: [
         // Pre-generate common formats
         BOOK_TRANSFORMATIONS.pdf,
