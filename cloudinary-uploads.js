@@ -36,21 +36,21 @@ if (!config.cloud_name || !config.api_key || !config.api_secret) {
 const BOOK_TRANSFORMATIONS = {
   pdf: {
     // High-resolution for print quality
-    quality: 'auto:best',
-    format: 'auto',
+    quality: '90',
+    format: 'png',
     dpr: '2.0',
     flags: 'immutable_cache'
   },
   epub: {
     // Web-optimized for e-readers
-    quality: 'auto:good',
-    format: 'auto',
+    quality: '80',
+    format: 'jpg',
     flags: 'progressive,immutable_cache'
   },
   docx: {
     // Balanced for document embedding
-    quality: 'auto:good',
-    format: 'auto',
+    quality: '80',
+    format: 'png',
     flags: 'immutable_cache'
   },
   thumbnail: {
@@ -58,8 +58,8 @@ const BOOK_TRANSFORMATIONS = {
     width: 200,
     height: 200,
     crop: 'fill',
-    quality: 'auto:good',
-    format: 'auto'
+    quality: '70',
+    format: 'jpg'
   }
 };
 
@@ -110,16 +110,15 @@ function uploadToCloudinary(buffer, options = {}) {
       public_id: options.public_id,
       tags: options.tags || ['publishjockey'],
       transformation: options.transformation || null,
-      // Enable automatic format selection and quality optimization
-      quality: 'auto:good',
-      fetch_format: 'auto',
-      // Generate multiple formats for different use cases
-      eager: [
-        { ...BOOK_TRANSFORMATIONS.pdf, width: 800 },
-        { ...BOOK_TRANSFORMATIONS.epub, width: 600 },
-        { ...BOOK_TRANSFORMATIONS.thumbnail }
-      ],
-      eager_async: true,
+      // Use specific quality instead of auto
+      quality: '80',
+      // Temporarily remove eager transformations to avoid errors
+      // eager: [
+      //   { ...BOOK_TRANSFORMATIONS.pdf, width: 800 },
+      //   { ...BOOK_TRANSFORMATIONS.epub, width: 600 },
+      //   { ...BOOK_TRANSFORMATIONS.thumbnail }
+      // ],
+      // eager_async: true,
       ...options.cloudinaryOptions
     };
 
