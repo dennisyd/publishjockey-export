@@ -1,0 +1,443 @@
+/**
+ * Cloudinary Upload Solution for Render
+ * Replaces local filesystem uploads with persistent cloud storage
+ * Enhanced with advanced transformations and optimization
+ */
+
+const cloudinary = require('cloudinary').v2;
+const multer = require('multer');
+const streamifier = require('streamifier');
+const fs = require('fs');
+const path = require('path');
+
+// Configure Cloudinary (set these environment variables in Render)
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
+// Validate Cloudinary configuration on startup
+const config = cloudinary.config();
+console.log('[CLOUDINARY] Configuration loaded:');
+console.log('[CLOUDINARY] Cloud name:', config.cloud_name ? 'SET' : 'NOT SET');
+console.log('[CLOUDINARY] API key:', config.api_key ? 'SET' : 'NOT SET');
+console.log('[CLOUDINARY] API secret:', config.api_secret ? 'SET' : 'NOT SET');
+
+if (!config.cloud_name || !config.api_key || !config.api_secret) {
+  console.error('[CLOUDINARY ERROR] Missing required environment variables!');
+  console.error('[CLOUDINARY ERROR] Required: CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET');
+  throw new Error('Cloudinary configuration incomplete');
+}
+
+/**
+ * Advanced transformation presets for different book formats
+ */
+const BOOK_TRANSFORMATIONS = {
+  pdf: {
+    // High-resolution for print quality
+    quality: '90',
+    format: 'png',
+    flags: 'immutable_cache'
+  },
+  epub: {
+    // Web-optimized for e-readers
+    quality: '80',
+    format: 'jpg',
+    flags: 'progressive,immutable_cache'
+  },
+  docx: {
+    // Balanced for document embedding
+    quality: '80',
+    format: 'png',
+    flags: 'immutable_cache'
+  },
+  thumbnail: {
+    // Small previews
+    width: 200,
+    height: 200,
+    crop: 'fill',
+    quality: '70',
+    format: 'jpg'
+  }
+};
+
+/**
+ * Get optimized image URL with book format-specific transformations
+ * @param {string} publicId - Cloudinary public ID
+ * @param {string} format - Book format ('pdf', 'epub', 'docx')
+ * @param {Object} customOptions - Additional transformation options
+ * @returns {string} - Optimized image URL
+ */
+function getBookFormatImageUrl(publicId, format = 'epub', customOptions = {}) {
+  const baseTransform = BOOK_TRANSFORMATIONS[format] || BOOK_TRANSFORMATIONS.epub;
+  
+  return cloudinary.url(publicId, {
+    ...baseTransform,
+    ...customOptions
+  });
+}
+
+/**
+ * Get responsive image URLs for different screen sizes
+ * @param {string} publicId - Cloudinary public ID
+ * @param {string} format - Book format
+ * @returns {Object} - Object with different size URLs
+ */
+function getResponsiveImageUrls(publicId, format = 'epub') {
+  const baseTransform = BOOK_TRANSFORMATIONS[format];
+  
+  return {
+    small: cloudinary.url(publicId, { ...baseTransform, width: 400 }),
+    medium: cloudinary.url(publicId, { ...baseTransform, width: 800 }),
+    large: cloudinary.url(publicId, { ...baseTransform, width: 1200 }),
+    original: cloudinary.url(publicId, baseTransform)
+  };
+}
+
+/**
+ * Upload image to Cloudinary with smart optimization
+ * @param {Buffer} buffer - Image buffer
+ * @param {Object} options - Upload options
+ * @returns {Promise} - Cloudinary upload result with additional metadata
+ */
+function uploadToCloudinary(buffer, options = {}) {
+  return new Promise((resolve, reject) => {
+    const uploadOptions = {
+      resource_type: 'image',
+      folder: options.folder || 'publishjockey',
+      public_id: options.public_id,
+      tags: options.tags || ['publishjockey'],
+      transformation: options.transformation || null,
+      // Use specific quality instead of auto
+      quality: '80',
+      ...options.cloudinaryOptions
+    };
+
+    const uploadStream = cloudinary.uploader.upload_stream(
+      uploadOptions,
+      (error, result) => {
+        if (error) {
+          console.error('Cloudinary upload error:', error);
+          reject(error);
+        } else {
+          console.log('Cloudinary upload success:', result.public_id);
+          
+          // Add convenience URLs to the result
+          const enhancedResult = {
+            ...result,
+            optimizedUrls: {
+              pdf: getBookFormatImageUrl(result.public_id, 'pdf'),
+              epub: getBookFormatImageUrl(result.public_id, 'epub'),
+              docx: getBookFormatImageUrl(result.public_id, 'docx'),
+              thumbnail: getBookFormatImageUrl(result.public_id, 'thumbnail')
+            }
+          };
+          
+          resolve(enhancedResult);
+        }
+      }
+    );
+
+    streamifier.createReadStream(buffer).pipe(uploadStream);
+  });
+}
+
+/**
+ * Delete image from Cloudinary
+ * @param {string} publicId - Cloudinary public ID
+ * @returns {Promise} - Deletion result
+ */
+function deleteFromCloudinary(publicId) {
+  return cloudinary.uploader.destroy(publicId);
+}
+
+/**
+ * Get optimized image URL from Cloudinary
+ * @param {string} publicId - Cloudinary public ID
+ * @param {Object} options - Transformation options
+ * @returns {string} - Optimized image URL
+ */
+function getOptimizedImageUrl(publicId, options = {}) {
+  return cloudinary.url(publicId, {
+    quality: 'auto',
+    fetch_format: 'auto',
+    ...options
+  });
+}
+
+/**
+ * Multer configuration for memory storage (no local files)
+ */
+const cloudinaryUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { 
+    fileSize: 20 * 1024 * 1024 // 20 MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    if ([
+      'image/jpeg',
+      'image/png',
+      'image/gif',
+      'image/jpg'
+    ].includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Unsupported image type'), false);
+    }
+  }
+});
+
+/**
+ * Express middleware for cloud image uploads
+ * Usage: app.post('/upload', cloudImageUpload, async (req, res) => { ... })
+ */
+const cloudImageUpload = (req, res, next) => {
+  console.log('[CLOUDINARY MIDDLEWARE] Starting image upload process');
+  console.log('[CLOUDINARY MIDDLEWARE] Content-Type:', req.headers['content-type']);
+  
+  cloudinaryUpload.single('file')(req, res, async (err) => {
+    if (err) {
+      console.error('[CLOUDINARY MIDDLEWARE] Multer error:', err);
+      return res.status(400).json({ success: false, error: err.message });
+    }
+    
+    if (!req.file) {
+      console.error('[CLOUDINARY MIDDLEWARE] No file found in request');
+      console.log('[CLOUDINARY MIDDLEWARE] Request body keys:', Object.keys(req.body || {}));
+      return res.status(400).json({ success: false, error: 'No file uploaded' });
+    }
+
+    console.log('[CLOUDINARY MIDDLEWARE] File received:', {
+      originalname: req.file.originalname,
+      mimetype: req.file.mimetype,
+      size: req.file.buffer?.length
+    });
+
+    try {
+      // Extract user/project info
+      const userId = req.user?.id || req.body.userId || 'anonymous';
+      const projectId = req.body.projectId || 'default';
+      
+      console.log('[CLOUDINARY MIDDLEWARE] Upload info:', { userId, projectId });
+      
+      // Create organized folder structure
+      const folder = `publishjockey/${userId}/${projectId}`;
+      const public_id = `${Date.now()}-${req.file.originalname.replace(/\.[^/.]+$/, "")}`;
+      
+      console.log('[CLOUDINARY MIDDLEWARE] Upload parameters:', { folder, public_id });
+      
+      // Upload to Cloudinary
+      const result = await uploadToCloudinary(req.file.buffer, {
+        folder: folder,
+        public_id: public_id,
+        tags: [userId, projectId, 'book-image']
+      });
+      
+      console.log('[CLOUDINARY MIDDLEWARE] Upload successful:', result.public_id);
+      
+      // Attach result to request for further processing
+      req.cloudinaryResult = result;
+      next();
+      
+    } catch (uploadError) {
+      console.error('[CLOUDINARY MIDDLEWARE] Upload failed:', uploadError);
+      console.error('[CLOUDINARY MIDDLEWARE] Upload error stack:', uploadError.stack);
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Cloud upload failed',
+        details: uploadError.message 
+      });
+    }
+  });
+};
+
+/**
+ * Download image from Cloudinary to temporary location for PDF generation
+ * Enhanced with caching and optimization
+ * @param {string} imageUrl - Cloudinary image URL
+ * @param {string} tempDir - Temporary directory for download
+ * @param {Object} options - Download options
+ * @returns {Promise<string>} - Local temp file path
+ */
+async function downloadImageForPDF(imageUrl, tempDir, options = {}) {
+  const https = require('https');
+  const crypto = require('crypto');
+  
+  // Create cache key from URL
+  const urlHash = crypto.createHash('md5').update(imageUrl).digest('hex');
+  const extension = path.extname(imageUrl.split('?')[0]) || '.jpg';
+  const filename = options.filename || `cached-${urlHash}${extension}`;
+  const tempPath = path.join(tempDir, filename);
+  
+  // Check if file already exists (simple caching)
+  if (fs.existsSync(tempPath)) {
+    console.log(`Using cached image for PDF: ${tempPath}`);
+    return tempPath;
+  }
+  
+  // Ensure temp directory exists
+  if (!fs.existsSync(tempDir)) {
+    fs.mkdirSync(tempDir, { recursive: true });
+  }
+  
+  return new Promise((resolve, reject) => {
+    const file = fs.createWriteStream(tempPath);
+    
+    const request = https.get(imageUrl, (response) => {
+      if (response.statusCode !== 200) {
+        reject(new Error(`HTTP ${response.statusCode}: ${response.statusMessage}`));
+        return;
+      }
+      
+      response.pipe(file);
+      file.on('finish', () => {
+        file.close();
+        console.log(`Downloaded image for PDF: ${tempPath}`);
+        resolve(tempPath);
+      });
+    });
+    
+    request.on('error', (err) => {
+      fs.unlink(tempPath, () => {}); // Delete partial file
+      reject(err);
+    });
+    
+    // Set timeout for large images
+    request.setTimeout(30000, () => {
+      request.destroy();
+      fs.unlink(tempPath, () => {});
+      reject(new Error('Download timeout'));
+    });
+  });
+}
+
+/**
+ * Replace image URLs in markdown with temporary local paths for PDF generation
+ * Enhanced with parallel downloads and format optimization
+ * @param {string} markdown - Markdown content with Cloudinary URLs
+ * @param {string} tempDir - Temporary directory
+ * @param {Object} options - Processing options
+ * @returns {Promise<string>} - Modified markdown with local paths
+ */
+async function prepareMarkdownForPDF(markdown, tempDir, options = {}) {
+  // Find all Cloudinary image URLs in the markdown - updated regex to handle LaTeX syntax and transformation parameters
+  // First try the general regex
+  const cloudinaryUrlRegex = /https:\/\/res\.cloudinary\.com\/[^)\s"'{}]+/g;
+  let imageUrls = [...new Set(markdown.match(cloudinaryUrlRegex) || [])]; // Remove duplicates
+  
+  // Also try to find URLs within LaTeX includegraphics commands specifically
+  const latexImageRegex = /\\includegraphics(?:\[[^\]]*\])?\{([^}]*https:\/\/res\.cloudinary\.com\/[^}]*)\}/g;
+  let match;
+  while ((match = latexImageRegex.exec(markdown)) !== null) {
+    if (!imageUrls.includes(match[1])) {
+      imageUrls.push(match[1]);
+    }
+  }
+  
+  console.log(`[CLOUDINARY] Found ${imageUrls.length} unique Cloudinary images to process for PDF`);
+  console.log(`[CLOUDINARY] URLs found:`, imageUrls);
+  console.log(`[CLOUDINARY] Sample markdown content (first 500 chars):`, markdown.substring(0, 500));
+  
+  if (imageUrls.length === 0) {
+    console.log(`[CLOUDINARY] No Cloudinary URLs found in markdown`);
+    console.log(`[CLOUDINARY] Searching for any includegraphics commands...`);
+    const anyIncludeGraphics = markdown.match(/\\includegraphics[^}]*\{[^}]+\}/g);
+    console.log(`[CLOUDINARY] Found includegraphics commands:`, anyIncludeGraphics);
+    return markdown;
+  }
+  
+  let processedMarkdown = markdown;
+  const downloadPromises = [];
+  
+  // Process images in parallel for better performance
+  for (const imageUrl of imageUrls) {
+    const promise = (async () => {
+      try {
+        // Clean the URL by removing problematic auto transformations
+        let cleanUrl = imageUrl;
+        
+        // Remove problematic auto parameters that cause download failures
+        cleanUrl = cleanUrl.replace(/,f_auto/g, '');
+        cleanUrl = cleanUrl.replace(/f_auto,?/g, '');
+        cleanUrl = cleanUrl.replace(/,q_auto:best/g, '');
+        cleanUrl = cleanUrl.replace(/q_auto:best,?/g, '');
+        cleanUrl = cleanUrl.replace(/,dpr_2\.0/g, '');
+        cleanUrl = cleanUrl.replace(/dpr_2\.0,?/g, '');
+        
+        // Clean up any double commas
+        cleanUrl = cleanUrl.replace(/,,+/g, ',');
+        
+        // Remove trailing commas in transformation string
+        cleanUrl = cleanUrl.replace(/\/upload\/,/g, '/upload/');
+        cleanUrl = cleanUrl.replace(/\/upload\/([^\/]*),\//g, '/upload/$1/');
+        
+        console.log(`[CLOUDINARY] Original URL: ${imageUrl}`);
+        console.log(`[CLOUDINARY] Cleaned URL: ${cleanUrl}`);
+        console.log(`[CLOUDINARY] Temp directory: ${tempDir}`);
+        
+        const localPath = await downloadImageForPDF(cleanUrl, tempDir);
+        const filename = path.basename(localPath);
+        
+        console.log(`[CLOUDINARY] Downloaded to: ${localPath}`);
+        console.log(`[CLOUDINARY] File size: ${fs.existsSync(localPath) ? fs.statSync(localPath).size : 'N/A'} bytes`);
+        
+        // Replace all instances of the ORIGINAL URL in the markdown with the local filename
+        // Handle both general cases and LaTeX \includegraphics specifically
+        const escapedUrl = imageUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const generalRegex = new RegExp(escapedUrl, 'g');
+        
+        // Also specifically handle LaTeX includegraphics commands
+        const latexRegex = new RegExp(`(\\\\includegraphics(?:\\[[^\\]]*\\])?\\{)${escapedUrl}(\\})`, 'g');
+        
+        // First try the general replacement
+        processedMarkdown = processedMarkdown.replace(generalRegex, filename);
+        
+        // Then ensure LaTeX syntax is handled correctly
+        processedMarkdown = processedMarkdown.replace(latexRegex, `$1${filename}$2`);
+        
+        console.log(`[CLOUDINARY] ✓ Processed: ${imageUrl} -> ${filename}`);
+        console.log(`[CLOUDINARY] ✓ Local file exists: ${fs.existsSync(localPath)}`);
+        
+        return { url: imageUrl, localPath, filename };
+      } catch (downloadError) {
+        console.error(`[CLOUDINARY] ✗ Failed to download: ${imageUrl}`, downloadError.message);
+        return { url: imageUrl, error: downloadError };
+      }
+    })();
+    
+    downloadPromises.push(promise);
+  }
+  
+  // Wait for all downloads to complete
+  const results = await Promise.allSettled(downloadPromises);
+  const successful = results.filter(r => r.status === 'fulfilled' && !r.value.error).length;
+  const failed = results.length - successful;
+  
+  console.log(`[CLOUDINARY] PDF preparation complete: ${successful} successful, ${failed} failed`);
+  
+  // Final verification: check if any Cloudinary URLs remain in the processed markdown
+  const remainingUrls = processedMarkdown.match(/https:\/\/res\.cloudinary\.com\/[^)\s"'{}]+/g);
+  if (remainingUrls && remainingUrls.length > 0) {
+    console.warn(`[CLOUDINARY] WARNING: ${remainingUrls.length} Cloudinary URLs still remain in processed markdown:`, remainingUrls);
+    console.log(`[CLOUDINARY] Sample of processed markdown with remaining URLs:`, processedMarkdown.substring(0, 1000));
+  } else {
+    console.log(`[CLOUDINARY] ✓ All Cloudinary URLs successfully replaced with local filenames`);
+  }
+  
+  return processedMarkdown;
+}
+
+module.exports = {
+  cloudinary,
+  uploadToCloudinary,
+  deleteFromCloudinary,
+  getOptimizedImageUrl,
+  getBookFormatImageUrl,
+  getResponsiveImageUrls,
+  cloudinaryUpload,
+  cloudImageUpload,
+  downloadImageForPDF,
+  prepareMarkdownForPDF,
+  BOOK_TRANSFORMATIONS
+}; 
