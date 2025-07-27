@@ -207,11 +207,31 @@ function optimizeMarkdownForPDF(markdown, format = 'pdf') {
   
   imageUrls.forEach(originalUrl => {
     try {
-      // Extract public ID from URL with improved parsing
-      const publicIdMatch = originalUrl.match(/\/(?:v\d+\/)?([^\/\?]+?)(?:\.[^\/\?\.]*)?\??/);
+      // FIXED: Skip optimization for already-valid complex URLs
+      // Only optimize simple URLs that need it
+      
+      // Check if this is already a full, complex Cloudinary URL with nested paths
+      const hasNestedPath = originalUrl.includes('/publishjockey/') || 
+                           originalUrl.match(/\/v\d+\/[^\/]+\/[^\/]+\/[^\/]+/);
+      
+      if (hasNestedPath) {
+        console.log(`[CLOUDINARY] ✓ Skipping optimization for complex URL: ${originalUrl.substring(originalUrl.lastIndexOf('/') + 1)}`);
+        // URL is already properly formatted, no optimization needed
+        return;
+      }
+      
+      // Only try to extract publicId from simple URLs  
+      const publicIdMatch = originalUrl.match(/\/upload\/(?:v\d+\/)?([^\/\?]+?)(?:\.[^\/\?\.]*)?\??$/);
       
       if (publicIdMatch) {
         const publicId = publicIdMatch[1];
+        
+        // Additional safety check - don't optimize if publicId is too short or obviously wrong
+        if (publicId.length < 3 || publicId === 'r') {
+          console.log(`[CLOUDINARY] ✓ Skipping invalid publicId: ${publicId}`);
+          return;
+        }
+        
         const optimizedUrl = getOptimizedUrl(publicId, format);
         
         // Replace with optimized URL using safe regex
@@ -221,7 +241,7 @@ function optimizeMarkdownForPDF(markdown, format = 'pdf') {
           optimizedUrl
         );
         
-        console.log(`[CLOUDINARY] ✓ Optimized: ${publicId}`);
+        console.log(`[CLOUDINARY] ✓ Optimized simple URL: ${publicId}`);
       }
     } catch (error) {
       console.warn(`[CLOUDINARY] Failed to optimize URL: ${originalUrl}`, error.message);
