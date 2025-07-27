@@ -901,12 +901,32 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
     let downloadedFiles = [];
     
     try {
-      // Read original markdown
-      let markdown = fs.readFileSync(assembledPath, 'utf8');
-      console.log(`[PDF EXPORT] Read ${markdown.length} characters from ${assembledPath}`);
-      
-      // STEP 1: Process Cloudinary images
-      console.log(`[PDF EXPORT] Step 1: Processing Cloudinary images...`);
+             // Read original markdown
+       let markdown = fs.readFileSync(assembledPath, 'utf8');
+       console.log(`[PDF EXPORT] Read ${markdown.length} characters from ${assembledPath}`);
+       
+       // DEBUG: Log the raw markdown content to see what URLs are present
+       console.log(`[PDF EXPORT] DEBUG - First 1000 characters of markdown:`, markdown.substring(0, 1000));
+       console.log(`[PDF EXPORT] DEBUG - Last 1000 characters of markdown:`, markdown.substring(Math.max(0, markdown.length - 1000)));
+       
+       // Look for ALL image patterns in the raw markdown
+       const allImagePatterns = [
+         /!\[([^\]]*)\]\(([^)]+)\)/g,
+         /\{\{IMAGE:([^|]+)\|([^|]*)\|([^}]*)\}\}/g,
+         /https:\/\/res\.cloudinary\.com\/[^\s\]()]+/g
+       ];
+       
+       console.log(`[PDF EXPORT] DEBUG - Searching for ALL image patterns in raw markdown:`);
+       allImagePatterns.forEach((pattern, i) => {
+         const matches = [...markdown.matchAll(pattern)];
+         console.log(`[PDF EXPORT] DEBUG - Pattern ${i + 1} (${pattern.source}) found ${matches.length} matches:`);
+         matches.forEach((match, j) => {
+           console.log(`[PDF EXPORT] DEBUG - Match ${j + 1}:`, match[0]);
+         });
+       });
+       
+       // STEP 1: Process Cloudinary images
+       console.log(`[PDF EXPORT] Step 1: Processing Cloudinary images...`);
       const cloudinaryResult = await processCloudinaryImages(markdown, tempDir);
       markdown = cloudinaryResult.markdown;
       downloadedFiles = cloudinaryResult.downloadedFiles;
