@@ -60,11 +60,10 @@ function getCloudinaryTransformation(imageSrc, format, scale = 0.6) {
   let transformation = '';
   
   if (format === 'pdf') {
-    // For PDF, use simple, reliable transformations that work consistently
-    // Avoid problematic parameters like dpr, f_auto, q_auto
-    const widthPx = Math.round(800 * scale);
-    transformation = `w_${widthPx},c_limit,f_png,q_90`;
-    console.log(`[CLOUDINARY TRANSFORM] PDF transformation: ${transformation}`);
+    // For PDF, DON'T scale the image - keep original resolution and let LaTeX handle scaling
+    // This prevents double-scaling that causes blurriness
+    transformation = `f_png,q_95`; // Just convert to high-quality PNG
+    console.log(`[CLOUDINARY TRANSFORM] PDF transformation (no scaling): ${transformation}`);
   } else if (format === 'epub') {
     // Web-optimized for e-readers
     const widthPx = Math.round(600 * scale);
