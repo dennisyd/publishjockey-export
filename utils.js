@@ -152,6 +152,7 @@ function replaceCustomImages(markdown, format) {
 \\end{center}
 `;
       console.log(`[REPLACE CUSTOM IMAGES] Generated LaTeX for image ${processedCount}`);
+      console.log(`[REPLACE CUSTOM IMAGES] LaTeX width parameter: width=${scale}\\textwidth`);
       return latexResult;
     } else if (format === 'epub') {
       // HTML: center both image and caption with responsive design
