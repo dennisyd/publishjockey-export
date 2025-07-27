@@ -184,11 +184,8 @@ function assembleBookPdf(sections, options = {}) {
       .replace(/\\frontmatter/g, '')
       .replace(/\\mainmatter/g, '')
       .replace(/\\setcounter\{page\}\{\d+\}/g, '');
-    // Format chapter headings with HTML (old approach)
-    content = content.replace(
-      /^#\s+Chapter\s+(\d+)\s+(.+)$/gm,
-      '<div style="text-align:center;">\n  <h1>Chapter $1<\/h1>\n  <div style="font-size:14pt; font-weight:bold;">$2<\/div>\n<\/div>'
-    );
+    // Keep chapter headings as plain markdown - styling will be handled by exportPdf.js
+    // content = content.replace(...) - removed to prevent conflicts
     
     // Check if this section is a Part divider (Part I, Part II, etc.)
     const isPartDivider = section.title && /^Part [IVXLCDM]+:/.test(section.title);
@@ -235,13 +232,8 @@ function assembleBookPdf(sections, options = {}) {
     }
     output += content + '\n\n';
   }
-  // Enhance chapter formatting with LaTeX for the PDF output (old approach)
-  output = output.replace(
-    /<div style="text-align:center;">\s*<h1>Chapter\s+(\d+)<\/h1>\s*<div style="font-size:14pt; font-weight:bold;">(.*?)<\/div>\s*<\/div>/gs,
-    (_, num, title) => {
-      return `\\chapter*{Chapter ${num}}\n\\begin{center}\\fontsize{14pt}{16pt}\\selectfont\\textbf{${title.trim()}}\\end{center}\\addcontentsline{toc}{chapter}{Chapter ${num}: ${title.trim()}}`;
-    }
-  );
+  // Note: Chapter styling is now handled by exportPdf.js rewriteMarkdownWithStyledChapters function
+  // Remove the old LaTeX generation to prevent conflicts and malformed LaTeX
 
   return output.trim();
 }

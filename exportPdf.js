@@ -845,11 +845,15 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
       const basePath = path.dirname(assembledPath);
       markdown = resolveImagePaths(markdown, basePath);
       
-      // STEP 3: Convert alignment divs
-      console.log(`[PDF EXPORT] Step 3: Converting alignment divs...`);
+      // STEP 3: Apply proper chapter styling
+      console.log(`[PDF EXPORT] Step 3: Applying chapter styling...`);
+      markdown = rewriteMarkdownWithStyledChapters(markdown);
+      
+      // STEP 4: Convert alignment divs
+      console.log(`[PDF EXPORT] Step 4: Converting alignment divs...`);
       markdown = convertAlignmentDivsToLatex(markdown);
       
-      // STEP 4: Write processed markdown back to file
+      // STEP 5: Write processed markdown back to file
       fs.writeFileSync(assembledPath, markdown, 'utf8');
       console.log(`[PDF EXPORT] Updated markdown file with processed content`);
       
@@ -862,8 +866,8 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
         console.log(`[PDF EXPORT] ✓ No Cloudinary URLs detected in final markdown`);
       }
       
-      // STEP 5: Setup Pandoc arguments
-      console.log(`[PDF EXPORT] Step 4: Setting up Pandoc arguments...`);
+      // STEP 6: Setup Pandoc arguments
+      console.log(`[PDF EXPORT] Step 6: Setting up Pandoc arguments...`);
       const pageSizeKey = options.papersize || "6x9";
       const estimatedPages = estimatePageCount(markdown, pageSizeKey, options.includeToc !== false);
       const pageCount = options.estimatedPageCount || estimatedPages || 100;
