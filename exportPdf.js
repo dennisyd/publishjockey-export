@@ -48,15 +48,22 @@ const crypto = require('crypto');
       const downloadStrategies = [
         cleanUrl, // Strategy 1: Original URL without query params
         imageUrl, // Strategy 2: Original URL with all params
-        `https://res.cloudinary.com/${cloudName}/image/upload/f_auto,q_auto/r.png`, // Strategy 3: Assume 'r' is the publicId
-        `https://res.cloudinary.com/${cloudName}/image/upload/f_auto,q_auto/r`, // Strategy 4: Without extension
-        `https://res.cloudinary.com/${cloudName}/image/upload/r.png`, // Strategy 5: Minimal transformation
-        `https://res.cloudinary.com/${cloudName}/image/upload/r`, // Strategy 6: No extension, no transform
-        // Common patterns for this specific cloud based on the logs
-        `https://res.cloudinary.com/${cloudName}/image/upload/f_auto,q_90/publishjockey/68085d116bf75556bb7894ac/6839ddeaf6c063c0af49cd85/1753565563565-publishjockeylogo.png`, // Strategy 7: Known pattern
-        `https://res.cloudinary.com/${cloudName}/image/upload/v1753565564/publishjockey/68085d116bf75556bb7894ac/6839ddeaf6c063c0af49cd85/1753565563565-publishjockeylogo.png`, // Strategy 8: Original full path
-        `https://res.cloudinary.com/${cloudName}/image/upload/publishjockey/68085d116bf75556bb7894ac/6839ddeaf6c063c0af49cd85/1753565563565-publishjockeylogo.png` // Strategy 9: No version
       ];
+      
+      // Try to extract publicId and build additional strategies
+      const publicIdMatch = imageUrl.match(/\/upload\/(?:v\d+\/)?([^?]+)/);
+      if (publicIdMatch) {
+        const publicId = publicIdMatch[1];
+        console.log(`[CLOUDINARY] Extracted publicId: ${publicId}`);
+        
+        // Add strategies with extracted publicId
+        downloadStrategies.push(
+          `https://res.cloudinary.com/${cloudName}/image/upload/f_auto,q_auto/${publicId}`, // Strategy 3: Auto format/quality
+          `https://res.cloudinary.com/${cloudName}/image/upload/${publicId}`, // Strategy 4: No transformations
+          `https://res.cloudinary.com/${cloudName}/image/upload/f_png/${publicId}`, // Strategy 5: Force PNG format
+          `https://res.cloudinary.com/${cloudName}/image/upload/q_auto/${publicId}` // Strategy 6: Auto quality only
+        );
+      }
      
      let lastError = null;
      
