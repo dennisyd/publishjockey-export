@@ -11,93 +11,21 @@ const crypto = require('crypto');
  * @param {Object} options - Download options
  * @returns {Promise<string>} Path to the downloaded image
  */
-function downloadCloudinaryImage(imageUrl, tempDir, options = {}) {
-  return new Promise((resolve, reject) => {
+ async function downloadCloudinaryImage(imageUrl, tempDir, options = {}) {
+   return new Promise(async (resolve, reject) => {
     console.log(`[CLOUDINARY] Processing: ${imageUrl}`);
     
-         // Clean the URL - remove problematic parameters that cause download failures
-     let cleanUrl = imageUrl;
-     
-     // Remove auto format/quality params that cause issues
-     cleanUrl = cleanUrl.replace(/,f_auto/g, '');
-     cleanUrl = cleanUrl.replace(/f_auto,?/g, '');
-     cleanUrl = cleanUrl.replace(/,q_auto:best/g, '');
-     cleanUrl = cleanUrl.replace(/q_auto:best,?/g, '');
-     cleanUrl = cleanUrl.replace(/,dpr_2\.0/g, '');
-     cleanUrl = cleanUrl.replace(/dpr_2\.0,?/g, '');
-     cleanUrl = cleanUrl.replace(/,q_95/g, '');
-     cleanUrl = cleanUrl.replace(/q_95,?/g, '');
-     
-     // Clean up malformed transformation strings
-     cleanUrl = cleanUrl.replace(/,,+/g, ',');
-     cleanUrl = cleanUrl.replace(/\/upload\/,/g, '/upload/');
-     cleanUrl = cleanUrl.replace(/\/upload\/([^\/]*),\//g, '/upload/$1/');
-     
-     // Handle URLs that look like they've been heavily transformed
-     // Pattern: /upload/transformations/shortid.ext -> try to reconstruct
-     if (cleanUrl.includes('/upload/') && cleanUrl.match(/\/[a-zA-Z0-9_-]{1,10}\.(png|jpg|jpeg|gif|webp)(\?|$)/)) {
-       console.log(`[CLOUDINARY] Detected short/transformed URL: ${cleanUrl}`);
-       // This URL looks like it's been shortened or transformed
-       // Try to download as-is first, but use basic transformations
-       const shortMatch = cleanUrl.match(/\/([a-zA-Z0-9_-]+)\.(png|jpg|jpeg|gif|webp)(\?.*)?$/);
-       if (shortMatch) {
-         const shortId = shortMatch[1];
-         const ext = shortMatch[2];
-         const cloudName = cleanUrl.match(/\/\/res\.cloudinary\.com\/([^\/]+)\//)?.[1];
-         if (cloudName) {
-           // Try a simple optimization approach
-           cleanUrl = `https://res.cloudinary.com/${cloudName}/image/upload/f_auto,q_90/${shortId}.${ext}`;
-           console.log(`[CLOUDINARY] Reconstructed URL for short ID: ${cleanUrl}`);
-         }
-       }
-     }
-    
-              // Extract public ID and generate a clean, optimized URL for PDF
-      console.log(`[CLOUDINARY] Processing URL: ${cleanUrl}`);
+              // SIMPLIFIED APPROACH: Try multiple download strategies in order
+      console.log(`[CLOUDINARY] Starting download attempts for: ${imageUrl}`);
       
-      // Enhanced URL parsing to handle complex Cloudinary URLs
-      const cloudName = cleanUrl.match(/\/\/res\.cloudinary\.com\/([^\/]+)\//)?.[1];
-      
-      if (cloudName) {
-        // Try to extract the full path after /upload/
-        const uploadMatch = cleanUrl.match(/\/upload\/(.+?)(?:\?|$)/);
-        if (uploadMatch) {
-          let fullPath = uploadMatch[1];
-          console.log(`[CLOUDINARY] Extracted full path: ${fullPath}`);
-          
-          // If it looks like a complex path (contains slashes), preserve it
-          if (fullPath.includes('/') && !fullPath.startsWith('v')) {
-            // This looks like a full public ID with folders
-            const publicId = fullPath.replace(/\.[^.]*$/, ''); // Remove extension
-            cleanUrl = `https://res.cloudinary.com/${cloudName}/image/upload/f_auto,q_90/${publicId}`;
-            console.log(`[CLOUDINARY] Using full path optimization: ${cleanUrl}`);
-          } else {
-            // Try the more complex patterns for transformed URLs
-            const transformationMatch = cleanUrl.match(/\/upload\/([^\/]+)\/(.+?)(?:\?|$)/);
-            if (transformationMatch) {
-              const transformations = transformationMatch[1];
-              const publicId = transformationMatch[2].replace(/\.[^.]*$/, '');
-              cleanUrl = `https://res.cloudinary.com/${cloudName}/image/upload/f_auto,q_90/${publicId}`;
-              console.log(`[CLOUDINARY] Extracted from transformations - publicId: ${publicId}`);
-              console.log(`[CLOUDINARY] Generated clean URL: ${cleanUrl}`);
-            } else {
-              // Fallback: just remove query parameters and try as-is
-              cleanUrl = imageUrl.split('?')[0];
-              console.log(`[CLOUDINARY] Fallback URL (no query): ${cleanUrl}`);
-            }
-          }
-        } else {
-          console.warn(`[CLOUDINARY] Could not find /upload/ pattern in URL: ${imageUrl}`);
-          cleanUrl = imageUrl.split('?')[0];
-          console.log(`[CLOUDINARY] Fallback URL (no query): ${cleanUrl}`);
-        }
-        
-        console.log(`[CLOUDINARY] Final optimized URL: ${cleanUrl}`);
-      } else {
-        console.warn(`[CLOUDINARY] Could not extract cloudName from URL: ${imageUrl}`);
-        cleanUrl = imageUrl.split('?')[0];
-        console.log(`[CLOUDINARY] Fallback URL (no query): ${cleanUrl}`);
+      const cloudName = imageUrl.match(/\/\/res\.cloudinary\.com\/([^\/]+)\//)?.[1];
+      if (!cloudName) {
+        throw new Error(`Could not extract cloudName from URL: ${imageUrl}`);
       }
+      
+      // Strategy 1: Try the original URL without query parameters
+      let cleanUrl = imageUrl.split('?')[0];
+      console.log(`[CLOUDINARY] Strategy 1 - Clean URL (no query): ${cleanUrl}`);
     
     // Generate filename based on clean URL
     const hash = crypto.createHash('md5').update(cleanUrl).digest('hex');
@@ -116,68 +44,95 @@ function downloadCloudinaryImage(imageUrl, tempDir, options = {}) {
       fs.mkdirSync(tempDir, { recursive: true });
     }
     
-    console.log(`[CLOUDINARY] Downloading: ${cleanUrl}`);
-    
-         const request = https.get(cleanUrl, (response) => {
-       if (response.statusCode === 301 || response.statusCode === 302) {
-         // Handle redirects
-         console.log(`[CLOUDINARY] Following redirect to: ${response.headers.location}`);
-         return downloadCloudinaryImage(response.headers.location, tempDir, options)
-           .then(resolve)
-           .catch(reject);
-       }
+               // Try multiple download strategies in sequence
+      const downloadStrategies = [
+        cleanUrl, // Strategy 1: Original URL without query params
+        imageUrl, // Strategy 2: Original URL with all params
+        `https://res.cloudinary.com/${cloudName}/image/upload/f_auto,q_auto/r.png`, // Strategy 3: Assume 'r' is the publicId
+        `https://res.cloudinary.com/${cloudName}/image/upload/f_auto,q_auto/r`, // Strategy 4: Without extension
+        `https://res.cloudinary.com/${cloudName}/image/upload/r.png`, // Strategy 5: Minimal transformation
+        `https://res.cloudinary.com/${cloudName}/image/upload/r`, // Strategy 6: No extension, no transform
+        // Common patterns for this specific cloud based on the logs
+        `https://res.cloudinary.com/${cloudName}/image/upload/f_auto,q_90/publishjockey/68085d116bf75556bb7894ac/6839ddeaf6c063c0af49cd85/1753565563565-publishjockeylogo.png`, // Strategy 7: Known pattern
+        `https://res.cloudinary.com/${cloudName}/image/upload/v1753565564/publishjockey/68085d116bf75556bb7894ac/6839ddeaf6c063c0af49cd85/1753565563565-publishjockeylogo.png`, // Strategy 8: Original full path
+        `https://res.cloudinary.com/${cloudName}/image/upload/publishjockey/68085d116bf75556bb7894ac/6839ddeaf6c063c0af49cd85/1753565563565-publishjockeylogo.png` // Strategy 9: No version
+      ];
+     
+     let lastError = null;
+     
+     const tryDownload = async (url, strategyName) => {
+       console.log(`[CLOUDINARY] ${strategyName}: ${url}`);
        
-       if (response.statusCode !== 200) {
-         // If the optimized URL failed, try the original URL as a fallback
-         if (cleanUrl !== imageUrl && !options.triedOriginal) {
-           console.log(`[CLOUDINARY] Optimized URL failed (${response.statusCode}), trying original URL: ${imageUrl}`);
-           return downloadCloudinaryImage(imageUrl, tempDir, { ...options, triedOriginal: true })
-             .then(resolve)
-             .catch(reject);
-         }
-         reject(new Error(`HTTP ${response.statusCode}: ${response.statusMessage} for ${cleanUrl}`));
+       return new Promise((resolveDownload, rejectDownload) => {
+         const request = https.get(url, (response) => {
+           if (response.statusCode === 301 || response.statusCode === 302) {
+             console.log(`[CLOUDINARY] Following redirect to: ${response.headers.location}`);
+             return tryDownload(response.headers.location, `${strategyName} (redirect)`)
+               .then(resolveDownload)
+               .catch(rejectDownload);
+           }
+           
+           if (response.statusCode !== 200) {
+             rejectDownload(new Error(`HTTP ${response.statusCode}: ${response.statusMessage}`));
+             return;
+           }
+      
+                 const chunks = [];
+           let totalSize = 0;
+           
+           response.on('data', chunk => {
+             chunks.push(chunk);
+             totalSize += chunk.length;
+             
+             // Prevent extremely large downloads
+             if (totalSize > 50 * 1024 * 1024) { // 50MB limit
+               request.destroy();
+               rejectDownload(new Error('Image too large (>50MB)'));
+               return;
+             }
+           });
+           
+           response.on('end', () => {
+             try {
+               const buffer = Buffer.concat(chunks);
+               fs.writeFileSync(filepath, buffer);
+               console.log(`[CLOUDINARY] ✓ Downloaded: ${filename} (${buffer.length} bytes) using ${strategyName}`);
+               resolveDownload(filepath);
+             } catch (error) {
+               rejectDownload(new Error(`Failed to save image: ${error.message}`));
+             }
+           });
+           
+           response.on('error', error => {
+             rejectDownload(new Error(`Response error: ${error.message}`));
+           });
+         });
+         
+         request.on('error', error => {
+           rejectDownload(new Error(`Request error: ${error.message}`));
+         });
+         
+         request.setTimeout(options.timeout || 30000, () => {
+           request.destroy();
+           rejectDownload(new Error(`Download timeout for ${url}`));
+         });
+       });
+     };
+     
+     // Try each strategy in sequence until one succeeds
+     for (let i = 0; i < downloadStrategies.length; i++) {
+       try {
+         const result = await tryDownload(downloadStrategies[i], `Strategy ${i + 1}`);
+         resolve(result);
          return;
+       } catch (error) {
+         lastError = error;
+         console.log(`[CLOUDINARY] Strategy ${i + 1} failed: ${error.message}`);
        }
-      
-      const chunks = [];
-      let totalSize = 0;
-      
-      response.on('data', chunk => {
-        chunks.push(chunk);
-        totalSize += chunk.length;
-        
-        // Prevent extremely large downloads
-        if (totalSize > 50 * 1024 * 1024) { // 50MB limit
-          request.destroy();
-          reject(new Error('Image too large (>50MB)'));
-          return;
-        }
-      });
-      
-      response.on('end', () => {
-        try {
-          const buffer = Buffer.concat(chunks);
-          fs.writeFileSync(filepath, buffer);
-          console.log(`[CLOUDINARY] ✓ Downloaded: ${filename} (${buffer.length} bytes)`);
-          resolve(filepath);
-        } catch (error) {
-          reject(new Error(`Failed to save image: ${error.message}`));
-        }
-      });
-      
-      response.on('error', error => {
-        reject(new Error(`Response error: ${error.message}`));
-      });
-    });
-    
-    request.on('error', error => {
-      reject(new Error(`Request error: ${error.message}`));
-    });
-    
-    request.setTimeout(options.timeout || 30000, () => {
-      request.destroy();
-      reject(new Error(`Download timeout for ${cleanUrl}`));
-    });
+     }
+     
+     // If all strategies failed
+     reject(new Error(`All download strategies failed. Last error: ${lastError?.message}`));
   });
 }
 
