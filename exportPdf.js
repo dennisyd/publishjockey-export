@@ -966,9 +966,9 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
       const basePath = path.dirname(assembledPath);
       markdown = resolveImagePaths(markdown, basePath);
       
-      // STEP 3: Apply proper chapter styling
-      console.log(`[PDF EXPORT] Step 3: Applying chapter styling...`);
-      markdown = rewriteMarkdownWithStyledChapters(markdown);
+             // STEP 3: Apply proper chapter styling
+       console.log(`[PDF EXPORT] Step 3: Applying chapter styling...`);
+       markdown = rewriteMarkdownWithStyledChapters(markdown, options);
       
       // STEP 4: Convert alignment divs
       console.log(`[PDF EXPORT] Step 4: Converting alignment divs...`);
@@ -1160,12 +1160,15 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
 }
 
 /**
- * Enhanced chapter styling function with page breaks
+ * Enhanced chapter styling function with page breaks and conditional chapter labels
  */
-function rewriteMarkdownWithStyledChapters(markdown) {
+function rewriteMarkdownWithStyledChapters(markdown, options = {}) {
   const lines = markdown.split('\n');
   let chapter = 1;
   const output = [];
+  
+  // Check if chapter labels should be added
+  const shouldAddChapterLabels = options.chapterLabelFormat !== 'none' && options.useChapterPrefix !== false;
   
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -1192,8 +1195,17 @@ function rewriteMarkdownWithStyledChapters(markdown) {
       
       output.push('```{=latex}');
       output.push('\\begin{center}');
-      output.push(`{\\fontsize{24pt}{28pt}\\selectfont\\textbf{Chapter ${chapter++}}}\\\\[0.5em]`);
-      output.push(`{\\fontsize{16pt}{20pt}\\selectfont\\textit{${headingText}}}`);
+      
+      if (shouldAddChapterLabels) {
+        // With chapter labels: "Chapter X" + heading text
+        output.push(`{\\fontsize{24pt}{28pt}\\selectfont\\textbf{Chapter ${chapter++}}}\\\\[0.5em]`);
+        output.push(`{\\fontsize{16pt}{20pt}\\selectfont\\textit{${headingText}}}`);
+      } else {
+        // Without chapter labels: just the heading text, larger
+        output.push(`{\\fontsize{28pt}{32pt}\\selectfont\\textbf{${headingText}}}`);
+        chapter++; // Still increment for potential TOC numbering
+      }
+      
       output.push('\\end{center}');
       output.push('```');
       output.push('');
