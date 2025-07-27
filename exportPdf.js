@@ -1160,7 +1160,7 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
 }
 
 /**
- * Enhanced chapter styling function
+ * Enhanced chapter styling function with page breaks
  */
 function rewriteMarkdownWithStyledChapters(markdown) {
   const lines = markdown.split('\n');
@@ -1174,8 +1174,20 @@ function rewriteMarkdownWithStyledChapters(markdown) {
     if (h1Match) {
       const headingText = h1Match[1].trim();
       
-      if (output.length > 0 && output[output.length - 1].trim() !== '') {
+      // Add page break before each chapter (except the first one)
+      if (chapter > 1) {
+        if (output.length > 0 && output[output.length - 1].trim() !== '') {
+          output.push('');
+        }
+        output.push('```{=latex}');
+        output.push('\\clearpage');
+        output.push('```');
         output.push('');
+      } else {
+        // For first chapter, just ensure proper spacing
+        if (output.length > 0 && output[output.length - 1].trim() !== '') {
+          output.push('');
+        }
       }
       
       output.push('```{=latex}');
