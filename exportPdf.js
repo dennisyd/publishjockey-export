@@ -15,22 +15,28 @@ const crypto = require('crypto');
    return new Promise(async (resolve, reject) => {
     console.log(`[CLOUDINARY] Processing: ${imageUrl}`);
     
-              // SIMPLIFIED APPROACH: Try multiple download strategies in order
-      console.log(`[CLOUDINARY] Starting download attempts for: ${imageUrl}`);
-      
-      const cloudName = imageUrl.match(/\/\/res\.cloudinary\.com\/([^\/]+)\//)?.[1];
-      if (!cloudName) {
-        throw new Error(`Could not extract cloudName from URL: ${imageUrl}`);
-      }
-      
-      // Strategy 1: Try the original URL without query parameters
-      let cleanUrl = imageUrl.split('?')[0];
-      console.log(`[CLOUDINARY] Strategy 1 - Clean URL (no query): ${cleanUrl}`);
+    // Validate the URL format
+    if (!imageUrl.includes('res.cloudinary.com')) {
+      reject(new Error(`Not a valid Cloudinary URL: ${imageUrl}`));
+      return;
+    }
     
-    // Generate filename based on clean URL
-    const hash = crypto.createHash('md5').update(cleanUrl).digest('hex');
-    const filename = `img_${hash}.png`;
+    const cloudName = imageUrl.match(/\/\/res\.cloudinary\.com\/([^\/]+)\//)?.[1];
+    if (!cloudName) {
+      reject(new Error(`Could not extract cloudName from URL: ${imageUrl}`));
+      return;
+    }
+    
+    console.log(`[CLOUDINARY] Extracted cloud name: ${cloudName}`);
+    
+    // Generate filename based on URL
+    const urlForHash = imageUrl.split('?')[0]; // Remove query params for consistent hashing
+    const hash = crypto.createHash('md5').update(urlForHash).digest('hex');
+    const originalExt = path.extname(urlForHash) || '.jpg';
+    const filename = `img_${hash}${originalExt}`;
     const filepath = path.join(tempDir, filename);
+    
+    console.log(`[CLOUDINARY] Target file: ${filename}`);
     
     // Check if already downloaded (caching)
     if (fs.existsSync(filepath)) {
@@ -44,102 +50,148 @@ const crypto = require('crypto');
       fs.mkdirSync(tempDir, { recursive: true });
     }
     
-               // Try multiple download strategies in sequence
-      const downloadStrategies = [
-        cleanUrl, // Strategy 1: Original URL without query params
-        imageUrl, // Strategy 2: Original URL with all params
-      ];
+    // Build download strategies
+    const downloadStrategies = [];
+    
+    // Strategy 1: Original URL exactly as provided
+    downloadStrategies.push({
+      url: imageUrl,
+      name: 'Original URL'
+    });
+    
+    // Strategy 2: Original URL without query parameters
+    const cleanUrl = imageUrl.split('?')[0];
+    if (cleanUrl !== imageUrl) {
+      downloadStrategies.push({
+        url: cleanUrl,
+        name: 'Clean URL (no query params)'
+      });
+    }
+    
+    // Strategy 3: Try with HTTPS if HTTP
+    if (imageUrl.startsWith('http://')) {
+      downloadStrategies.push({
+        url: imageUrl.replace('http://', 'https://'),
+        name: 'HTTPS version'
+      });
+    }
+    
+    console.log(`[CLOUDINARY] Will try ${downloadStrategies.length} download strategies`);
+    
+    let lastError = null;
+    
+    const tryDownload = async (strategyUrl, strategyName) => {
+      console.log(`[CLOUDINARY] ${strategyName}: ${strategyUrl}`);
       
-      // Try to extract publicId and build additional strategies
-      const publicIdMatch = imageUrl.match(/\/upload\/(?:v\d+\/)?([^?]+)/);
-      if (publicIdMatch) {
-        const publicId = publicIdMatch[1];
-        console.log(`[CLOUDINARY] Extracted publicId: ${publicId}`);
+      return new Promise((resolveDownload, rejectDownload) => {
+        const request = https.get(strategyUrl, (response) => {
+          console.log(`[CLOUDINARY] ${strategyName} - Response status: ${response.statusCode}`);
+          console.log(`[CLOUDINARY] ${strategyName} - Response headers:`, {
+            'content-type': response.headers['content-type'],
+            'content-length': response.headers['content-length'],
+            'cloudinary-version': response.headers['cloudinary-version']
+          });
+          
+          // Handle redirects
+          if (response.statusCode === 301 || response.statusCode === 302) {
+            const redirectUrl = response.headers.location;
+            console.log(`[CLOUDINARY] ${strategyName} - Following redirect to: ${redirectUrl}`);
+            return tryDownload(redirectUrl, `${strategyName} (redirect)`)
+              .then(resolveDownload)
+              .catch(rejectDownload);
+          }
+          
+          if (response.statusCode !== 200) {
+            rejectDownload(new Error(`HTTP ${response.statusCode}: ${response.statusMessage}`));
+            return;
+          }
+          
+          // Verify content type
+          const contentType = response.headers['content-type'] || '';
+          if (!contentType.startsWith('image/')) {
+            console.warn(`[CLOUDINARY] ${strategyName} - Warning: Unexpected content-type: ${contentType}`);
+          }
+          
+          const chunks = [];
+          let totalSize = 0;
+          
+          response.on('data', chunk => {
+            chunks.push(chunk);
+            totalSize += chunk.length;
+            
+            // Prevent extremely large downloads
+            if (totalSize > 50 * 1024 * 1024) { // 50MB limit
+              request.destroy();
+              rejectDownload(new Error('Image too large (>50MB)'));
+              return;
+            }
+          });
+          
+          response.on('end', () => {
+            try {
+              const buffer = Buffer.concat(chunks);
+              
+              // Verify we got actual image data
+              if (buffer.length === 0) {
+                rejectDownload(new Error('Received empty response'));
+                return;
+              }
+              
+              // Basic image format validation
+              const firstBytes = buffer.slice(0, 4);
+              const isValidImage = (
+                firstBytes[0] === 0xFF && firstBytes[1] === 0xD8 || // JPEG
+                firstBytes[0] === 0x89 && firstBytes[1] === 0x50 || // PNG
+                firstBytes[0] === 0x47 && firstBytes[1] === 0x49 || // GIF
+                firstBytes[0] === 0x42 && firstBytes[1] === 0x4D    // BMP
+              );
+              
+              if (!isValidImage) {
+                console.warn(`[CLOUDINARY] ${strategyName} - Warning: Response doesn't look like image data`);
+                // Don't reject, might still be usable
+              }
+              
+              fs.writeFileSync(filepath, buffer);
+              console.log(`[CLOUDINARY] ✓ Downloaded: ${filename} (${buffer.length} bytes) using ${strategyName}`);
+              resolveDownload(filepath);
+            } catch (error) {
+              rejectDownload(new Error(`Failed to save image: ${error.message}`));
+            }
+          });
+          
+          response.on('error', error => {
+            rejectDownload(new Error(`Response error: ${error.message}`));
+          });
+        });
         
-        // Add strategies with extracted publicId
-        downloadStrategies.push(
-          `https://res.cloudinary.com/${cloudName}/image/upload/f_auto,q_auto/${publicId}`, // Strategy 3: Auto format/quality
-          `https://res.cloudinary.com/${cloudName}/image/upload/${publicId}`, // Strategy 4: No transformations
-          `https://res.cloudinary.com/${cloudName}/image/upload/f_png/${publicId}`, // Strategy 5: Force PNG format
-          `https://res.cloudinary.com/${cloudName}/image/upload/q_auto/${publicId}` // Strategy 6: Auto quality only
-        );
+        request.on('error', error => {
+          rejectDownload(new Error(`Request error: ${error.message}`));
+        });
+        
+        request.setTimeout(options.timeout || 30000, () => {
+          request.destroy();
+          rejectDownload(new Error(`Download timeout for ${strategyUrl}`));
+        });
+      });
+    };
+    
+    // Try each strategy in sequence until one succeeds
+    for (let i = 0; i < downloadStrategies.length; i++) {
+      const strategy = downloadStrategies[i];
+      try {
+        const result = await tryDownload(strategy.url, strategy.name);
+        resolve(result);
+        return;
+      } catch (error) {
+        lastError = error;
+        console.log(`[CLOUDINARY] ${strategy.name} failed: ${error.message}`);
       }
-     
-     let lastError = null;
-     
-     const tryDownload = async (url, strategyName) => {
-       console.log(`[CLOUDINARY] ${strategyName}: ${url}`);
-       
-       return new Promise((resolveDownload, rejectDownload) => {
-         const request = https.get(url, (response) => {
-           if (response.statusCode === 301 || response.statusCode === 302) {
-             console.log(`[CLOUDINARY] Following redirect to: ${response.headers.location}`);
-             return tryDownload(response.headers.location, `${strategyName} (redirect)`)
-               .then(resolveDownload)
-               .catch(rejectDownload);
-           }
-           
-           if (response.statusCode !== 200) {
-             rejectDownload(new Error(`HTTP ${response.statusCode}: ${response.statusMessage}`));
-             return;
-           }
-      
-                 const chunks = [];
-           let totalSize = 0;
-           
-           response.on('data', chunk => {
-             chunks.push(chunk);
-             totalSize += chunk.length;
-             
-             // Prevent extremely large downloads
-             if (totalSize > 50 * 1024 * 1024) { // 50MB limit
-               request.destroy();
-               rejectDownload(new Error('Image too large (>50MB)'));
-               return;
-             }
-           });
-           
-           response.on('end', () => {
-             try {
-               const buffer = Buffer.concat(chunks);
-               fs.writeFileSync(filepath, buffer);
-               console.log(`[CLOUDINARY] ✓ Downloaded: ${filename} (${buffer.length} bytes) using ${strategyName}`);
-               resolveDownload(filepath);
-             } catch (error) {
-               rejectDownload(new Error(`Failed to save image: ${error.message}`));
-             }
-           });
-           
-           response.on('error', error => {
-             rejectDownload(new Error(`Response error: ${error.message}`));
-           });
-         });
-         
-         request.on('error', error => {
-           rejectDownload(new Error(`Request error: ${error.message}`));
-         });
-         
-         request.setTimeout(options.timeout || 30000, () => {
-           request.destroy();
-           rejectDownload(new Error(`Download timeout for ${url}`));
-         });
-       });
-     };
-     
-     // Try each strategy in sequence until one succeeds
-     for (let i = 0; i < downloadStrategies.length; i++) {
-       try {
-         const result = await tryDownload(downloadStrategies[i], `Strategy ${i + 1}`);
-         resolve(result);
-         return;
-       } catch (error) {
-         lastError = error;
-         console.log(`[CLOUDINARY] Strategy ${i + 1} failed: ${error.message}`);
-       }
-     }
-     
-     // If all strategies failed
-     reject(new Error(`All download strategies failed. Last error: ${lastError?.message}`));
+    }
+    
+    // If all strategies failed
+    console.error(`[CLOUDINARY] ✗ All download strategies failed for: ${imageUrl}`);
+    console.error(`[CLOUDINARY] ✗ Last error: ${lastError?.message}`);
+    reject(new Error(`All download strategies failed. Last error: ${lastError?.message}`));
   });
 }
 
@@ -250,20 +302,32 @@ const crypto = require('crypto');
       });
     });
   
-  const uniqueUrls = Array.from(allMatches);
-  console.log(`[CLOUDINARY] Found ${uniqueUrls.length} unique Cloudinary URLs`);
-  
-  if (uniqueUrls.length === 0) {
-    console.log(`[CLOUDINARY] No Cloudinary images found`);
-    return {
-      markdown: markdown,
-      downloadedFiles: [],
-      stats: { successful: 0, failed: 0, total: 0 }
-    };
-  }
-  
-  // Log first few URLs for debugging
-  console.log(`[CLOUDINARY] Sample URLs:`, uniqueUrls.slice(0, 3));
+     const uniqueUrls = Array.from(allMatches);
+   console.log(`[CLOUDINARY] Found ${uniqueUrls.length} unique Cloudinary URLs`);
+   
+   if (uniqueUrls.length === 0) {
+     console.log(`[CLOUDINARY] No Cloudinary images found`);
+     
+     // DEBUG: Look for any image references at all
+     const anyImagePattern = /!\[([^\]]*)\]\(([^)]+)\)/g;
+     const anyImages = [...markdown.matchAll(anyImagePattern)];
+     console.log(`[CLOUDINARY] DEBUG: Found ${anyImages.length} total images (any type):`);
+     anyImages.slice(0, 5).forEach((match, i) => {
+       console.log(`[CLOUDINARY] DEBUG: Image ${i + 1}: alt="${match[1]}" src="${match[2]}"`);
+     });
+     
+     return {
+       markdown: markdown,
+       downloadedFiles: [],
+       stats: { successful: 0, failed: 0, total: 0 }
+     };
+   }
+   
+   // Log ALL URLs for debugging
+   console.log(`[CLOUDINARY] All found URLs:`);
+   uniqueUrls.forEach((url, i) => {
+     console.log(`[CLOUDINARY] URL ${i + 1}: ${url}`);
+   });
   
   // Download all images concurrently (with limit)
   const downloadPromises = uniqueUrls.map(async (url, index) => {
@@ -359,49 +423,60 @@ const crypto = require('crypto');
          }
        }
        
-               console.log(`[CLOUDINARY] ✓ Replaced ${replacementCount} instances: ${result.original} -> ${result.localPath}`);
-     } else {
-       // Handle failed downloads by replacing the entire image syntax, not just the URL
-       console.log(`[CLOUDINARY] Replacing failed download with LaTeX text: ${result.original}`);
-       const urlToReplace = result.original;
-       const escapedUrl = urlToReplace.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-       const cleanFilename = path.basename(result.original).replace(/\?.*$/, '');
-       const placeholderText = `\\textit{[Image unavailable: ${cleanFilename}]}`;
-       
-       // Handle markdown images with scale comments
-       const markdownWithScale = new RegExp(`!\\[([^\\]]*)\\]\\(${escapedUrl}\\)<!-- scale:([0-9.]+) -->`, 'g');
-       processedMarkdown = processedMarkdown.replace(markdownWithScale, placeholderText);
-       
-       // Handle basic markdown images
-       const basicMarkdown = new RegExp(`!\\[([^\\]]*)\\]\\(${escapedUrl}\\)`, 'g');
-       processedMarkdown = processedMarkdown.replace(basicMarkdown, placeholderText);
-       
-       // Handle other image contexts
-       const imagePatterns = [
-         // LaTeX includegraphics: \includegraphics{url} -> LaTeX text
-         new RegExp(`\\\\includegraphics(?:\\[[^\\]]*\\])?\\{${escapedUrl}\\}`, 'g'),
-         // HTML img tags: <img src="url"> -> LaTeX text
-         new RegExp(`<img[^>]*src=["']${escapedUrl}["'][^>]*>`, 'g')
-       ];
-       
-       let replaced = false;
-       imagePatterns.forEach(pattern => {
-         if (pattern.test(processedMarkdown)) {
-           processedMarkdown = processedMarkdown.replace(pattern, placeholderText);
-           replaced = true;
-         }
-       });
-       
-       // Fallback: if no specific pattern matched, do simple URL replacement
-       if (!replaced && processedMarkdown.includes(urlToReplace)) {
-         while (processedMarkdown.includes(urlToReplace)) {
-           processedMarkdown = processedMarkdown.replace(urlToReplace, placeholderText);
-         }
-         replaced = true;
-       }
-       
-       console.log(`[CLOUDINARY] ✓ Replaced failed download: ${result.original} -> ${replaced ? 'LaTeX text' : 'not found'}`);
-     }
+                               console.log(`[CLOUDINARY] ✓ Replaced ${replacementCount} instances: ${result.original} -> ${result.localPath}`);
+      } else {
+        // Handle failed downloads by replacing the entire image syntax, not just the URL
+        console.log(`[CLOUDINARY] Replacing failed download with LaTeX text: ${result.original}`);
+        console.log(`[CLOUDINARY] Download error was: ${result.error}`);
+        
+        const urlToReplace = result.original;
+        const escapedUrl = urlToReplace.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        
+        // Create a more informative error message
+        const shortUrl = urlToReplace.length > 50 ? 
+          '...' + urlToReplace.slice(-47) : 
+          urlToReplace;
+        const errorReason = result.error?.includes('timeout') ? 'timeout' :
+                          result.error?.includes('HTTP') ? 'server error' :
+                          result.error?.includes('Request error') ? 'network error' :
+                          'download failed';
+        
+        const placeholderText = `\\textit{[Image download failed: ${errorReason}]}`;
+        
+        // Handle markdown images with scale comments
+        const markdownWithScale = new RegExp(`!\\[([^\\]]*)\\]\\(${escapedUrl}\\)<!-- scale:([0-9.]+) -->`, 'g');
+        processedMarkdown = processedMarkdown.replace(markdownWithScale, placeholderText);
+        
+        // Handle basic markdown images
+        const basicMarkdown = new RegExp(`!\\[([^\\]]*)\\]\\(${escapedUrl}\\)`, 'g');
+        processedMarkdown = processedMarkdown.replace(basicMarkdown, placeholderText);
+        
+        // Handle other image contexts
+        const imagePatterns = [
+          // LaTeX includegraphics: \includegraphics{url} -> LaTeX text
+          new RegExp(`\\\\includegraphics(?:\\[[^\\]]*\\])?\\{${escapedUrl}\\}`, 'g'),
+          // HTML img tags: <img src="url"> -> LaTeX text
+          new RegExp(`<img[^>]*src=["']${escapedUrl}["'][^>]*>`, 'g')
+        ];
+        
+        let replaced = false;
+        imagePatterns.forEach(pattern => {
+          if (pattern.test(processedMarkdown)) {
+            processedMarkdown = processedMarkdown.replace(pattern, placeholderText);
+            replaced = true;
+          }
+        });
+        
+        // Fallback: if no specific pattern matched, do simple URL replacement
+        if (!replaced && processedMarkdown.includes(urlToReplace)) {
+          while (processedMarkdown.includes(urlToReplace)) {
+            processedMarkdown = processedMarkdown.replace(urlToReplace, placeholderText);
+          }
+          replaced = true;
+        }
+        
+        console.log(`[CLOUDINARY] ✓ Replaced failed download: ${result.original} -> ${replaced ? 'LaTeX text' : 'not found'}`);
+      }
    });
   
   // Final verification with enhanced URL detection
