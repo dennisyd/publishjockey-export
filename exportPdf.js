@@ -325,25 +325,25 @@ const crypto = require('crypto');
          const scaleValue = parseFloat(scale);
          console.log(`[CLOUDINARY] Applying scale ${scaleValue} to image: ${alt}`);
          
-         // Create LaTeX with proper scaling
-         if (scaleValue && scaleValue !== 1.0) {
-           return `\\includegraphics[width=${scaleValue}\\textwidth]{${result.filename}}`;
-         } else {
-           return `\\includegraphics{${result.filename}}`;
-         }
+                 // Create LaTeX with proper scaling using full path
+          if (scaleValue && scaleValue !== 1.0) {
+            return `\\includegraphics[width=${scaleValue}\\textwidth]{${result.localPath}}`;
+          } else {
+            return `\\includegraphics{${result.localPath}}`;
+          }
        });
        
-       // Replace any remaining instances without scale info
-       const basicMarkdown = new RegExp(`!\\[([^\\]]*)\\]\\(${escapedUrl}\\)`, 'g');
-       processedMarkdown = processedMarkdown.replace(basicMarkdown, (match, alt) => {
-         replacementCount++;
-         return `\\includegraphics{${result.filename}}`;
-       });
+               // Replace any remaining instances without scale info
+        const basicMarkdown = new RegExp(`!\\[([^\\]]*)\\]\\(${escapedUrl}\\)`, 'g');
+        processedMarkdown = processedMarkdown.replace(basicMarkdown, (match, alt) => {
+          replacementCount++;
+          return `\\includegraphics{${result.localPath}}`;
+        });
        
-       // Replace any remaining raw URLs
-       while (processedMarkdown.includes(urlToReplace)) {
-         processedMarkdown = processedMarkdown.replace(urlToReplace, result.filename);
-         replacementCount++;
+               // Replace any remaining raw URLs
+        while (processedMarkdown.includes(urlToReplace)) {
+          processedMarkdown = processedMarkdown.replace(urlToReplace, result.localPath);
+          replacementCount++;
          
          // Safety check to prevent infinite loops
          if (replacementCount > 100) {
@@ -352,7 +352,7 @@ const crypto = require('crypto');
          }
        }
        
-       console.log(`[CLOUDINARY] ✓ Replaced ${replacementCount} instances: ${result.original} -> ${result.filename}`);
+               console.log(`[CLOUDINARY] ✓ Replaced ${replacementCount} instances: ${result.original} -> ${result.localPath}`);
      } else {
        // Handle failed downloads by replacing the entire image syntax, not just the URL
        console.log(`[CLOUDINARY] Replacing failed download with LaTeX text: ${result.original}`);
@@ -955,26 +955,28 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
       console.log(`[PDF EXPORT] Step 5: Running Pandoc...`);
       console.log(`[PDF EXPORT] Command: pandoc ${args.join(' ')}`);
       
-      execFile('pandoc', args, { 
-        maxBuffer: 1024 * 1024 * 10, // 10MB buffer
-        timeout: 120000 // 2 minute timeout
-      }, (error, stdout, stderr) => {
-        // Cleanup temporary files
-        const cleanupFiles = [tmpHeaderPath, floatSettingsPath, ...downloadedFiles];
-        cleanupFiles.forEach(file => {
-          try {
-            if (fs.existsSync(file)) {
-              fs.unlinkSync(file);
-              console.log(`[CLEANUP] ✓ Removed: ${path.basename(file)}`);
-            }
-          } catch (e) {
-            console.warn(`[CLEANUP] Warning: Could not remove ${file}: ${e.message}`);
-          }
-        });
-        
-        if (error) {
-          console.error('[PDF EXPORT] ✗ Pandoc error:', error.message);
-          console.error('[PDF EXPORT] ✗ Pandoc stderr:', stderr);
+             execFile('pandoc', args, { 
+         maxBuffer: 1024 * 1024 * 10, // 10MB buffer
+         timeout: 120000 // 2 minute timeout
+       }, (error, stdout, stderr) => {
+         // Function to cleanup temporary files
+         const doCleanup = () => {
+           const cleanupFiles = [tmpHeaderPath, floatSettingsPath, ...downloadedFiles];
+           cleanupFiles.forEach(file => {
+             try {
+               if (fs.existsSync(file)) {
+                 fs.unlinkSync(file);
+                 console.log(`[CLEANUP] ✓ Removed: ${path.basename(file)}`);
+               }
+             } catch (e) {
+               console.warn(`[CLEANUP] Warning: Could not remove ${file}: ${e.message}`);
+             }
+           });
+         };
+         
+         if (error) {
+           console.error('[PDF EXPORT] ✗ Pandoc error:', error.message);
+           console.error('[PDF EXPORT] ✗ Pandoc stderr:', stderr);
           
           // Enhanced error analysis
           if (stderr.includes('File ') && stderr.includes(' not found')) {
@@ -991,38 +993,44 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
                 }
               });
             }
-          }
-          
-          return reject(new Error(`PDF generation failed: ${error.message}\nDetails: ${stderr}`));
-        }
-        
-        if (!fs.existsSync(outputPath)) {
-          return reject(new Error('PDF output file was not created'));
-        }
-        
-        const fileSize = fs.statSync(outputPath).size;
-        console.log(`[PDF EXPORT] ✓ PDF successfully created: ${outputPath} (${fileSize} bytes)`);
-        console.log(`[PDF EXPORT] ✓ Processed ${cloudinaryResult.stats.total} images`);
-        
-        resolve();
+                     }
+           
+           // Cleanup on error
+           doCleanup();
+           return reject(new Error(`PDF generation failed: ${error.message}\nDetails: ${stderr}`));
+         }
+         
+         if (!fs.existsSync(outputPath)) {
+           doCleanup();
+           return reject(new Error('PDF output file was not created'));
+         }
+         
+         const fileSize = fs.statSync(outputPath).size;
+         console.log(`[PDF EXPORT] ✓ PDF successfully created: ${outputPath} (${fileSize} bytes)`);
+         console.log(`[PDF EXPORT] ✓ Processed ${cloudinaryResult.stats.total} images`);
+         
+         // Cleanup on success
+         doCleanup();
+         resolve();
       });
       
-    } catch (processingError) {
-      console.error('[PDF EXPORT] ✗ Processing error:', processingError);
-      
-      // Cleanup on error
-      downloadedFiles.forEach(file => {
-        try {
-          if (fs.existsSync(file)) {
-            fs.unlinkSync(file);
-          }
-        } catch (e) {
-          // Ignore cleanup errors
-        }
-      });
-      
-      reject(new Error(`PDF processing failed: ${processingError.message}`));
-    }
+         } catch (processingError) {
+       console.error('[PDF EXPORT] ✗ Processing error:', processingError);
+       
+       // Cleanup on error - only clean downloaded files, not LaTeX files that may not exist yet
+       downloadedFiles.forEach(file => {
+         try {
+           if (fs.existsSync(file)) {
+             fs.unlinkSync(file);
+             console.log(`[CLEANUP] ✓ Removed: ${path.basename(file)}`);
+           }
+         } catch (e) {
+           console.warn(`[CLEANUP] Warning: Could not remove ${file}: ${e.message}`);
+         }
+       });
+       
+       reject(new Error(`PDF processing failed: ${processingError.message}`));
+     }
   });
 }
 
