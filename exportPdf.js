@@ -388,7 +388,18 @@ const crypto = require('crypto');
        // Pattern to find markdown images with scale comments
        const markdownWithScale = new RegExp(`!\\[([^\\]]*)\\]\\(${escapedUrl}\\)<!-- scale:([0-9.]+) -->`, 'g');
        
+       // Pattern to find LaTeX includegraphics with width parameters
+       const latexWithWidth = new RegExp(`\\\\includegraphics\\[width=([0-9.]+)\\\\textwidth\\]\\{${escapedUrl}\\}`, 'g');
+       
        let replacementCount = 0;
+       
+       // Replace LaTeX includegraphics with width preservation
+       processedMarkdown = processedMarkdown.replace(latexWithWidth, (match, width) => {
+         replacementCount++;
+         const scaleValue = parseFloat(width);
+         console.log(`[CLOUDINARY] Preserving LaTeX width ${scaleValue} for image: ${result.filename}`);
+         return `\\includegraphics[width=${scaleValue}\\textwidth]{${result.localPath}}`;
+       });
        
        // Replace markdown images with scaling
        processedMarkdown = processedMarkdown.replace(markdownWithScale, (match, alt, scale) => {
