@@ -784,11 +784,19 @@ function generatePageGeometryCode(pageSizeKey, pageCount, hasPageNumbers = true)
 % Set default image width to respect text width
 \\setkeys{Gin}{width=\\linewidth,height=\\textheight,keepaspectratio}
 
-% Enhanced includegraphics command that auto-scales oversized images
+% Enhanced includegraphics that respects width parameters but prevents oversized images
+\\usepackage{xstring}
 \\let\\oldincludegraphics\\includegraphics
 \\renewcommand{\\includegraphics}[2][]{%
-  \\adjustbox{max width=\\textwidth,max height=0.8\\textheight,center}{%
+  % Only apply auto-scaling if no width parameter is specified
+  \\IfSubStr{#1}{width}{%
+    % Width parameter exists, use it directly and respect user scaling
     \\oldincludegraphics[#1]{#2}%
+  }{%
+    % No width parameter, apply auto-scaling for safety
+    \\adjustbox{max width=\\textwidth,max height=0.8\\textheight,center}{%
+      \\oldincludegraphics[#1]{#2}%
+    }%
   }%
 }
 
