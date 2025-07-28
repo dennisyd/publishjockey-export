@@ -42,6 +42,9 @@ const { upscaleImage, KDP_SIZES } = require('./imagemagic'); // Import ImageMagi
 // Helper for promisifying exec
 const execPromise = util.promisify(exec);
 
+// Use custom Pandoc version if available, fallback to system pandoc
+const PANDOC_PATH = process.env.PANDOC_PATH || '/root/.cache/pandoc-3.6.4';
+
 const app = express();
 // Update CORS configuration to explicitly allow frontend connections
 app.use(cors({
@@ -129,7 +132,7 @@ app.post('/import', upload.single('file'), async (req, res) => {
       if (fileExt === '.docx') {
         // Convert DOCX to markdown using pandoc
         const outputPath = `${filePath}.md`;
-        await execPromise(`pandoc "${filePath}" -f docx -t markdown -o "${outputPath}"`);
+        await execPromise(`"${PANDOC_PATH}" "${filePath}" -f docx -t markdown -o "${outputPath}"`);
         markdown = fs.readFileSync(outputPath, 'utf8');
         
         // Clean up the temporary markdown file
@@ -217,7 +220,7 @@ app.post('/import/google', async (req, res) => {
       fs.writeFileSync(tempDocxPath, docxResponse.data);
 
       // --- Convert DOCX to Markdown using Pandoc ---
-      await execPromise(`pandoc "${tempDocxPath}" -f docx -t markdown -o "${tempMdPath}"`);
+      await execPromise(`"${PANDOC_PATH}" "${tempDocxPath}" -f docx -t markdown -o "${tempMdPath}"`);
       const markdown = fs.readFileSync(tempMdPath, 'utf8');
 
       // --- Clean up temp files ---
@@ -574,17 +577,19 @@ app.post('/export/epub', authenticateJWT, async (req, res) => {
       '-t', 'epub',
       '--toc',
       '--standalone',
-      '--split-level=1',
       '--top-level-division=chapter',
       '--variable=toc-title:CONTENTS',
       '--toc-depth=2', // Always use depth 2 for EPUB
-      '--number-sections=false'
+      '--split-level=1'
     ];
 
-    // Add number-sections flag if numberedHeadings is enabled
+    // Add number-sections flag based on numberedHeadings setting
     if (exportOptions?.numberedHeadings) {
-      args.push('--number-sections');
-      console.log('Adding --number-sections flag for numbered headings');
+      args.push('--number-sections=true');
+      console.log('Adding --number-sections=true flag for numbered headings');
+    } else {
+      args.push('--number-sections=false');
+      console.log('Adding --number-sections=false flag to disable numbered headings');
     }
 
     // Use the persistent epub-style.css file
@@ -626,7 +631,7 @@ app.post('/export/epub', authenticateJWT, async (req, res) => {
     }
 
     // Log Pandoc version for backend diagnostics
-    execFile('pandoc', ['--version'], (err, stdout, stderr) => {
+    execFile(PANDOC_PATH, ['--version'], (err, stdout, stderr) => {
       if (err) {
         console.error('Error getting Pandoc version:', err);
       } else {
@@ -638,7 +643,7 @@ app.post('/export/epub', authenticateJWT, async (req, res) => {
     console.log('Pandoc EPUB command:', args.join(' '));
 
     // Run Pandoc to generate EPUB
-    execFile('pandoc', args, (err) => {
+    execFile(PANDOC_PATH, args, (err) => {
       if (err) {
         console.error('Pandoc EPUB error:', err);
         return res.status(500).send('EPUB generation failed');
@@ -847,7 +852,7 @@ app.post('/export/docx', authenticateJWT, async (req, res) => {
     console.log('Is title page only document:', isTitlePageOnly ? 'YES' : 'NO');
 
     // Log Pandoc version for backend diagnostics
-    execFile('pandoc', ['--version'], (err, stdout, stderr) => {
+    execFile(PANDOC_PATH, ['--version'], (err, stdout, stderr) => {
       if (err) {
         console.error('Error getting Pandoc version:', err);
       } else {
@@ -856,10 +861,10 @@ app.post('/export/docx', authenticateJWT, async (req, res) => {
     });
 
     // Log the Pandoc command for debugging
-    console.log('Pandoc DOCX command:', ['pandoc', ...pandocArgs].join(' '));
+    console.log('Pandoc DOCX command:', [PANDOC_PATH, ...pandocArgs].join(' '));
 
     // Run Pandoc to generate DOCX
-    execFile('pandoc', pandocArgs, (err) => {
+    execFile(PANDOC_PATH, pandocArgs, (err) => {
       if (err) {
         console.error('Pandoc DOCX error:', err);
         return res.status(500).send('DOCX generation failed');

@@ -4,6 +4,9 @@ const path = require('path');
 const https = require('https');
 const crypto = require('crypto');
 
+// Use custom Pandoc version if available, fallback to system pandoc
+const PANDOC_PATH = process.env.PANDOC_PATH || '/root/.cache/pandoc-3.6.4';
+
 /**
  * OPTIMIZED: Stream and save Cloudinary image with proper error handling
  * @param {string} imageUrl - The Cloudinary URL
@@ -1078,9 +1081,9 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
       
       // STEP 6: Run Pandoc
       console.log(`[PDF EXPORT] Step 5: Running Pandoc...`);
-      console.log(`[PDF EXPORT] Command: pandoc ${args.join(' ')}`);
-      
-             execFile('pandoc', args, { 
+        console.log(`[PDF EXPORT] Command: ${PANDOC_PATH} ${args.join(' ')}`);
+  
+         execFile(PANDOC_PATH, args, { 
          maxBuffer: 1024 * 1024 * 10, // 10MB buffer
          timeout: 120000 // 2 minute timeout
        }, (error, stdout, stderr) => {

@@ -4,6 +4,9 @@ const path = require('path');
 const os = require('os');
 const { v4: uuidv4 } = require('uuid');
 
+// Use custom Pandoc version if available, fallback to system pandoc
+const PANDOC_PATH = process.env.PANDOC_PATH || '/root/.cache/pandoc-3.6.4';
+
 /**
  * Exports an EPUB using Pandoc.
  * @param {string} assembledPath - Path to the assembled markdown file.
@@ -24,15 +27,15 @@ function exportEpub(assembledPath, outputPath, options = {}) {
     '--variable=toc-title:CONTENTS',
     '--variable=toc-unnumbered:true',
     '--standalone',
-    '--split-level=1',
-    '--top-level-division=chapter'
+    '--top-level-division=chapter',
+    '--split-level=1'
   ];
   
   if (options.title) baseArgs.push('--metadata', `title=${options.title}`);
   if (options.author) baseArgs.push('--metadata', `author=${options.author}`);
   
   try {
-    execFileSync('pandoc', baseArgs, { stdio: 'inherit' });
+    execFileSync(PANDOC_PATH, baseArgs, { stdio: 'inherit' });
     console.log(`EPUB successfully created at ${outputPath}`);
   } catch (error) {
     console.error('EPUB generation error:', error);
