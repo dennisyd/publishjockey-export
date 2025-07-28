@@ -1196,18 +1196,17 @@ function rewriteMarkdownWithStyledChapters(markdown, options = {}) {
         }
       }
       
-      // PRESERVE the original markdown heading for TOC
+      // Add entry to TOC using LaTeX commands (without creating visible heading)
+      output.push('```{=latex}');
       if (shouldAddChapterLabels) {
-        // For TOC: use "Chapter X: Heading" format
-        output.push(`# Chapter ${chapter}: ${headingText}`);
+        // Add "Chapter X: Heading" to TOC
+        output.push(`\\addcontentsline{toc}{chapter}{Chapter ${chapter}: ${headingText}}`);
       } else {
-        // For TOC: use original heading
-        output.push(`# ${headingText}`);
+        // Add just the heading text to TOC
+        output.push(`\\addcontentsline{toc}{chapter}{${headingText}}`);
       }
       
-      // Add visual styling AFTER the heading
-      output.push('');
-      output.push('```{=latex}');
+      // Add visual styling (this is the only visible heading)
       output.push('\\begin{center}');
       
       if (shouldAddChapterLabels) {
