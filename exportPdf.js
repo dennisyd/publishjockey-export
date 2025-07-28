@@ -1196,6 +1196,17 @@ function rewriteMarkdownWithStyledChapters(markdown, options = {}) {
         }
       }
       
+      // PRESERVE the original markdown heading for TOC
+      if (shouldAddChapterLabels) {
+        // For TOC: use "Chapter X: Heading" format
+        output.push(`# Chapter ${chapter}: ${headingText}`);
+      } else {
+        // For TOC: use original heading
+        output.push(`# ${headingText}`);
+      }
+      
+      // Add visual styling AFTER the heading
+      output.push('');
       output.push('```{=latex}');
       output.push('\\begin{center}');
       
