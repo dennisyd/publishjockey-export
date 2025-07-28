@@ -22,6 +22,24 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     fonts-noto-core \
     && rm -rf /var/lib/apt/lists/*
 
+# Install Pandoc 3.6.4 (overrides the system pandoc for our application)
+RUN PANDOC_VERSION="3.6.4" && \
+    CACHE_DIR="/root/.cache" && \
+    PANDOC_BINARY="$CACHE_DIR/pandoc-${PANDOC_VERSION}" && \
+    mkdir -p "$CACHE_DIR" && \
+    TEMP_DIR=$(mktemp -d) && \
+    cd "$TEMP_DIR" && \
+    TARBALL="pandoc-${PANDOC_VERSION}-linux-amd64.tar.gz" && \
+    curl -L "https://github.com/jgm/pandoc/releases/download/${PANDOC_VERSION}/${TARBALL}" -o "${TARBALL}" && \
+    tar -xzf "${TARBALL}" && \
+    EXTRACTED_DIR="pandoc-${PANDOC_VERSION}" && \
+    cp "${EXTRACTED_DIR}/bin/pandoc" "$PANDOC_BINARY" && \
+    chmod +x "$PANDOC_BINARY" && \
+    cd / && \
+    rm -rf "$TEMP_DIR" && \
+    echo "Pandoc 3.6.4 installed successfully" && \
+    $PANDOC_BINARY --version
+
 # Install Node.js 18
 RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
     && apt-get install -y nodejs
@@ -38,7 +56,8 @@ RUN fc-cache -f -v && \
 RUN echo "=== INSTALLATION VERIFICATION ===" && \
     node --version && \
     npm --version && \
-    pandoc --version && \
+    echo "System Pandoc:" && pandoc --version && \
+    echo "Pandoc 3.6.4:" && /root/.cache/pandoc-3.6.4 --version && \
     pdflatex --version && \
     echo "=== LaTeX ENGINES AVAILABLE ===" && \
     which pdflatex && \
