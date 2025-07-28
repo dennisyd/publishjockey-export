@@ -27,8 +27,7 @@ function exportEpub(assembledPath, outputPath, options = {}) {
     '--variable=toc-title:CONTENTS',
     '--variable=toc-unnumbered:true',
     '--standalone',
-    '--top-level-division=chapter',
-    '--split-level=1'
+    '--top-level-division=chapter'
   ];
   
   if (options.title) baseArgs.push('--metadata', `title=${options.title}`);

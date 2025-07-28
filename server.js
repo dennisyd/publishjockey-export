@@ -579,8 +579,7 @@ app.post('/export/epub', authenticateJWT, async (req, res) => {
       '--standalone',
       '--top-level-division=chapter',
       '--variable=toc-title:CONTENTS',
-      '--toc-depth=2', // Always use depth 2 for EPUB
-      '--split-level=1'
+      '--toc-depth=2' // Always use depth 2 for EPUB
     ];
 
     // Add number-sections flag based on numberedHeadings setting

@@ -193,12 +193,22 @@ function assembleBookPdf(sections, options = {}) {
     // Insert \mainmatter before the first main matter section (first chapter or part divider)
     if (!insertedMainmatter) {
       // Detect main matter by identifying a chapter section or a part divider section
+      // Make this more inclusive - if section has content with h1 headings, treat as main matter
+      const hasMainContent = content.includes('# ') || content.includes('<h1>') || section.matter === 'main';
+      const isIntroductionOrChapter = section.title && (
+        /^Chapter\s+\d+/i.test(section.title) || 
+        /^Introduction/i.test(section.title) ||
+        /^Part [IVXLCDM]+/i.test(section.title)
+      );
+      
       if (
         (section.title && /^Chapter\s+\d+/i.test(section.title)) || 
         /<div style="text-align:center;">\s*<h1>Chapter\s+1<\/h1>/.test(content) || 
         /^#\s+Chapter\s+1/i.test(content) || 
         isPartDivider ||  // Add detection for part dividers
-        (section.matter && section.matter === 'main') // Also check if the section explicitly belongs to main matter
+        (section.matter && section.matter === 'main') || // Also check if the section explicitly belongs to main matter
+        hasMainContent || // If section has h1 headings, likely main matter
+        isIntroductionOrChapter // Common main matter section types
       ) {
         output += '```{=latex}\n';
         output += '\\mainmatter\n';
@@ -224,10 +234,11 @@ function assembleBookPdf(sections, options = {}) {
         // Output # Heading as plain, let Pandoc/LaTeX handle numbering and label
         content = content.replace(/^# (?:Chapter \\d+: )?(.*)$/gm, '# $1');
       } else {
-        // In front matter, convert all # Heading and ## Subheading to unnumbered LaTeX and add to TOC
+        // In front matter, keep h1 headings as markdown so they appear in TOC
+        // Only convert h2 and below to LaTeX commands if needed
         content = content
-          .replace(/^## (.*)$/gm, (_, t) => `\\section*{${t}}\n\\addcontentsline{toc}{section}{${t}}`)
-          .replace(/^# (.*)$/gm, (_, t) => `\\chapter*{${t}}\n\\addcontentsline{toc}{chapter}{${t}}`);
+          .replace(/^## (.*)$/gm, (_, t) => `\\section*{${t}}\n\\addcontentsline{toc}{section}{${t}}`);
+        // Keep h1 headings as markdown for TOC: content = content.replace(/^# (.*)$/gm, '# $1');
       }
     }
     output += content + '\n\n';
