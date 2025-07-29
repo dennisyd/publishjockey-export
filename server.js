@@ -1169,7 +1169,7 @@ function processMarkdown(markdown) {
   for (let j = i; j < lines.length; j++) {
     // If we've reached main matter point, switch mode
     if (j === mainMatterIndex) {
-      processedLines.push('\n\\mainmatter\n');
+      // Main matter is handled by the LaTeX template
       inFrontMatter = false;
       addedMainmatter = true;
       continue;
@@ -1207,10 +1207,7 @@ function processMarkdown(markdown) {
     }
   }
 
-  // If we never found main matter, add it at the end
-  if (!addedMainmatter) {
-    processedLines.push('\n\\mainmatter\n');
-  }
+  // Main matter is handled by the LaTeX template
 
   const result = processedLines.join('\n');
   console.log("Processed Markdown Sample (first 500 chars):");
