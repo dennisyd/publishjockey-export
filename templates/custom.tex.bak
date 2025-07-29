@@ -3,7 +3,7 @@
 
 \documentclass[$if(fontsize)$$fontsize$,$endif$$if(lang)$$babel-lang$,$endif$$if(papersize)$$papersize$paper,$endif$$for(classoption)$$classoption$$sep$,$endfor$]{$documentclass$}
 
-% Note: Using book class for proper front/main matter handling
+% Note: Using article class for simpler page numbering control
 
 \usepackage{amssymb,amsmath}
 \usepackage{ifxetex,ifluatex}
@@ -214,10 +214,9 @@ $endif$
 }
 
 \begin{document}
-% Start with front matter (roman numerals)
-\frontmatter
-\pagenumbering{roman}  % Explicitly set roman numerals
+% Title page and front matter 
 \pagestyle{plain}      % Use plain page style
+\pagenumbering{roman}  % Explicitly set roman numerals for front matter
 
 $if(include-title-page)$
 \customtitlepage

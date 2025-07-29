@@ -70,41 +70,35 @@ function assembleBookPdf(sections, options = {}) {
   // Create a complete document
   let output = '';
   
-  // Add YAML metadata block if present, but DO NOT include title, author, or subtitle
+  // Add YAML metadata block if present
   output += '---\n';
+  // Note: documentclass is set via Pandoc variables, not YAML metadata
   if (metadata.title) output += `title: "${metadata.title.replace(/"/g, '\"')}"\n`;
   if (metadata.author) output += `author: "${metadata.author.replace(/"/g, '\"')}"\n`;
   if (metadata.subtitle) output += `subtitle: "${metadata.subtitle.replace(/"/g, '\"')}"\n`;
   if (metadata.isbn) output += `isbn: "${metadata.isbn.replace(/"/g, '\"')}"\n`;
   output += 'toc-title: "CONTENTS"\n';
-  // INCREASED footskip to move page numbers HIGHER on the page (farther from bottom)
   output += 'geometry: "footskip=1.0in"\n';
   // Add header-includes for consistent page styles
   output += 'header-includes: |\n';
-  output += '  % Force larger footskip on ALL pages including frontmatter\n';
   output += '  \\setlength{\\footskip}{1.0in}\n';
-  output += '  % Use same page style for ALL pages\n';
-  output += '  \\pagestyle{plain}\n';
-  output += '  \\usepackage{fancyhdr}\n';
-  output += '  \\fancypagestyle{plain}{%\n';
-  output += '    \\fancyhf{}\n'; 
-  output += '    \\fancyfoot[C]{\\thepage}\n';
-  output += '  }\n';
-  output += '  \\fancypagestyle{empty}{%\n';
-  output += '    \\fancyhf{}\n';
-  output += '    \\fancyfoot[C]{\\thepage}\n';
-  output += '  }\n';
   output += '  \\usepackage{longtable}\n';
+  output += '  % Override Pandoc\'s automatic chapter handling for front matter\n';
+  output += '  \\let\\oldchapter\\chapter\n';
+  output += '  \\newcommand{\\frontmatterchapter}[1]{\\oldchapter*{#1}\\markboth{#1}{}}\n';
   output += '---\n\n';
   
-  // Find and extract copyright and title page sections
+  // Find and categorize sections
   let copyrightSection = null;
   let titlePageSection = null;
-  const otherSections = [];
+  const frontMatterSections = [];
+  const mainMatterSections = [];
+  
   for (let i = 0; i < sections.length; i++) {
     const section = sections[i];
     if (!section.content || !section.content.trim()) continue;
     const title = section.title ? section.title.toLowerCase() : '';
+    
     if (!copyrightSection && title.includes('copyright')) {
       copyrightSection = section;
       continue;
@@ -113,10 +107,25 @@ function assembleBookPdf(sections, options = {}) {
       titlePageSection = section;
       continue;
     }
-    otherSections.push({ ...section, content: replaceCustomImages(section.content, 'pdf') });
+    
+    // Check if this is a front matter section
+    const isFrontMatter = title.includes('disclaimer') ||
+                         title.includes('acknowledgements') ||
+                         title.includes('acknowledgments') ||
+                         title.includes('foreword') ||
+                         title.includes('introduction') ||
+                         title.includes('preface');
+    
+    if (isFrontMatter) {
+      frontMatterSections.push({ ...section, content: replaceCustomImages(section.content, 'pdf') });
+    } else {
+      mainMatterSections.push({ ...section, content: replaceCustomImages(section.content, 'pdf') });
+    }
   }
 
-  // Insert Title Page (if present), then Copyright (if present), then TOC, then rest
+  // Front matter is now handled by the LaTeX template
+
+  // Insert Title Page (if present)
   if (titlePageSection) {
     output += '```{=latex}\n';
     output += '\\clearpage\n';
@@ -128,15 +137,12 @@ function assembleBookPdf(sections, options = {}) {
     const centeredTitlePage = titleLines
       .map(line => {
         const trimmed = line.trim();
-        // If already a LaTeX center block or empty, leave as is
         if (/^\\begin\{center\}/.test(trimmed) || /^\\end\{center\}/.test(trimmed) || trimmed === '') {
           return line;
         }
-        // If already markdown/HTML centered, leave as is
         if (trimmed.startsWith('<div style="text-align:center;">') || trimmed.startsWith('</div>')) {
           return line;
         }
-        // If it's a Markdown heading, strip the # and center the text
         const headingMatch = /^#+\s*(.*)/.exec(trimmed);
         if (headingMatch) {
           if (!firstNonEmptyFound) {
@@ -146,24 +152,25 @@ function assembleBookPdf(sections, options = {}) {
             return `\\begin{center} ${headingMatch[1]} \\end{center}`;
           }
         }
-        // First non-empty line: treat as title
         if (!firstNonEmptyFound) {
           firstNonEmptyFound = true;
           return `\\begin{center} {\\fontsize{24pt}{28pt}\\selectfont\\textbf{${trimmed}}} \\end{center}`;
         }
-        // Otherwise, wrap in LaTeX center
         return `\\begin{center} ${line} \\end{center}`;
       })
       .join('\n');
     output += centeredTitlePage + '\n\n';
   }
+
+  // Insert Copyright (if present)
   if (copyrightSection) {
     output += '```{=latex}\n';
     output += '\\clearpage\n';
     output += '```\n\n';
     output += copyrightSection.content.trim() + '\n\n';
   }
-  // Insert TOC only if includeToc is true
+  
+  // Insert TOC (page numbering handled by template)
   if (options.includeToc !== false) {
     output += '```{=latex}\n';
     output += '\\clearpage\n';
@@ -171,82 +178,59 @@ function assembleBookPdf(sections, options = {}) {
     output += '\\clearpage\n';
     output += '```\n\n';
   }
-
-  // Add the rest of the sections (excluding copyright and title page)
-  let insertedMainmatter = false;
-  let mainMatterStarted = false;
-  let chapterCount = 1;
-  for (let i = 0; i < otherSections.length; i++) {
-    const section = otherSections[i];
-    let content = section.content.trim()
-      .replace(/````{=latex}\frontmatter```/g, '')
-      .replace(/````{=latex}\mainmatter\\setcounter\{page\}\{1\}```/g, '')
-      .replace(/\\frontmatter/g, '')
-      .replace(/\\mainmatter/g, '')
-      .replace(/\\setcounter\{page\}\{\d+\}/g, '');
-    // Keep chapter headings as plain markdown - styling will be handled by exportPdf.js
-    // content = content.replace(...) - removed to prevent conflicts
+  
+  // Add all front matter sections with explicit handling
+  for (let i = 0; i < frontMatterSections.length; i++) {
+    const section = frontMatterSections[i];
+    let content = section.content.trim();
     
-    // Check if this section is a Part divider (Part I, Part II, etc.)
+    // Convert front matter headings to unnumbered chapters that still appear in TOC
+    content = content.replace(/^# (.*)$/gm, (match, title) => {
+      return `\\frontmatterchapter{${title}}`;
+    });
+    
+    // Convert ## headings to sections
+    content = content.replace(/^## (.*)$/gm, (_, t) => `\\section*{${t}}`);
+    
+    output += content + '\n\n';
+  }
+  
+  // Main matter is handled by the LaTeX template
+  
+  // Add all main matter sections
+  let insertedMainmatter = false;
+  for (let i = 0; i < mainMatterSections.length; i++) {
+    const section = mainMatterSections[i];
+    let content = section.content.trim();
+    
+    // Insert \mainmatter before the first main matter section
+    if (!insertedMainmatter) {
+      output += '```{=latex}\n';
+      output += '\\mainmatter\n';
+      output += '\\pagenumbering{arabic}\n';  // Explicitly set arabic numerals
+      output += '```\n\n';
+      insertedMainmatter = true;
+    }
+    
+    // Check if this section is a Part divider
     const isPartDivider = section.title && /^Part [IVXLCDM]+:/.test(section.title);
     
-    // Insert \mainmatter before the first main matter section (first chapter or part divider)
-    if (!insertedMainmatter) {
-      // Detect main matter by identifying a chapter section or a part divider section
-      // Make this more inclusive - if section has content with h1 headings, treat as main matter
-      const hasMainContent = content.includes('# ') || content.includes('<h1>') || section.matter === 'main';
-      const isIntroductionOrChapter = section.title && (
-        /^Chapter\s+\d+/i.test(section.title) || 
-        /^Introduction/i.test(section.title) ||
-        /^Part [IVXLCDM]+/i.test(section.title)
-      );
-      
-      if (
-        (section.title && /^Chapter\s+\d+/i.test(section.title)) || 
-        /<div style="text-align:center;">\s*<h1>Chapter\s+1<\/h1>/.test(content) || 
-        /^#\s+Chapter\s+1/i.test(content) || 
-        isPartDivider ||  // Add detection for part dividers
-        (section.matter && section.matter === 'main') || // Also check if the section explicitly belongs to main matter
-        hasMainContent || // If section has h1 headings, likely main matter
-        isIntroductionOrChapter // Common main matter section types
-      ) {
-        output += '```{=latex}\n';
-        output += '\\mainmatter\n';
-        output += '\\pagenumbering{arabic}\n';
-        output += '\\setcounter{page}{1}\n';
-        output += '```\n\n';
-        insertedMainmatter = true;
-        mainMatterStarted = true;
-      }
-    }
-
     // Special handling for Part dividers
-    if (isPartDivider && mainMatterStarted) {
-      // Keep part dividers as chapter headings but make them unnumbered and add to TOC
+    if (isPartDivider) {
       content = content.replace(
         /^# (Part [IVXLCDM]+:.*)$/m,
         '\\chapter*{$1}\n\\addcontentsline{toc}{chapter}{$1}'
       );
     }
-    // Numbered headings: only number chapters in main matter
+    // Let Pandoc handle chapter numbering for main matter
     else if (numberedHeadings || options.chapterLabelFormat === 'number' || options.chapterLabelFormat === 'text') {
-      if (mainMatterStarted) {
-        // Output # Heading as plain, let Pandoc/LaTeX handle numbering and label
-        content = content.replace(/^# (?:Chapter \\d+: )?(.*)$/gm, '# $1');
-      } else {
-        // In front matter, keep h1 headings as markdown so they appear in TOC
-        // Only convert h2 and below to LaTeX commands if needed
-        content = content
-          .replace(/^## (.*)$/gm, (_, t) => `\\section*{${t}}\n\\addcontentsline{toc}{section}{${t}}`);
-        // Keep h1 headings as markdown for TOC: content = content.replace(/^# (.*)$/gm, '# $1');
-      }
+      content = content.replace(/^# (?:Chapter \d+: )?(.*)$/gm, '# $1');
     }
+    
     output += content + '\n\n';
   }
-  // Note: Chapter styling is now handled by exportPdf.js rewriteMarkdownWithStyledChapters function
-  // Remove the old LaTeX generation to prevent conflicts and malformed LaTeX
 
   return output.trim();
 }
 
-module.exports = { assembleBookPdf, rewriteMarkdownWithStyledChapters }; 
+module.exports = { assembleBookPdf, rewriteMarkdownWithStyledChapters };
