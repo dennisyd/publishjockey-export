@@ -16,29 +16,47 @@ const PANDOC_PATH = process.env.PANDOC_PATH || '/root/.cache/pandoc-3.6.4';
 function exportEpub(assembledPath, outputPath, options = {}) {
   // Use the persistent epub-style.css file
   const cssFile = path.join(__dirname, 'epub-style.css');
-  
+
+  // Read the CSS and inject the selected font-family
+  let css = fs.readFileSync(cssFile, 'utf8');
+  let fontFamily = options.fontFamily;
+  if (!fontFamily) {
+    const platform = os.platform();
+    if (platform === 'win32') fontFamily = 'Times New Roman';
+    else fontFamily = 'Liberation Serif';
+  }
+  // Replace the body font-family in the CSS
+  css = css.replace(/font-family:[^;]+;/, `font-family: ${fontFamily}, serif;`);
+
+  // Write the temp CSS file
+  const tempCssFile = path.join(__dirname, `epub-style-${Date.now()}.css`);
+  fs.writeFileSync(tempCssFile, css, 'utf8');
+
   const baseArgs = [
     assembledPath,
     '-f', 'markdown',
     '-o', outputPath,
     '--toc',
     '--toc-depth=2',
-    '--css', cssFile,
+    '--css', tempCssFile,
     '--variable=toc-title:CONTENTS',
     '--variable=toc-unnumbered:true',
     '--standalone',
     '--top-level-division=chapter'
   ];
-  
+
   if (options.title) baseArgs.push('--metadata', `title=${options.title}`);
   if (options.author) baseArgs.push('--metadata', `author=${options.author}`);
-  
+
   try {
     execFileSync(PANDOC_PATH, baseArgs, { stdio: 'inherit' });
     console.log(`EPUB successfully created at ${outputPath}`);
   } catch (error) {
     console.error('EPUB generation error:', error);
     throw error;
+  } finally {
+    // Clean up the temp CSS file
+    if (fs.existsSync(tempCssFile)) fs.unlinkSync(tempCssFile);
   }
 }
 

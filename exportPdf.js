@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const https = require('https');
 const crypto = require('crypto');
+const os = require('os');
 
 // Use custom Pandoc version if available, fallback to system pandoc
 const PANDOC_PATH = process.env.PANDOC_PATH || '/root/.cache/pandoc-3.6.4';
@@ -859,7 +860,14 @@ function getPandocVariables(options) {
     vars.push('bleed=true');
     vars.push('bleedmargin=0.125in');
   }
-  vars.push('mainfont=Liberation Serif');
+  // Font selection logic
+  let mainFont = options.fontFamily;
+  if (!mainFont) {
+    const platform = os.platform();
+    if (platform === 'win32') mainFont = 'Times New Roman';
+    else mainFont = 'Liberation Serif';
+  }
+  vars.push(`mainfont=${mainFont}`);
   vars.push('secstyle=\\Large\\bfseries\\filcenter');
   vars.push('pagestyle=empty');
   vars.push('disable-headers=true');
