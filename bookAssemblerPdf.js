@@ -65,65 +65,74 @@ function assembleBookPdf(sections, options = {}) {
     numberedHeadings = false,
     includeTitlePage = true,
     metadata = {},
+    tocDepth = 1, // Default to 1 if not provided
   } = options;
 
-  // Create a complete document
-  let output = '';
+  // Convert tocDepth to number and ensure it's valid - declare at function level
+  const numericTocDepth = parseInt(tocDepth, 10) || 1;
   
+  // Log the tocDepth value for debugging
+  console.log(`[assembleBookPdf] Level ${tocDepth} received from frontend (tocDepth)`);
+  console.log(`[assembleBookPdf] Converted to numeric: ${numericTocDepth}`);
+  console.log(`[assembleBookPdf] Type of original: ${typeof tocDepth}, Type after conversion: ${typeof numericTocDepth}`);
+
+  let output = '';
+
   // Add YAML metadata block if present
   output += '---\n';
-  // Note: documentclass is set via Pandoc variables, not YAML metadata
   if (metadata.title) output += `title: "${metadata.title.replace(/"/g, '\"')}"\n`;
   if (metadata.author) output += `author: "${metadata.author.replace(/"/g, '\"')}"\n`;
   if (metadata.subtitle) output += `subtitle: "${metadata.subtitle.replace(/"/g, '\"')}"\n`;
   if (metadata.isbn) output += `isbn: "${metadata.isbn.replace(/"/g, '\"')}"\n`;
   output += 'toc-title: "CONTENTS"\n';
+  output += `toc-depth: ${numericTocDepth}\n`;  // Use converted numeric value
   output += 'geometry: "footskip=1.0in"\n';
-  // Add header-includes for consistent page styles
   output += 'header-includes: |\n';
   output += '  \\setlength{\\footskip}{1.0in}\n';
   output += '  \\usepackage{longtable}\n';
+  output += `  \\setcounter{tocdepth}{${numericTocDepth}}\n`;  // Use converted numeric value
   output += '  % Override Pandoc\'s automatic chapter handling for front matter\n';
   output += '  \\let\\oldchapter\\chapter\n';
   output += '  \\newcommand{\\frontmatterchapter}[1]{\\oldchapter*{#1}\\markboth{#1}{}}\n';
   output += '---\n\n';
-  
-  // Find and categorize sections
+
+  // Find special sections and split by matter
   let copyrightSection = null;
   let titlePageSection = null;
   const frontMatterSections = [];
   const mainMatterSections = [];
-  
-  for (let i = 0; i < sections.length; i++) {
-    const section = sections[i];
+  const backMatterSections = [];
+
+  for (const section of sections) {
     if (!section.content || !section.content.trim()) continue;
+    
     const title = section.title ? section.title.toLowerCase() : '';
     
-    if (!copyrightSection && title.includes('copyright')) {
-      copyrightSection = section;
-      continue;
-    }
+    // Extract title page and copyright for special handling
     if (!titlePageSection && title.includes('title page')) {
       titlePageSection = section;
       continue;
     }
+    if (!copyrightSection && title.includes('copyright')) {
+      copyrightSection = section;
+      continue;
+    }
     
-    // Check if this is a front matter section
-    const isFrontMatter = title.includes('disclaimer') ||
-                         title.includes('acknowledgements') ||
-                         title.includes('acknowledgments') ||
-                         title.includes('foreword') ||
-                         title.includes('introduction') ||
-                         title.includes('preface');
-    
-    if (isFrontMatter) {
+    // Sort remaining sections by matter
+    if (section.matter === 'front') {
       frontMatterSections.push({ ...section, content: replaceCustomImages(section.content, 'pdf') });
-    } else {
+    } else if (section.matter === 'main') {
       mainMatterSections.push({ ...section, content: replaceCustomImages(section.content, 'pdf') });
+    } else if (section.matter === 'back') {
+      backMatterSections.push({ ...section, content: replaceCustomImages(section.content, 'pdf') });
     }
   }
 
-  // Front matter is now handled by the LaTeX template
+  // --- FRONT MATTER ---
+  output += '```{=latex}\n';
+  output += '\\frontmatter\n';
+  output += '\\pagenumbering{roman}\n';
+  output += '```\n\n';
 
   // Insert Title Page (if present)
   if (titlePageSection) {
@@ -167,10 +176,10 @@ function assembleBookPdf(sections, options = {}) {
     output += '```{=latex}\n';
     output += '\\clearpage\n';
     output += '```\n\n';
-    output += copyrightSection.content.trim() + '\n\n';
+    output += replaceCustomImages(copyrightSection.content, 'pdf').trim() + '\n\n';
   }
   
-  // Insert TOC (page numbering handled by template)
+  // Insert TOC
   if (options.includeToc !== false) {
     output += '```{=latex}\n';
     output += '\\clearpage\n';
@@ -178,56 +187,140 @@ function assembleBookPdf(sections, options = {}) {
     output += '\\clearpage\n';
     output += '```\n\n';
   }
-  
-  // Add all front matter sections with explicit handling
-  for (let i = 0; i < frontMatterSections.length; i++) {
-    const section = frontMatterSections[i];
+
+  // Process remaining front matter sections
+  for (const section of frontMatterSections) {
     let content = section.content.trim();
     
-    // Convert front matter headings to unnumbered chapters that still appear in TOC
+    // Debug: Log what we're processing
+    console.log(`[Front Matter] Processing section: ${section.title}, tocDepth: ${numericTocDepth}`);
+    
+    // Convert # Heading to unnumbered chapter
     content = content.replace(/^# (.*)$/gm, (match, title) => {
-      return `\\frontmatterchapter{${title}}`;
+      return `\\chapter*{${title}}\n\\addcontentsline{toc}{chapter}{${title}}`;
     });
     
-    // Convert ## headings to sections
-    content = content.replace(/^## (.*)$/gm, (_, t) => `\\section*{${t}}`);
+    // Handle ## headings based on tocDepth
+    if (numericTocDepth >= 2) {
+      console.log(`[Front Matter] Adding level 2 headings to TOC for ${section.title}`);
+      content = content.replace(/^## (.*)$/gm, (_, t) => {
+        return `\\section*{${t}}\n\\addcontentsline{toc}{section}{${t}}`;
+      });
+    } else {
+      console.log(`[Front Matter] Converting level 2 headings to sections without TOC entries (tocDepth=${numericTocDepth})`);
+      // Create section heading without TOC entry
+      content = content.replace(/^## (.*)$/gm, '\\section*{$1}');
+    }
+    
+    // Handle ### headings based on tocDepth
+    if (numericTocDepth >= 3) {
+      console.log(`[Front Matter] Adding level 3 headings to TOC for ${section.title}`);
+      content = content.replace(/^### (.*)$/gm, (_, t) => {
+        return `\\subsection*{${t}}\n\\addcontentsline{toc}{subsection}{${t}}`;
+      });
+    } else {
+      console.log(`[Front Matter] Converting level 3 headings to subsections without TOC entries (tocDepth=${numericTocDepth})`);
+      // Create subsection heading without TOC entry
+      content = content.replace(/^### (.*)$/gm, '\\subsection*{$1}');
+    }
     
     output += content + '\n\n';
   }
-  
-  // Main matter is handled by the LaTeX template
-  
-  // Add all main matter sections
-  let insertedMainmatter = false;
-  for (let i = 0; i < mainMatterSections.length; i++) {
-    const section = mainMatterSections[i];
-    let content = section.content.trim();
+
+  // --- MAIN MATTER ---
+  if (mainMatterSections.length > 0) {
+    output += '```{=latex}\n';
+    output += '\\mainmatter\n';
+    output += '\\pagenumbering{arabic}\n';
+    output += '\\setcounter{page}{1}\n';
+    output += '```\n\n';
     
-    // Insert \mainmatter before the first main matter section
-    if (!insertedMainmatter) {
-      output += '```{=latex}\n';
-      output += '\\mainmatter\n';
-      output += '\\pagenumbering{arabic}\n';  // Explicitly set arabic numerals
-      output += '```\n\n';
-      insertedMainmatter = true;
+    for (const section of mainMatterSections) {
+      let content = section.content.trim();
+      
+      // Check if this section is a Part divider
+      const isPartDivider = section.title && /^Part [IVXLCDM]+:/.test(section.title);
+      
+      // Special handling for Part dividers
+      if (isPartDivider) {
+        content = content.replace(
+          /^# (Part [IVXLCDM]+:.*)$/m,
+          '\\chapter*{$1}\n\\addcontentsline{toc}{chapter}{$1}'
+        );
+        
+        // Handle ## headings based on tocDepth
+        if (numericTocDepth >= 2) {
+          content = content.replace(/^## (.*)$/gm, (_, t) => {
+            return `\\section*{${t}}\n\\addcontentsline{toc}{section}{${t}}`;
+          });
+        } else {
+          // Create section heading without TOC entry
+          content = content.replace(/^## (.*)$/gm, '\\section*{$1}');
+        }
+        
+        // Handle ### headings based on tocDepth
+        if (numericTocDepth >= 3) {
+          content = content.replace(/^### (.*)$/gm, (_, t) => {
+            return `\\subsection*{${t}}\n\\addcontentsline{toc}{subsection}{${t}}`;
+          });
+        } else {
+          // Create subsection heading without TOC entry
+          content = content.replace(/^### (.*)$/gm, '\\subsection*{$1}');
+        }
+      }
+      else {
+        // For regular chapters, let Pandoc handle the # heading
+        content = content.replace(/^# (?:Chapter \d+: )?(.*)$/gm, '# $1');
+        
+        // Handle ## and ### headings based on tocDepth for main matter too
+        if (numericTocDepth < 2) {
+          // Create section heading without TOC entry
+          content = content.replace(/^## (.*)$/gm, '\\section*{$1}');
+        }
+        
+        if (numericTocDepth < 3) {
+          // Create subsection heading without TOC entry
+          content = content.replace(/^### (.*)$/gm, '\\subsection*{$1}');
+        }
+      }
+      
+      output += content + '\n\n';
     }
-    
-    // Check if this section is a Part divider
-    const isPartDivider = section.title && /^Part [IVXLCDM]+:/.test(section.title);
-    
-    // Special handling for Part dividers
-    if (isPartDivider) {
-      content = content.replace(
-        /^# (Part [IVXLCDM]+:.*)$/m,
-        '\\chapter*{$1}\n\\addcontentsline{toc}{chapter}{$1}'
-      );
+  }
+
+  // --- BACK MATTER ---
+  if (backMatterSections.length > 0) {
+    // Continue arabic numbering, but use unnumbered chapters
+    for (const section of backMatterSections) {
+      let content = section.content.trim();
+      
+      // Convert # Heading to unnumbered chapter
+      content = content.replace(/^# (.*)$/gm, (match, title) => {
+        return `\\chapter*{${title}}\n\\addcontentsline{toc}{chapter}{${title}}`;
+      });
+      
+      // Handle ## headings based on tocDepth
+      if (numericTocDepth >= 2) {
+        content = content.replace(/^## (.*)$/gm, (_, t) => {
+          return `\\section*{${t}}\n\\addcontentsline{toc}{section}{${t}}`;
+        });
+      } else {
+        // Create section heading without TOC entry
+        content = content.replace(/^## (.*)$/gm, '\\section*{$1}');
+      }
+      
+      // Handle ### headings based on tocDepth
+      if (numericTocDepth >= 3) {
+        content = content.replace(/^### (.*)$/gm, (_, t) => {
+          return `\\subsection*{${t}}\n\\addcontentsline{toc}{subsection}{${t}}`;
+        });
+      } else {
+        // Create subsection heading without TOC entry
+        content = content.replace(/^### (.*)$/gm, '\\subsection*{$1}');
+      }
+      
+      output += content + '\n\n';
     }
-    // Let Pandoc handle chapter numbering for main matter
-    else if (numberedHeadings || options.chapterLabelFormat === 'number' || options.chapterLabelFormat === 'text') {
-      content = content.replace(/^# (?:Chapter \d+: )?(.*)$/gm, '# $1');
-    }
-    
-    output += content + '\n\n';
   }
 
   return output.trim();

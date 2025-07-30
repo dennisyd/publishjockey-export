@@ -120,10 +120,7 @@ function replaceCustomImages(markdown, format) {
     scale = parseFloat(scale) || 0.6; // Default scale if empty or invalid
     alt = (alt || '').trim(); // Clean alt text
     
-    // Provide default alt text if empty
-    if (!alt) {
-      alt = 'Image';
-    }
+    // If no alt/caption is provided, leave it empty (no caption)
     
     // Validate URL
     if (!src) {
@@ -142,26 +139,27 @@ function replaceCustomImages(markdown, format) {
     const imageSrc = optimizedSrc;
     
     if (format === 'pdf') {
-      // For PDF, use a non-floating approach with raw centering and caption
-      const latexResult = `
-\\begin{center}
-\\includegraphics[width=${scale}\\textwidth]{${imageSrc}}
-
-{\\itshape ${alt.replace(/([%#&{}_])/g, '\\$1')}}
-\\end{center}
-`;
+      // For PDF, use a non-floating approach with raw centering and optional caption
+      const captionLatex = alt ? `{\itshape ${alt.replace(/([%#&{}_])/g, '\$1')}}` : '';
+      const latexLines = [
+        '\\begin{center}',
+        `\\includegraphics[width=${scale}\\textwidth]{${imageSrc}}`,
+        captionLatex,
+        '\\end{center}'
+      ].filter(Boolean);
+      const latexResult = latexLines.join('\n');
       console.log(`[REPLACE CUSTOM IMAGES] Generated LaTeX for image ${processedCount}`);
       console.log(`[REPLACE CUSTOM IMAGES] LaTeX width parameter: width=${scale}\\textwidth`);
       return latexResult;
     } else if (format === 'epub') {
       // HTML: center both image and caption with responsive design
       const percent = Math.round(scale * 100);
-      const htmlResult = `<div style="text-align: center;">\n  <img src="${imageSrc}" alt="${alt}" style="max-width:${percent}%; height:auto;" loading="lazy" />\n  <div style="text-align: center;"><em>${alt}</em></div>\n</div>`;
+      const htmlResult = `<div style="text-align: center;">\n  <img src="${imageSrc}" alt="${alt}" style="max-width:${percent}%; height:auto;" loading="lazy" />` + (alt ? `\n  <div style="text-align: center;"><em>${alt}</em></div>` : '') + `\n</div>`;
       console.log(`[REPLACE CUSTOM IMAGES] Generated HTML for image ${processedCount}`);
       return htmlResult;
     } else if (format === 'docx') {
       // Markdown image only (caption handled by alt text)
-      const markdownResult = `\n![${alt}](${imageSrc})\n`;
+      const markdownResult = alt ? `\n![${alt}](${imageSrc})\n` : `\n![](${imageSrc})\n`;
       console.log(`[REPLACE CUSTOM IMAGES] Generated Markdown for image ${processedCount}`);
       return markdownResult;
     } else {
@@ -234,11 +232,28 @@ function analyzeImageContent(markdown) {
   return analysis;
 }
 
+// Escapes LaTeX special characters in text for PDF export
+function escapeLatexSpecialChars(text) {
+  // Temporarily replace original backslashes with a placeholder
+  text = text.replace(/\\/g, '<<BACKSLASH>>');
+  // Escape curly braces first
+  text = text.replace(/([{}])/g, '\\$1');
+  // Escape other LaTeX special characters (except backslash)
+  text = text
+    .replace(/([#$%&_])/g, '\\$1')
+    .replace(/~/g, '\\textasciitilde{}')
+    .replace(/\^/g, '\\textasciicircum{}');
+  // Replace placeholder with LaTeX backslash
+  return text.replace(/<<BACKSLASH>>/g, '\\textbackslash{}');
+}
+
 module.exports = { 
   removeEmojis, 
   saveDebugFile, 
-  replaceCustomImages, 
+  translateAlignmentDivsForDocx,
   getCloudinaryTransformation,
+  replaceCustomImages,
   clearImageCache,
-  analyzeImageContent
+  analyzeImageContent,
+  escapeLatexSpecialChars // Export the new function
 }; 

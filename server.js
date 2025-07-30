@@ -320,6 +320,7 @@ app.post('/export/pdf', rateLimiting.export, authenticateJWT, async (req, res) =
       titlePageContent: exportOptions?.titlePageContent,
       includeToc: exportOptions?.includeToc !== false,
       useAutoChapterNumbers: exportOptions?.useAutoChapterNumbers === true, // Only for PDF
+      tocDepth: exportOptions?.tocDepth || exportOptions?.bookOptions?.tocDepth || 3, // Pass tocDepth to assembler
       metadata: {
         title,
         subtitle,
