@@ -854,46 +854,72 @@ function generatePageGeometryCode(pageSizeKey, pageCount, hasPageNumbers = true)
 // Helper functions (same as original)
 function getPandocVariables(options) {
   const vars = [];
+  
+  // FONT VALIDATION AND SELECTION
+  const exportPlatform = (process.env.EXPORT_PLATFORM || 'linux').toLowerCase();
+  console.log(`Export platform detected: ${exportPlatform}`);
+  
+  const allowedFonts = (exportPlatform === 'ubuntu' || exportPlatform === 'linux') 
+    ? ['Liberation Serif', 'TeX Gyre Termes', 'TeX Gyre Pagella', 'Linux Libertine O', 'DejaVu Serif']
+    : ['Times New Roman', 'Tahoma', 'Courier New'];
+    
+  const defaultFont = allowedFonts[0]; // Liberation Serif for Linux, Times New Roman for Windows
+  
+  // Use provided font if valid, otherwise use default
+  let mainFont = options.fontFamily;
+  if (!mainFont || !allowedFonts.includes(mainFont)) {
+    console.warn(`Invalid or missing font '${mainFont}', using default: ${defaultFont}`);
+    mainFont = defaultFont;
+  }
+  
+  console.log(`Using font for PDF: ${mainFont} (platform: ${exportPlatform})`);
+  console.log(`Available fonts: ${allowedFonts.join(', ')}`);
+  
+  vars.push(`mainfont=${mainFont}`);
+  
+  // Add the rest of your existing variables
   vars.push(`documentclass=${options.documentclass || (options.bindingType === 'hardcover' ? 'report' : 'book')}`);
   vars.push(`fontsize=${options.fontsize || '12pt'}`);
+  
   if (options.includeBleed === true) {
     vars.push('bleed=true');
     vars.push('bleedmargin=0.125in');
   }
-  // Font selection logic with validation
-  let mainFont = options.fontFamily;
-  if (!mainFont || !allowedFonts.includes(mainFont)) {
-    mainFont = defaultFont;
-  }
-  vars.push(`mainfont=${mainFont}`);
+  
   vars.push('secstyle=\\Large\\bfseries\\filcenter');
   vars.push('pagestyle=empty');
   vars.push('disable-headers=true');
   vars.push('plainfoot=');
   vars.push('emptyfoot=');
+  
   if (options.includeToc !== false) {
     vars.push('toc-title=CONTENTS');
   }
+  
   if (options.numberedHeadings !== true) {
     vars.push('numbersections=false');
     vars.push('secnumdepth=-10');
     vars.push('disable-all-numbering=true');
   }
+  
   if (options.chapterLabelFormat === 'none' || options.useChapterPrefix === false) {
     vars.push('no-chapter-labels=true');
   } else if (options.chapterLabelFormat === 'text') {
     vars.push('chapter-name=Chapter');
     vars.push('chapter-name-format=text');
   }
+  
   vars.push('no-blank-pages=true');
   vars.push('no-separator-pages=true');
   vars.push('frontmatter-continuous=true');
   vars.push('continuous-front-matter=true');
   vars.push('classoption=oneside');
   vars.push('classoption=openany');
+  
   if (options.lineheight) {
     vars.push(`linestretch=${options.lineheight}`);
   }
+  
   return vars;
 }
 
