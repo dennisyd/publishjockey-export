@@ -860,12 +860,10 @@ function getPandocVariables(options) {
     vars.push('bleed=true');
     vars.push('bleedmargin=0.125in');
   }
-  // Font selection logic
+  // Font selection logic with validation
   let mainFont = options.fontFamily;
-  if (!mainFont) {
-    const platform = os.platform();
-    if (platform === 'win32') mainFont = 'Times New Roman';
-    else mainFont = 'Liberation Serif';
+  if (!mainFont || !allowedFonts.includes(mainFont)) {
+    mainFont = defaultFont;
   }
   vars.push(`mainfont=${mainFont}`);
   vars.push('secstyle=\\Large\\bfseries\\filcenter');
@@ -1331,6 +1329,19 @@ function analyzeMarkdownForImages(markdown) {
   
   return analysis;
 }
+
+// Font platform/allowed fonts logic
+const exportPlatform = (process.env.EXPORT_PLATFORM || 'windows').toLowerCase();
+const WINDOWS_FONTS = ['Times New Roman', 'Tahoma', 'Courier New'];
+const LINUX_FONTS = [
+  'Liberation Serif',
+  'TeX Gyre Termes',
+  'TeX Gyre Pagella',
+  'Linux Libertine O',
+  'DejaVu Serif'
+];
+const allowedFonts = (exportPlatform === 'ubuntu' || exportPlatform === 'linux') ? LINUX_FONTS : WINDOWS_FONTS;
+const defaultFont = allowedFonts[0];
 
 module.exports = { 
   exportPdf, 
