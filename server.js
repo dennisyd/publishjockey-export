@@ -1,4 +1,4 @@
-require('dotenv').config(); // Yancy Dennis
+require('dotenv').config(); // YD Dennis
 const express = require('express');
 const cors = require('cors');
 const { execFile, execFileSync } = require('child_process');
