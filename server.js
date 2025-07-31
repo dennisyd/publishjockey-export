@@ -454,7 +454,9 @@ app.post('/export/pdf', rateLimiting.export, authenticateJWT, async (req, res) =
       lineheight: exportOptions?.lineheight || null,
       
       // Custom content if provided
-      titlePageContent: exportOptions?.titlePageContent
+      titlePageContent: exportOptions?.titlePageContent,
+      // Pass the selected font family from the frontend
+      fontFamily: exportOptions?.fontFamily,
     };
 
     // Print the markdown for debugging - add more detailed info about metadata
