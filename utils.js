@@ -154,13 +154,17 @@ function replaceCustomImages(markdown, format) {
     } else if (format === 'epub') {
       // HTML: center both image and caption with responsive design
       const percent = Math.round(scale * 100);
-      const htmlResult = `<div style="text-align: center;">\n  <img src="${imageSrc}" alt="${alt}" style="max-width:${percent}%; height:auto;" loading="lazy" />` + (alt ? `\n  <div style="text-align: center;"><em>${alt}</em></div>` : '') + `\n</div>`;
-      console.log(`[REPLACE CUSTOM IMAGES] Generated HTML for image ${processedCount}`);
+      // Don't use "Image" as a caption - treat it as a placeholder
+      const cleanAlt = (alt && alt.trim() && alt.trim() !== 'Image') ? alt.trim() : '';
+      const htmlResult = `<div style="text-align: center;">\n  <img src="${imageSrc}" alt="${cleanAlt}" style="max-width:${percent}%; height:auto;" loading="lazy" />` + (cleanAlt ? `\n  <div style="text-align: center;"><em>${cleanAlt}</em></div>` : '') + `\n</div>`;
+      console.log(`[REPLACE CUSTOM IMAGES] Generated HTML for image ${processedCount}, cleanAlt: "${cleanAlt}"`);
       return htmlResult;
     } else if (format === 'docx') {
       // Markdown image only (caption handled by alt text)
-      const markdownResult = alt ? `\n![${alt}](${imageSrc})\n` : `\n![](${imageSrc})\n`;
-      console.log(`[REPLACE CUSTOM IMAGES] Generated Markdown for image ${processedCount}`);
+      // Don't use "Image" as a caption - treat it as a placeholder
+      const cleanAlt = (alt && alt.trim() && alt.trim() !== 'Image') ? alt.trim() : '';
+      const markdownResult = cleanAlt ? `\n![${cleanAlt}](${imageSrc})\n` : `\n![](${imageSrc})\n`;
+      console.log(`[REPLACE CUSTOM IMAGES] Generated Markdown for image ${processedCount}, cleanAlt: "${cleanAlt}"`);
       return markdownResult;
     } else {
       console.log(`[REPLACE CUSTOM IMAGES] Unknown format "${format}", returning original`);

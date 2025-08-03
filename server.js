@@ -797,6 +797,15 @@ app.post('/export/docx', rateLimiting.export, authenticateJWT, async (req, res) 
     // This helps ensure each section starts on a new page
     let processedMarkdown = finalMarkdown;
     
+    // SANITIZE: Remove scale comments immediately after assembling (same as PDF export)
+    console.log(`[DOCX EXPORT] Sanitizing scale comments...`);
+    const beforeSanitize = processedMarkdown.length;
+    processedMarkdown = processedMarkdown.replace(/<!--\s*scale:[^>]*-->/gi, '');
+    processedMarkdown = processedMarkdown.replace(/&lt;!--\s*scale:[^&]*--&gt;/gi, '');
+    processedMarkdown = processedMarkdown.replace(/<!-- scale:[^>]*-->/g, '');
+    const afterSanitize = processedMarkdown.length;
+    console.log(`[DOCX EXPORT] Scale comment sanitization removed ${beforeSanitize - afterSanitize} characters`);
+    
     // Process the markdown to add section breaks
     // Replace h1 headers with page breaks before them (except the first one)
     let isFirstH1 = true;

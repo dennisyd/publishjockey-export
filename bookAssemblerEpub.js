@@ -43,7 +43,12 @@ function assembleBookEpub(sections, options = {}) {
       continue;
     }
     // Convert markdown tables to centered HTML tables in section content for EPUB only
-    const centeredContent = convertMarkdownTablesToCenteredHtml(replaceCustomImages(section.content, 'epub'));
+    let centeredContent = convertMarkdownTablesToCenteredHtml(replaceCustomImages(section.content, 'epub'));
+    
+    // SANITIZE: Remove scale comments from EPUB content
+    centeredContent = centeredContent.replace(/<!--\s*scale:[^>]*-->/gi, '');
+    centeredContent = centeredContent.replace(/&lt;!--\s*scale:[^&]*--&gt;/gi, '');
+    
     otherSections.push({ ...section, content: centeredContent });
   }
 
@@ -62,8 +67,13 @@ function assembleBookEpub(sections, options = {}) {
   }
   if (copyrightSection) {
     // Wrap copyright content in a div with both page-break-before and break-before for EPUB compatibility
+    let copyrightContent = copyrightSection.content.trim();
+    // SANITIZE: Remove scale comments from copyright content
+    copyrightContent = copyrightContent.replace(/<!--\s*scale:[^>]*-->/gi, '');
+    copyrightContent = copyrightContent.replace(/&lt;!--\s*scale:[^&]*--&gt;/gi, '');
+    
     output += `<div style="page-break-before: always; break-before: page;">
-${copyrightSection.content.trim()}
+${copyrightContent}
 </div>\n\n`;
   }
 
@@ -176,7 +186,12 @@ ${copyrightSection.content.trim()}
     }
   }
 
-  const finalOutput = output.trim();
+  let finalOutput = output.trim();
+  
+  // FINAL SANITIZE: Remove any remaining scale comments from the entire EPUB output
+  finalOutput = finalOutput.replace(/<!--\s*scale:[^>]*-->/gi, '');
+  finalOutput = finalOutput.replace(/&lt;!--\s*scale:[^&]*--&gt;/gi, '');
+  console.log('[EPUB SANITIZE] Final scale comment cleanup completed');
 
   // Write the HTML output to a temp file for debugging
   try {
