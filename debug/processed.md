@@ -85,7 +85,7 @@ What is your name
 This is a short chapter 1.
 
 \begin{center}
-\includegraphics[width=0.25\textwidth]{https://res.cloudinary.com/dq6ngwhbq/image/upload/f_png,q_95/v1754180104/publishjockey/68085d116bf75556bb7894ac/687eae898dff87df5d086db5/1754180103843-HealingwithHerbsandFaith.jpg}
+\includegraphics[width=0.1\textwidth]{https://res.cloudinary.com/dq6ngwhbq/image/upload/f_png,q_95/v1754180104/publishjockey/68085d116bf75556bb7894ac/687eae898dff87df5d086db5/1754180103843-HealingwithHerbsandFaith.jpg}
 {itshape HealingwithHerbsandFaith}
 \end{center}
 
