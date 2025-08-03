@@ -74,6 +74,8 @@ What is my name
 
 What is your name
 
+{{IMAGE:https://res.cloudinary.com/dq6ngwhbq/image/upload/v1754224185/publishjockey/68085d116bf75556bb7894ac/687eae898dff87df5d086db5/1754224186165-WriteJockeyLogo.png|Image caption|0.6}}&lt;!-- scale:0.5 --&gt;
+
 ```{=latex}
 \mainmatter
 \pagenumbering{arabic}
@@ -84,7 +86,7 @@ What is your name
 
 This is a short chapter 1.
 
-{{IMAGE:https://res.cloudinary.com/dq6ngwhbq/image/upload/v1754220583/publishjockey/68085d116bf75556bb7894ac/687eae898dff87df5d086db5/1754220582154-SecuretheBagFoundationLogo.png|Image|0.6}}<!-- scale:0.5 -->
+{{IMAGE:https://res.cloudinary.com/dq6ngwhbq/image/upload/v1754220583/publishjockey/68085d116bf75556bb7894ac/687eae898dff87df5d086db5/1754220582154-SecuretheBagFoundationLogo.png|Image|0.6}}&lt;!-- scale:0.5 --&gt;
 
 Have a nice day.
 
@@ -92,4 +94,4 @@ Have a nice day.
 
 This is a short chapter 2.
 
-{{IMAGE:https://res.cloudinary.com/dq6ngwhbq/image/upload/v1754180737/publishjockey/68085d116bf75556bb7894ac/687eae898dff87df5d086db5/1754180736806-publishjockeylogo.png|Publish Jockey Logo|0.5}}
+{{IMAGE:https://res.cloudinary.com/dq6ngwhbq/image/upload/v1754224434/publishjockey/68085d116bf75556bb7894ac/687eae898dff87df5d086db5/1754224434539-WriteJockeyLogo.png|WriteJockeyLogo|0.6}}&lt;!-- scale:0.5 --&gt;
