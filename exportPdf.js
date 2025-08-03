@@ -4,37 +4,223 @@ const path = require('path');
 const https = require('https');
 const crypto = require('crypto');
 const os = require('os');
+const { replaceCustomImages } = require('./utils');
 
 // Use custom Pandoc version if available, fallback to system pandoc
 const PANDOC_PATH = process.env.PANDOC_PATH || '/root/.cache/pandoc-3.6.4';
 
 /**
- * OPTIMIZED: Stream and save Cloudinary image with proper error handling
- * @param {string} imageUrl - The Cloudinary URL
- * @param {string} tempDir - Temporary directory to save the image
- * @param {Object} options - Download options
- * @returns {Promise<string>} Path to the downloaded image
+ * ENHANCED: More robust Cloudinary image detection and processing
  */
- async function downloadCloudinaryImage(imageUrl, tempDir, options = {}) {
+async function processCloudinaryImages(markdown, tempDir) {
+  console.log(`[CLOUDINARY] Starting enhanced image processing`);
+  console.log(`[CLOUDINARY] Markdown length: ${markdown.length} characters`);
+  
+  // Debug: Show sample of markdown content
+  console.log(`[CLOUDINARY] First 500 chars of markdown:`);
+  console.log(markdown.substring(0, 500));
+  
+  // STEP 1: Enhanced URL detection with multiple strategies
+  const cloudinaryUrls = extractAllCloudinaryUrls(markdown);
+  
+  if (cloudinaryUrls.length === 0) {
+    console.log(`[CLOUDINARY] No Cloudinary URLs found`);
+    // Debug: show what images we do find
+    const allImages = markdown.match(/!\[([^\]]*)\]\(([^)]+)\)/g) || [];
+    console.log(`[CLOUDINARY] Found ${allImages.length} total images:`);
+    allImages.slice(0, 3).forEach(img => console.log(`  - ${img}`));
+    
+    // Also check for custom image syntax
+    const customImages = markdown.match(/\{\{IMAGE:[^}]+\}\}/g) || [];
+    console.log(`[CLOUDINARY] Found ${customImages.length} custom {{IMAGE:...}} patterns:`);
+    customImages.slice(0, 3).forEach(img => console.log(`  - ${img}`));
+    
+    return {
+      markdown: markdown,
+      downloadedFiles: [],
+      stats: { successful: 0, failed: 0, total: 0 }
+    };
+  }
+  
+  console.log(`[CLOUDINARY] Found ${cloudinaryUrls.length} unique Cloudinary URLs`);
+  cloudinaryUrls.forEach((url, i) => console.log(`[CLOUDINARY] URL ${i + 1}: ${url}`));
+  
+  // STEP 2: Convert custom {{IMAGE:...}} syntax to standard markdown FIRST
+  let processedMarkdown = convertCustomImageSyntax(markdown);
+  
+  // STEP 3: Download images with enhanced error handling
+  const downloadResults = await downloadCloudinaryImagesRobust(cloudinaryUrls, tempDir);
+  
+  // STEP 4: Replace URLs in markdown with local paths
+  processedMarkdown = replaceCloudinaryUrlsWithLocalPaths(processedMarkdown, downloadResults);
+  
+  // STEP 5: Final verification and cleanup
+  const verification = verifyCloudinaryProcessing(processedMarkdown);
+  
+  const successful = downloadResults.filter(r => r.success).length;
+  const failed = downloadResults.length - successful;
+  
+  console.log(`[CLOUDINARY] Processing complete: ${successful} successful, ${failed} failed`);
+  console.log(`[CLOUDINARY] Verification: ${verification.remainingUrls.length} URLs still remain`);
+  
+  return {
+    markdown: processedMarkdown,
+    downloadedFiles: downloadResults.filter(r => r.success).map(r => r.localPath),
+    stats: { successful, failed, total: downloadResults.length }
+  };
+}
+
+/**
+ * Extract ALL Cloudinary URLs from markdown using multiple strategies
+ */
+function extractAllCloudinaryUrls(markdown) {
+  const urlsFound = new Set();
+  
+  // Strategy 1: Custom {{IMAGE:...}} syntax
+  const customImagePattern = /\{\{IMAGE:(https:\/\/res\.cloudinary\.com\/[^|]+)/g;
+  let match;
+  while ((match = customImagePattern.exec(markdown)) !== null) {
+    urlsFound.add(match[1]);
+    console.log(`[CLOUDINARY] Found custom image: ${match[1]}`);
+  }
+  
+  // Strategy 2: Standard markdown images
+  const markdownPattern = /!\[([^\]]*)\]\((https:\/\/res\.cloudinary\.com\/[^)]+)\)/g;
+  while ((match = markdownPattern.exec(markdown)) !== null) {
+    urlsFound.add(match[2]);
+    console.log(`[CLOUDINARY] Found markdown image: ${match[2]}`);
+  }
+  
+  // Strategy 3: LaTeX includegraphics
+  const latexPattern = /\\includegraphics(?:\[[^\]]*\])?\{(https:\/\/res\.cloudinary\.com\/[^}]+)\}/g;
+  while ((match = latexPattern.exec(markdown)) !== null) {
+    urlsFound.add(match[1]);
+    console.log(`[CLOUDINARY] Found LaTeX image: ${match[1]}`);
+  }
+  
+  // Strategy 4: Raw URLs (most permissive)
+  const rawUrlPattern = /(https:\/\/res\.cloudinary\.com\/[^\s\[\](){}'"<>]+)/g;
+  while ((match = rawUrlPattern.exec(markdown)) !== null) {
+    const url = match[1].replace(/[.,;!?})\]]+$/, ''); // Clean trailing punctuation
+    urlsFound.add(url);
+    console.log(`[CLOUDINARY] Found raw URL: ${url}`);
+  }
+  
+  return Array.from(urlsFound);
+}
+
+/**
+ * Convert custom {{IMAGE:...}} syntax to standard markdown
+ */
+function convertCustomImageSyntax(markdown) {
+  console.log(`[CLOUDINARY] Converting custom image syntax...`);
+  
+  const customImagePattern = /\{\{IMAGE:(https:\/\/res\.cloudinary\.com\/[^|]+)\|([^|]*)\|([^}]*)\}\}/g;
+  let convertCount = 0;
+  
+  const converted = markdown.replace(customImagePattern, (match, url, alt, scale) => {
+    convertCount++;
+    console.log(`[CLOUDINARY] Converting image ${convertCount}: ${alt} (scale: ${scale})`);
+    console.log(`[CLOUDINARY] URL: ${url}`);
+    
+    const scaleValue = parseFloat(scale) || 1.0;
+    return `![${alt}](${url})<!-- scale:${scaleValue} -->`;
+  });
+  
+  console.log(`[CLOUDINARY] Converted ${convertCount} custom images to markdown`);
+  return converted;
+}
+
+/**
+ * Download Cloudinary images with robust error handling and retry logic
+ */
+async function downloadCloudinaryImagesRobust(urls, tempDir) {
+  const results = [];
+  
+  // Ensure temp directory exists
+  if (!fs.existsSync(tempDir)) {
+    fs.mkdirSync(tempDir, { recursive: true });
+    console.log(`[CLOUDINARY] Created temp directory: ${tempDir}`);
+  }
+  
+  // Verify temp directory is writable
+  try {
+    fs.accessSync(tempDir, fs.constants.W_OK);
+    console.log(`[CLOUDINARY] Temp directory is writable: ${tempDir}`);
+  } catch (error) {
+    console.error(`[CLOUDINARY] Temp directory not writable: ${error.message}`);
+    throw new Error(`Cannot write to temp directory: ${tempDir}`);
+  }
+  
+  // Process images in smaller batches to avoid overwhelming the server
+  const batchSize = 3;
+  for (let i = 0; i < urls.length; i += batchSize) {
+    const batch = urls.slice(i, i + batchSize);
+    console.log(`[CLOUDINARY] Processing batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(urls.length/batchSize)}`);
+    
+    const batchPromises = batch.map(async (url, batchIndex) => {
+      const globalIndex = i + batchIndex;
+      
+      // Add staggered delay to prevent rate limiting
+      await new Promise(resolve => setTimeout(resolve, globalIndex * 300));
+      
+      try {
+        const result = await downloadSingleCloudinaryImage(url, tempDir);
+        console.log(`[CLOUDINARY] ✓ Downloaded: ${url} -> ${result.filename}`);
+        return { 
+          original: url, 
+          localPath: result.localPath,
+          filename: result.filename,
+          success: true 
+        };
+      } catch (error) {
+        console.error(`[CLOUDINARY] ✗ Failed: ${url} - ${error.message}`);
+        return { 
+          original: url, 
+          error: error.message, 
+          success: false 
+        };
+      }
+    });
+    
+    const batchResults = await Promise.allSettled(batchPromises);
+    batchResults.forEach(result => {
+      if (result.status === 'fulfilled') {
+        results.push(result.value);
+      } else {
+        console.error(`[CLOUDINARY] Batch error:`, result.reason);
+        results.push({ 
+          original: 'unknown', 
+          error: result.reason?.message || 'Unknown batch error', 
+          success: false 
+        });
+      }
+    });
+    
+    // Pause between batches
+    if (i + batchSize < urls.length) {
+      await new Promise(resolve => setTimeout(resolve, 1500));
+    }
+  }
+  
+  return results;
+}
+
+/**
+ * Download a single Cloudinary image with multiple fallback strategies
+ */
+async function downloadSingleCloudinaryImage(imageUrl, tempDir) {
    return new Promise(async (resolve, reject) => {
     console.log(`[CLOUDINARY] Processing: ${imageUrl}`);
     
-    // Validate the URL format
+    // Validate URL
     if (!imageUrl.includes('res.cloudinary.com')) {
       reject(new Error(`Not a valid Cloudinary URL: ${imageUrl}`));
       return;
     }
     
-    const cloudName = imageUrl.match(/\/\/res\.cloudinary\.com\/([^\/]+)\//)?.[1];
-    if (!cloudName) {
-      reject(new Error(`Could not extract cloudName from URL: ${imageUrl}`));
-      return;
-    }
-    
-    console.log(`[CLOUDINARY] Extracted cloud name: ${cloudName}`);
-    
-    // Generate filename based on URL
-    const urlForHash = imageUrl.split('?')[0]; // Remove query params for consistent hashing
+    // Generate consistent filename
+    const urlForHash = imageUrl.split('?')[0];
     const hash = crypto.createHash('md5').update(urlForHash).digest('hex');
     const originalExt = path.extname(urlForHash) || '.jpg';
     const filename = `img_${hash}${originalExt}`;
@@ -42,78 +228,95 @@ const PANDOC_PATH = process.env.PANDOC_PATH || '/root/.cache/pandoc-3.6.4';
     
     console.log(`[CLOUDINARY] Target file: ${filename}`);
     
-    // Check if already downloaded (caching)
+    // Check cache first
     if (fs.existsSync(filepath)) {
-      console.log(`[CLOUDINARY] ✓ Using cached: ${filepath}`);
-      resolve(filepath);
-      return;
+      console.log(`[CLOUDINARY] ✓ Using cached: ${filename}`);
+      return resolve({ localPath: filepath, filename });
     }
     
-    // Ensure temp directory exists
-    if (!fs.existsSync(tempDir)) {
-      fs.mkdirSync(tempDir, { recursive: true });
-    }
+    // Multiple download strategies
+    const strategies = [
+      { url: imageUrl, name: 'Original URL' },
+      { url: imageUrl.split('?')[0], name: 'Clean URL (no params)' }
+    ];
     
-    // Build download strategies
-    const downloadStrategies = [];
-    
-    // Strategy 1: Original URL exactly as provided
-    downloadStrategies.push({
-      url: imageUrl,
-      name: 'Original URL'
-    });
-    
-    // Strategy 2: Original URL without query parameters
-    const cleanUrl = imageUrl.split('?')[0];
-    if (cleanUrl !== imageUrl) {
-      downloadStrategies.push({
-        url: cleanUrl,
-        name: 'Clean URL (no query params)'
+    // Add simplified transform strategy for complex Cloudinary URLs
+    if (imageUrl.includes('/upload/')) {
+      strategies.push({ 
+        url: imageUrl.replace(/\/upload\/[^\/]*\//, '/upload/'), 
+        name: 'Simplified transform' 
       });
     }
     
-    // Strategy 3: Try with HTTPS if HTTP
+    // If HTTP, try HTTPS
     if (imageUrl.startsWith('http://')) {
-      downloadStrategies.push({
+      strategies.push({ 
         url: imageUrl.replace('http://', 'https://'),
         name: 'HTTPS version'
       });
     }
     
-    console.log(`[CLOUDINARY] Will try ${downloadStrategies.length} download strategies`);
+    console.log(`[CLOUDINARY] Will try ${strategies.length} download strategies`);
     
-    let lastError = null;
+    let lastError;
     
-    const tryDownload = async (strategyUrl, strategyName) => {
-      console.log(`[CLOUDINARY] ${strategyName}: ${strategyUrl}`);
+    for (const strategy of strategies) {
+      try {
+        console.log(`[CLOUDINARY] ${strategy.name}: ${strategy.url}`);
+        
+        await downloadWithStrategy(strategy.url, filepath);
+        
+        console.log(`[CLOUDINARY] ✓ Downloaded using ${strategy.name}: ${filename}`);
+        return resolve({ 
+          localPath: filepath, 
+          filename,
+          strategy: strategy.name 
+        });
+        
+      } catch (error) {
+        console.log(`[CLOUDINARY] ${strategy.name} failed: ${error.message}`);
+        lastError = error;
+      }
+    }
+    
+    reject(new Error(`All download strategies failed. Last error: ${lastError?.message}`));
+  });
+}
+
+/**
+ * Actual download implementation with timeout and validation
+ */
+function downloadWithStrategy(url, filepath) {
+  return new Promise((resolve, reject) => {
+    const request = https.get(url, {
+      timeout: 45000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; PDF-Generator/1.0)',
+        'Accept': 'image/*',
+        'Accept-Encoding': 'gzip, deflate'
+      }
+    }, (response) => {
       
-      return new Promise((resolveDownload, rejectDownload) => {
-        const request = https.get(strategyUrl, (response) => {
-          console.log(`[CLOUDINARY] ${strategyName} - Response status: ${response.statusCode}`);
-          console.log(`[CLOUDINARY] ${strategyName} - Response headers:`, {
-            'content-type': response.headers['content-type'],
-            'content-length': response.headers['content-length'],
-            'cloudinary-version': response.headers['cloudinary-version']
-          });
+      console.log(`[CLOUDINARY] Response status: ${response.statusCode}`);
+      console.log(`[CLOUDINARY] Content-Type: ${response.headers['content-type']}`);
           
           // Handle redirects
           if (response.statusCode === 301 || response.statusCode === 302) {
             const redirectUrl = response.headers.location;
-            console.log(`[CLOUDINARY] ${strategyName} - Following redirect to: ${redirectUrl}`);
-            return tryDownload(redirectUrl, `${strategyName} (redirect)`)
-              .then(resolveDownload)
-              .catch(rejectDownload);
+        console.log(`[CLOUDINARY] Following redirect to: ${redirectUrl}`);
+        return downloadWithStrategy(redirectUrl, filepath)
+          .then(resolve)
+          .catch(reject);
           }
           
           if (response.statusCode !== 200) {
-            rejectDownload(new Error(`HTTP ${response.statusCode}: ${response.statusMessage}`));
-            return;
+        return reject(new Error(`HTTP ${response.statusCode}: ${response.statusMessage}`));
           }
           
-          // Verify content type
+      // Validate content type
           const contentType = response.headers['content-type'] || '';
           if (!contentType.startsWith('image/')) {
-            console.warn(`[CLOUDINARY] ${strategyName} - Warning: Unexpected content-type: ${contentType}`);
+        console.warn(`[CLOUDINARY] Warning: Unexpected content-type: ${contentType}`);
           }
           
           const chunks = [];
@@ -123,11 +326,10 @@ const PANDOC_PATH = process.env.PANDOC_PATH || '/root/.cache/pandoc-3.6.4';
             chunks.push(chunk);
             totalSize += chunk.length;
             
-            // Prevent extremely large downloads
+        // Prevent huge downloads
             if (totalSize > 50 * 1024 * 1024) { // 50MB limit
               request.destroy();
-              rejectDownload(new Error('Image too large (>50MB)'));
-              return;
+          return reject(new Error('Image too large (>50MB)'));
             }
           });
           
@@ -135,432 +337,164 @@ const PANDOC_PATH = process.env.PANDOC_PATH || '/root/.cache/pandoc-3.6.4';
             try {
               const buffer = Buffer.concat(chunks);
               
-              // Verify we got actual image data
               if (buffer.length === 0) {
-                rejectDownload(new Error('Received empty response'));
-                return;
-              }
-              
-              // Basic image format validation
-              const firstBytes = buffer.slice(0, 4);
-              const isValidImage = (
-                firstBytes[0] === 0xFF && firstBytes[1] === 0xD8 || // JPEG
-                firstBytes[0] === 0x89 && firstBytes[1] === 0x50 || // PNG
-                firstBytes[0] === 0x47 && firstBytes[1] === 0x49 || // GIF
-                firstBytes[0] === 0x42 && firstBytes[1] === 0x4D    // BMP
-              );
-              
+            return reject(new Error('Empty response'));
+          }
+          
+          // Basic image validation
+          const isValidImage = validateImageBuffer(buffer);
               if (!isValidImage) {
-                console.warn(`[CLOUDINARY] ${strategyName} - Warning: Response doesn't look like image data`);
-                // Don't reject, might still be usable
+            console.warn(`[CLOUDINARY] Warning: Response may not be valid image data`);
               }
               
               fs.writeFileSync(filepath, buffer);
-              console.log(`[CLOUDINARY] ✓ Downloaded: ${filename} (${buffer.length} bytes) using ${strategyName}`);
-              resolveDownload(filepath);
-            } catch (error) {
-              rejectDownload(new Error(`Failed to save image: ${error.message}`));
-            }
-          });
+          console.log(`[CLOUDINARY] ✓ Saved: ${path.basename(filepath)} (${buffer.length} bytes)`);
+          resolve();
           
-          response.on('error', error => {
-            rejectDownload(new Error(`Response error: ${error.message}`));
-          });
-        });
-        
-        request.on('error', error => {
-          rejectDownload(new Error(`Request error: ${error.message}`));
-        });
-        
-        request.setTimeout(options.timeout || 30000, () => {
+            } catch (error) {
+          reject(new Error(`Failed to save: ${error.message}`));
+        }
+      });
+      
+      response.on('error', reject);
+    });
+    
+    request.on('error', reject);
+    request.on('timeout', () => {
           request.destroy();
-          rejectDownload(new Error(`Download timeout for ${strategyUrl}`));
+      reject(new Error('Download timeout'));
         });
       });
-    };
-    
-    // Try each strategy in sequence until one succeeds
-    for (let i = 0; i < downloadStrategies.length; i++) {
-      const strategy = downloadStrategies[i];
-      try {
-        const result = await tryDownload(strategy.url, strategy.name);
-        resolve(result);
-        return;
-      } catch (error) {
-        lastError = error;
-        console.log(`[CLOUDINARY] ${strategy.name} failed: ${error.message}`);
-      }
-    }
-    
-    // If all strategies failed
-    console.error(`[CLOUDINARY] ✗ All download strategies failed for: ${imageUrl}`);
-    console.error(`[CLOUDINARY] ✗ Last error: ${lastError?.message}`);
-    reject(new Error(`All download strategies failed. Last error: ${lastError?.message}`));
-  });
 }
 
 /**
- * ENHANCED: Process markdown to handle ALL Cloudinary URL patterns
- * @param {string} markdown - The markdown content
- * @param {string} tempDir - Temporary directory for downloaded images
- * @returns {Promise<string>} Processed markdown with local image paths
+ * Validate image buffer contains actual image data
  */
- async function processCloudinaryImages(markdown, tempDir) {
-   console.log(`[CLOUDINARY] Starting comprehensive image processing`);
-   console.log(`[CLOUDINARY] Markdown length: ${markdown.length} characters`);
-   
-       // Debug: Show first few lines that contain cloudinary or custom image syntax
-    const lines = markdown.split('\n');
-    const cloudinaryLines = lines.filter(line => line.includes('cloudinary.com'));
-    const customImageLines = lines.filter(line => line.includes('{{IMAGE:'));
-    console.log(`[CLOUDINARY] Found ${cloudinaryLines.length} lines containing 'cloudinary.com':`);
-    console.log(`[CLOUDINARY] Found ${customImageLines.length} lines containing '{{IMAGE:':`);
-    
-    // Show custom image lines first
-    customImageLines.slice(0, 5).forEach((line, i) => {
-      console.log(`[CLOUDINARY] Custom Image Line ${i + 1}: ${line}`);
-    });
-    
-    // Show cloudinary lines
-    cloudinaryLines.slice(0, 5).forEach((line, i) => {
-      console.log(`[CLOUDINARY] Cloudinary Line ${i + 1}: ${line}`);
-    });
-   
-            // Enhanced regex patterns to catch all Cloudinary URL variations
-    const patterns = [
-      // Custom {{IMAGE:url|alt|scale}} syntax - MOST IMPORTANT for this system
-      /\{\{IMAGE:(https:\/\/res\.cloudinary\.com\/[^|]+)\|([^|]*)\|([^}]*)\}\}/g,
-      // Standard markdown images: ![alt](url)
-      /!\[([^\]]*)\]\((https:\/\/res\.cloudinary\.com\/[^)]+)\)/g,
-      // LaTeX includegraphics with careful boundary detection
-      /\\includegraphics(?:\[[^\]]*\])?\{(https:\/\/res\.cloudinary\.com\/[^}]+?)\}/g,
-      // HTML img tags
-      /<img[^>]*src=["'](https:\/\/res\.cloudinary\.com\/[^"']+)["'][^>]*>/g,
-      // Raw URLs in text - with better boundary detection
-      /(?<![\w\/.])https:\/\/res\.cloudinary\.com\/[^\s\[\](){}'"<>}]+(?=[^a-zA-Z0-9\-_.\/:?&=%]|$)/g
-    ];
+function validateImageBuffer(buffer) {
+  if (buffer.length < 4) return false;
   
-     const allMatches = new Set();
-   let processedMarkdown = markdown;
-   
-   // STEP 1: Convert custom {{IMAGE:...}} syntax to standard markdown
-   console.log(`[CLOUDINARY] Step 1: Converting custom {{IMAGE:...}} syntax to markdown`);
-   const customImagePattern = /\{\{IMAGE:(https:\/\/res\.cloudinary\.com\/[^|]+)\|([^|]*)\|([^}]*)\}\}/g;
-   let customImageMatches = 0;
-   
-   processedMarkdown = processedMarkdown.replace(customImagePattern, (match, url, alt, scale) => {
-     customImageMatches++;
-     console.log(`[CLOUDINARY] Converting custom image ${customImageMatches}: ${alt} (scale: ${scale})`);
-     console.log(`[CLOUDINARY] URL: ${url}`);
-     
-     // Convert to markdown with scale information in a comment for later processing
+  const header = buffer.slice(0, 4);
+  return (
+    (header[0] === 0xFF && header[1] === 0xD8) || // JPEG
+    (header[0] === 0x89 && header[1] === 0x50) || // PNG
+    (header[0] === 0x47 && header[1] === 0x49) || // GIF
+    (header[0] === 0x42 && header[1] === 0x4D) || // BMP
+    (header[0] === 0x52 && header[1] === 0x49)    // WEBP
+  );
+}
+
+/**
+ * Replace Cloudinary URLs with local paths in all contexts
+ */
+function replaceCloudinaryUrlsWithLocalPaths(markdown, downloadResults) {
+  let processedMarkdown = markdown;
+  
+  downloadResults.forEach(result => {
+    if (result.success) {
+      const urlToReplace = result.original;
+      const localPath = result.localPath;
+      
+      console.log(`[CLOUDINARY] Replacing: ${urlToReplace} -> ${localPath}`);
+      
+      // Create escaped regex pattern
+      const escapedUrl = urlToReplace.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      
+      let totalReplacements = 0;
+      
+      // Replace markdown with scale
+      const scalePattern = new RegExp(`!\\[([^\\]]*)\\]\\(${escapedUrl}\\)<!-- scale:([0-9.]+) -->`, 'g');
+      processedMarkdown = processedMarkdown.replace(scalePattern, (match, alt, scale) => {
+        totalReplacements++;
      const scaleValue = parseFloat(scale) || 1.0;
-     return `![${alt}](${url})<!-- scale:${scaleValue} -->`;
-   });
-   
-   console.log(`[CLOUDINARY] Converted ${customImageMatches} custom image(s) to markdown format`);
-  
-           // Find all unique Cloudinary URLs with enhanced debugging
-    // Search in BOTH original markdown (for custom syntax) AND processed markdown (for converted content)
-    const searchTargets = [
-      { name: 'original markdown', content: markdown },
-      { name: 'processed markdown', content: processedMarkdown }
-    ];
-    
-    searchTargets.forEach(target => {
-      console.log(`[CLOUDINARY] Searching in ${target.name}...`);
-      
-      patterns.forEach((pattern, index) => {
-        console.log(`[CLOUDINARY] Testing pattern ${index + 1} in ${target.name}: ${pattern.source}`);
-        let match;
-        let patternMatches = 0;
-        
-        // Create a fresh regex to avoid state issues
-        const freshPattern = new RegExp(pattern.source, pattern.flags);
-        
-        while ((match = freshPattern.exec(target.content)) !== null) {
-          patternMatches++;
-          console.log(`[CLOUDINARY] Pattern ${index + 1} match ${patternMatches} in ${target.name}:`, match);
-          
-          // Extract URL (might be in different capture groups depending on pattern)
-          let url = null;
-          if (match[1]?.startsWith('https://')) {
-            url = match[1]; // Custom {{IMAGE:...}} syntax, standard markdown, LaTeX, HTML
-          } else if (match[2]?.startsWith('https://')) {
-            url = match[2]; // Some LaTeX patterns with parameters
-          } else if (match[0]?.startsWith('https://')) {
-            url = match[0]; // Raw URL patterns
-          }
-          
-          if (url) {
-            // Clean up any trailing characters that might have been captured
-            url = url.replace(/[}\])]$/, '');
-            console.log(`[CLOUDINARY] Found URL: ${url}`);
-            allMatches.add(url);
-          } else {
-            console.log(`[CLOUDINARY] No valid URL found in match:`, match);
-          }
-        }
-        
-        console.log(`[CLOUDINARY] Pattern ${index + 1} found ${patternMatches} matches in ${target.name}`);
+        return scaleValue !== 1.0 
+          ? `\\includegraphics[width=${scaleValue}\\textwidth]{${localPath.replace(/\\/g, '/')}}`
+          : `\\includegraphics{${localPath.replace(/\\/g, '/')}}`;
       });
-    });
-  
-     const uniqueUrls = Array.from(allMatches);
-   console.log(`[CLOUDINARY] Found ${uniqueUrls.length} unique Cloudinary URLs`);
-   
-   if (uniqueUrls.length === 0) {
-     console.log(`[CLOUDINARY] No Cloudinary images found`);
-     
-     // DEBUG: Look for any image references at all
-     const anyImagePattern = /!\[([^\]]*)\]\(([^)]+)\)/g;
-     const anyImages = [...markdown.matchAll(anyImagePattern)];
-     console.log(`[CLOUDINARY] DEBUG: Found ${anyImages.length} total images (any type):`);
-     anyImages.slice(0, 5).forEach((match, i) => {
-       console.log(`[CLOUDINARY] DEBUG: Image ${i + 1}: alt="${match[1]}" src="${match[2]}"`);
-     });
-     
-     return {
-       markdown: markdown,
-       downloadedFiles: [],
-       stats: { successful: 0, failed: 0, total: 0 }
-     };
-   }
-   
-   // Log ALL URLs for debugging
-   console.log(`[CLOUDINARY] All found URLs:`);
-   uniqueUrls.forEach((url, i) => {
-     console.log(`[CLOUDINARY] URL ${i + 1}: ${url}`);
-   });
-  
-  // Download all images concurrently (with limit)
-  const downloadPromises = uniqueUrls.map(async (url, index) => {
-    try {
-      // Add delay to prevent overwhelming Cloudinary
-      await new Promise(resolve => setTimeout(resolve, index * 100));
       
-      const localPath = await downloadCloudinaryImage(url, tempDir);
-      const filename = path.basename(localPath);
+      // Replace standard markdown
+      const markdownPattern = new RegExp(`!\\[([^\\]]*)\\]\\(${escapedUrl}\\)`, 'g');
+      processedMarkdown = processedMarkdown.replace(markdownPattern, (match, alt) => {
+        totalReplacements++;
+        return `\\includegraphics{${localPath.replace(/\\/g, '/')}}`;
+      });
       
-      return { 
-        original: url, 
-        localPath, 
-        filename, 
-        success: true 
-      };
-    } catch (error) {
-      console.error(`[CLOUDINARY] ✗ Failed to download: ${url} - ${error.message}`);
-      return { 
-        original: url, 
-        error: error.message, 
-        success: false 
-      };
+      // Replace LaTeX includegraphics
+      const latexPattern = new RegExp(`\\\\includegraphics(?:\\[[^\\]]*\\])?\\{${escapedUrl}\\}`, 'g');
+      processedMarkdown = processedMarkdown.replace(latexPattern, (match) => {
+        totalReplacements++;
+        return `\\includegraphics{${localPath.replace(/\\/g, '/')}}`;
+      });
+      
+      // Replace raw URLs
+      let safetyCounter = 0;
+      while (processedMarkdown.includes(urlToReplace) && safetyCounter < 20) {
+        processedMarkdown = processedMarkdown.replace(urlToReplace, localPath);
+        totalReplacements++;
+        safetyCounter++;
+      }
+      
+      console.log(`[CLOUDINARY] ✓ Made ${totalReplacements} replacements for ${urlToReplace}`);
+      
+      } else {
+      // Replace failed downloads with error text
+      processedMarkdown = replaceFailedDownload(processedMarkdown, result);
     }
   });
   
-  // Process downloads in batches of 5
-  const batchSize = 5;
-  const results = [];
-  
-  for (let i = 0; i < downloadPromises.length; i += batchSize) {
-    const batch = downloadPromises.slice(i, i + batchSize);
-    const batchResults = await Promise.allSettled(batch);
-    
-    batchResults.forEach(result => {
-      if (result.status === 'fulfilled') {
-        results.push(result.value);
-      } else {
-        console.error(`[CLOUDINARY] Batch error:`, result.reason);
-      }
-    });
-    
-    // Small delay between batches
-    if (i + batchSize < downloadPromises.length) {
-      await new Promise(resolve => setTimeout(resolve, 500));
-    }
-  }
-  
-        // Replace URLs with local filenames and handle scaling
-   results.forEach(result => {
-     if (result.success) {
-       console.log(`[CLOUDINARY] Replacing: ${result.original} -> ${result.filename}`);
-       
-       // Look for markdown images with this URL and handle scaling
+  return processedMarkdown;
+}
+
+/**
+ * Replace failed downloads with LaTeX error text
+ */
+function replaceFailedDownload(markdown, result) {
        const urlToReplace = result.original;
        const escapedUrl = urlToReplace.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-       
-       // Pattern to find markdown images with scale comments
-       const markdownWithScale = new RegExp(`!\\[([^\\]]*)\\]\\(${escapedUrl}\\)<!-- scale:([0-9.]+) -->`, 'g');
-       
-       // Pattern to find LaTeX includegraphics with width parameters
-       const latexWithWidth = new RegExp(`\\\\includegraphics\\[width=([0-9.]+)\\\\textwidth\\]\\{${escapedUrl}\\}`, 'g');
-       
-       let replacementCount = 0;
-       
-       // Replace LaTeX includegraphics with width preservation
-       processedMarkdown = processedMarkdown.replace(latexWithWidth, (match, width) => {
-         replacementCount++;
-         const scaleValue = parseFloat(width);
-         console.log(`[CLOUDINARY] Preserving LaTeX width ${scaleValue} for image: ${result.filename}`);
-         return `\\includegraphics[width=${scaleValue}\\textwidth]{${result.localPath}}`;
-       });
-       
-       // Replace markdown images with scaling
-       processedMarkdown = processedMarkdown.replace(markdownWithScale, (match, alt, scale) => {
-         replacementCount++;
-         const scaleValue = parseFloat(scale);
-         console.log(`[CLOUDINARY] Applying scale ${scaleValue} to image: ${alt}`);
-         
-                 // Create LaTeX with proper scaling using full path
-          if (scaleValue && scaleValue !== 1.0) {
-            return `\\includegraphics[width=${scaleValue}\\textwidth]{${result.localPath}}`;
-          } else {
-            return `\\includegraphics{${result.localPath}}`;
-          }
-       });
-       
-               // Replace any remaining instances without scale info
-        const basicMarkdown = new RegExp(`!\\[([^\\]]*)\\]\\(${escapedUrl}\\)`, 'g');
-        processedMarkdown = processedMarkdown.replace(basicMarkdown, (match, alt) => {
-          replacementCount++;
-          return `\\includegraphics{${result.localPath}}`;
-        });
-       
-               // Replace any remaining raw URLs
-        while (processedMarkdown.includes(urlToReplace)) {
-          processedMarkdown = processedMarkdown.replace(urlToReplace, result.localPath);
-          replacementCount++;
-         
-         // Safety check to prevent infinite loops
-         if (replacementCount > 100) {
-           console.warn(`[CLOUDINARY] Too many replacements for ${urlToReplace}, stopping to prevent infinite loop`);
-           break;
-         }
-       }
-       
-                               console.log(`[CLOUDINARY] ✓ Replaced ${replacementCount} instances: ${result.original} -> ${result.localPath}`);
-      } else {
-        // Handle failed downloads by replacing the entire image syntax, not just the URL
-        console.log(`[CLOUDINARY] Replacing failed download with LaTeX text: ${result.original}`);
-        console.log(`[CLOUDINARY] Download error was: ${result.error}`);
-        
-        const urlToReplace = result.original;
-        const escapedUrl = urlToReplace.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        
-        // Create a more informative error message
-        const shortUrl = urlToReplace.length > 50 ? 
-          '...' + urlToReplace.slice(-47) : 
-          urlToReplace;
-        const errorReason = result.error?.includes('timeout') ? 'timeout' :
-                          result.error?.includes('HTTP') ? 'server error' :
-                          result.error?.includes('Request error') ? 'network error' :
-                          'download failed';
-        
-        const placeholderText = `\\textit{[Image download failed: ${errorReason}]}`;
-        
-        // Handle markdown images with scale comments
-        const markdownWithScale = new RegExp(`!\\[([^\\]]*)\\]\\(${escapedUrl}\\)<!-- scale:([0-9.]+) -->`, 'g');
-        processedMarkdown = processedMarkdown.replace(markdownWithScale, placeholderText);
-        
-        // Handle basic markdown images
-        const basicMarkdown = new RegExp(`!\\[([^\\]]*)\\]\\(${escapedUrl}\\)`, 'g');
-        processedMarkdown = processedMarkdown.replace(basicMarkdown, placeholderText);
-        
-        // Handle other image contexts
-        const imagePatterns = [
-          // LaTeX includegraphics: \includegraphics{url} -> LaTeX text
-          new RegExp(`\\\\includegraphics(?:\\[[^\\]]*\\])?\\{${escapedUrl}\\}`, 'g'),
-          // HTML img tags: <img src="url"> -> LaTeX text
-          new RegExp(`<img[^>]*src=["']${escapedUrl}["'][^>]*>`, 'g')
-        ];
-        
-        let replaced = false;
-        imagePatterns.forEach(pattern => {
-          if (pattern.test(processedMarkdown)) {
-            processedMarkdown = processedMarkdown.replace(pattern, placeholderText);
-            replaced = true;
-          }
-        });
-        
-        // Fallback: if no specific pattern matched, do simple URL replacement
-        if (!replaced && processedMarkdown.includes(urlToReplace)) {
-          while (processedMarkdown.includes(urlToReplace)) {
-            processedMarkdown = processedMarkdown.replace(urlToReplace, placeholderText);
-          }
-          replaced = true;
-        }
-        
-        console.log(`[CLOUDINARY] ✓ Replaced failed download: ${result.original} -> ${replaced ? 'LaTeX text' : 'not found'}`);
-      }
-   });
+  const errorText = `\\textit{[Image download failed: ${result.error || 'unknown error'}]}`;
   
-  // Final verification with enhanced URL detection
-  const remainingUrlPatterns = [
-    /https:\/\/res\.cloudinary\.com\/[^\s\[\](){}'"<>]+/g,
-    /https:\/\/res\.cloudinary\.com\/[^)\s}'"]+/g,
-    /res\.cloudinary\.com\/[^)\s}'"]+/g
+  console.log(`[CLOUDINARY] Replacing failed download: ${urlToReplace}`);
+  
+  // Replace in all possible contexts
+  const patterns = [
+    new RegExp(`!\\[([^\\]]*)\\]\\(${escapedUrl}\\)(?:<!-- scale:[0-9.]+ -->)?`, 'g'),
+          new RegExp(`\\\\includegraphics(?:\\[[^\\]]*\\])?\\{${escapedUrl}\\}`, 'g'),
+    new RegExp(escapedUrl, 'g')
   ];
   
-  let allRemainingUrls = new Set();
-  remainingUrlPatterns.forEach(pattern => {
-    const matches = processedMarkdown.match(pattern);
+  patterns.forEach(pattern => {
+    markdown = markdown.replace(pattern, errorText);
+  });
+  
+  return markdown;
+}
+
+/**
+ * Verify that Cloudinary processing was successful
+ */
+function verifyCloudinaryProcessing(markdown) {
+  const remainingUrls = [];
+  
+  // Check for any remaining Cloudinary URLs
+  const patterns = [
+    /https:\/\/res\.cloudinary\.com\/[^\s\[\](){}'"<>]+/g,
+    /res\.cloudinary\.com\/[^\s\[\](){}'"<>]+/g
+  ];
+  
+  patterns.forEach(pattern => {
+    const matches = markdown.match(pattern);
     if (matches) {
-      matches.forEach(url => allRemainingUrls.add(url));
+      remainingUrls.push(...matches);
     }
   });
   
-  if (allRemainingUrls.size > 0) {
-    console.warn(`[CLOUDINARY] WARNING: ${allRemainingUrls.size} URLs still remain:`);
-    Array.from(allRemainingUrls).forEach(url => console.warn(`  - ${url}`));
-    
-    // Try to understand why they weren't replaced
-    allRemainingUrls.forEach(url => {
-      const matchingResult = results.find(r => r.original === url);
-      if (matchingResult) {
-        console.warn(`  > This URL was processed but not replaced: success=${matchingResult.success}`);
+  if (remainingUrls.length > 0) {
+    console.warn(`[CLOUDINARY] WARNING: ${remainingUrls.length} URLs still remain:`);
+    remainingUrls.forEach(url => console.warn(`  - ${url}`));
       } else {
-        console.warn(`  > This URL was not found in processing results`);
-      }
-    });
-  } else {
-    console.log(`[CLOUDINARY] ✓ All URLs successfully processed`);
+    console.log(`[CLOUDINARY] ✓ All Cloudinary URLs successfully processed`);
   }
   
-     const successful = results.filter(r => r.success).length;
-   const failed = results.length - successful;
-   console.log(`[CLOUDINARY] Processing complete: ${successful} successful, ${failed} failed`);
-   
-   // Final safety check: remove any remaining problematic patterns
-   console.log(`[CLOUDINARY] Running final safety checks...`);
-   
-       // Remove any LaTeX commands that might still contain problematic URLs
-    const problemPatterns = [
-      // Remove any remaining custom {{IMAGE:...}} syntax
-      /\{\{IMAGE:[^}]*\}\}/g,
-      // Remove any includegraphics commands with URLs or problematic characters
-      /\\includegraphics(?:\[[^\]]*\])?\{[^}]*cloudinary\.com[^}]*\}/g,
-      /\\includegraphics(?:\[[^\]]*\])?\{[^}]*\?[^}]*\}/g,
-      // Remove any markdown images with problematic URLs
-      /!\[[^\]]*\]\([^)]*cloudinary\.com[^)]*\)/g,
-      /!\[[^\]]*\]\([^)]*\?[^)]*\)/g
-    ];
-   
-   problemPatterns.forEach((pattern, index) => {
-     const matches = processedMarkdown.match(pattern);
-     if (matches) {
-       console.warn(`[CLOUDINARY] Safety check ${index + 1}: Found ${matches.length} problematic patterns`);
-       matches.forEach(match => console.warn(`[CLOUDINARY] Problematic pattern: ${match}`));
-       processedMarkdown = processedMarkdown.replace(pattern, '\\textit{[Image processing error]}');
-     }
-   });
-   
-   console.log(`[CLOUDINARY] Final safety checks complete`);
-   
-   return {
-     markdown: processedMarkdown,
-     downloadedFiles: results.filter(r => r.success).map(r => r.localPath),
-     stats: { successful, failed, total: results.length }
-   };
+  return { remainingUrls };
 }
 
 /**
@@ -577,16 +511,16 @@ const PANDOC_PATH = process.env.PANDOC_PATH || '/root/.cache/pandoc-3.6.4';
        return match;
      }
      
-     // Skip if it looks like a processed filename (img_hash.png)
-     if (imagePath.match(/^img_[a-f0-9]+\.png$/)) {
+    // Skip if it looks like a processed filename (img_hash.jpg)
+    if (imagePath.match(/^img_[a-f0-9]+\.(jpg|png|gif|webp)$/)) {
        console.log(`[IMAGE RESOLUTION] Skipping processed image: ${imagePath}`);
-       return `\\includegraphics{${imagePath}}`;
+      return `\\includegraphics{${imagePath.replace(/\\/g, '/')}}`;
      }
      
      // Skip if already absolute
      if (path.isAbsolute(imagePath)) {
        if (fs.existsSync(imagePath)) {
-         return `\\includegraphics{${imagePath}}`;
+        return `\\includegraphics{${imagePath.replace(/\\/g, '/')}}`;
        } else {
          console.warn(`[IMAGE RESOLUTION] Absolute path not found: ${imagePath}`);
          return `\\textit{[Image not found: ${path.basename(imagePath)}]}`;
@@ -604,7 +538,7 @@ const PANDOC_PATH = process.env.PANDOC_PATH || '/root/.cache/pandoc-3.6.4';
      for (const searchPath of searchPaths) {
        if (fs.existsSync(searchPath)) {
          console.log(`[IMAGE RESOLUTION] ✓ Found: ${imagePath} -> ${searchPath}`);
-         return `\\includegraphics{${searchPath}}`;
+        return `\\includegraphics{${searchPath.replace(/\\/g, '/')}}`;
        }
      }
      
@@ -613,7 +547,7 @@ const PANDOC_PATH = process.env.PANDOC_PATH || '/root/.cache/pandoc-3.6.4';
    });
  }
 
-// Page Size Mappings (same as original)
+// Page Size Mappings
 const pageSizes = {
   "5x8": { width: "5in", height: "8in" },
   "5.06x7.81": { width: "5.06in", height: "7.81in" },
@@ -629,7 +563,7 @@ const pageSizes = {
   "8.5x11": { width: "8.5in", height: "11in" }
 };
 
-// Calculate margins (same logic as original)
+// Calculate margins
 function getDynamicMargins(pageSizeKey, pageCount, includeBleed = false, hasPageNumbers = true) {
   let inside;
   if (pageCount <= 150) inside = 0.375;
@@ -687,7 +621,7 @@ function getDynamicMargins(pageSizeKey, pageCount, includeBleed = false, hasPage
 }
 
 /**
- * Estimate page count (same logic as original)
+ * Estimate page count
  */
 function estimatePageCount(markdownText, pageSizeKey, includeToc = true) {
   const wordCount = markdownText.split(/\s+/).length;
@@ -851,75 +785,47 @@ function generatePageGeometryCode(pageSizeKey, pageCount, hasPageNumbers = true)
   };
 }
 
-// Helper functions (same as original)
+// Helper functions
 function getPandocVariables(options) {
   const vars = [];
-  
-  // FONT VALIDATION AND SELECTION
-  const exportPlatform = (process.env.EXPORT_PLATFORM || 'linux').toLowerCase();
-  console.log(`Export platform detected: ${exportPlatform}`);
-  
-  const allowedFonts = (exportPlatform === 'ubuntu' || exportPlatform === 'linux') 
-    ? ['Liberation Serif', 'TeX Gyre Termes', 'TeX Gyre Pagella', 'Linux Libertine O', 'DejaVu Serif']
-    : ['Times New Roman', 'Tahoma', 'Courier New'];
-    
-  const defaultFont = allowedFonts[0]; // Liberation Serif for Linux, Times New Roman for Windows
-  
-  // Use provided font if valid, otherwise use default
-  let mainFont = options.fontFamily;
-  if (!mainFont || !allowedFonts.includes(mainFont)) {
-    console.warn(`Invalid or missing font '${mainFont}', using default: ${defaultFont}`);
-    mainFont = defaultFont;
-  }
-  
-  console.log(`Using font for PDF: ${mainFont} (platform: ${exportPlatform})`);
-  console.log(`Available fonts: ${allowedFonts.join(', ')}`);
-  
-  vars.push(`mainfont=${mainFont}`);
-  
-  // Add the rest of your existing variables
   vars.push(`documentclass=${options.documentclass || (options.bindingType === 'hardcover' ? 'report' : 'book')}`);
   vars.push(`fontsize=${options.fontsize || '12pt'}`);
-  
   if (options.includeBleed === true) {
     vars.push('bleed=true');
     vars.push('bleedmargin=0.125in');
   }
-  
+  // Platform-aware font selection
+  const exportPlatform = process.env.EXPORT_PLATFORM || 'server';
+  const defaultFont = exportPlatform === 'windows' ? 'Times New Roman' : 'Liberation Serif';
+  vars.push(`mainfont=${options.fontFamily || defaultFont}`);
   vars.push('secstyle=\\Large\\bfseries\\filcenter');
   vars.push('pagestyle=empty');
   vars.push('disable-headers=true');
   vars.push('plainfoot=');
   vars.push('emptyfoot=');
-  
   if (options.includeToc !== false) {
     vars.push('toc-title=CONTENTS');
   }
-  
   if (options.numberedHeadings !== true) {
     vars.push('numbersections=false');
     vars.push('secnumdepth=-10');
     vars.push('disable-all-numbering=true');
   }
-  
   if (options.chapterLabelFormat === 'none' || options.useChapterPrefix === false) {
     vars.push('no-chapter-labels=true');
   } else if (options.chapterLabelFormat === 'text') {
     vars.push('chapter-name=Chapter');
     vars.push('chapter-name-format=text');
   }
-  
   vars.push('no-blank-pages=true');
   vars.push('no-separator-pages=true');
   vars.push('frontmatter-continuous=true');
   vars.push('continuous-front-matter=true');
   vars.push('classoption=oneside');
   vars.push('classoption=openany');
-  
   if (options.lineheight) {
     vars.push(`linestretch=${options.lineheight}`);
   }
-  
   return vars;
 }
 
@@ -945,11 +851,135 @@ function convertAlignmentDivsToLatex(markdown) {
 }
 
 /**
- * MAIN EXPORT FUNCTION - Completely rewritten for reliability
+ * Enhanced chapter styling function with page breaks and conditional chapter labels
+ */
+function rewriteMarkdownWithStyledChapters(markdown, options = {}) {
+  const lines = markdown.split('\n');
+  let chapter = 1;
+  const output = [];
+  
+  // Check if chapter labels should be added
+  const shouldAddChapterLabels = options.chapterLabelFormat !== 'none' && options.useChapterPrefix !== false;
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const h1Match = /^# (?!#)(.*)/.exec(line);
+    
+    if (h1Match) {
+      const headingText = h1Match[1].trim();
+      
+      // Add page break before each chapter (except the first one)
+      if (chapter > 1) {
+        if (output.length > 0 && output[output.length - 1].trim() !== '') {
+          output.push('');
+        }
+        output.push('```{=latex}');
+        output.push('\\clearpage');
+        output.push('```');
+        output.push('');
+      } else {
+        // For first chapter, just ensure proper spacing
+        if (output.length > 0 && output[output.length - 1].trim() !== '') {
+          output.push('');
+        }
+      }
+      
+      // Add entry to TOC using LaTeX commands (without creating visible heading)
+      output.push('```{=latex}');
+      if (shouldAddChapterLabels) {
+        // Add "Chapter X: Heading" to TOC
+        output.push(`\\addcontentsline{toc}{chapter}{Chapter ${chapter}: ${headingText}}`);
+      } else {
+        // Add just the heading text to TOC
+        output.push(`\\addcontentsline{toc}{chapter}{${headingText}}`);
+      }
+      
+      // Add visual styling (this is the only visible heading)
+      output.push('\\begin{center}');
+      
+      if (shouldAddChapterLabels) {
+        // With chapter labels: "Chapter X" + heading text
+        output.push(`{\\fontsize{24pt}{28pt}\\selectfont\\textbf{Chapter ${chapter++}}}\\\\[0.5em]`);
+        output.push(`{\\fontsize{16pt}{20pt}\\selectfont\\textit{${headingText}}}`);
+      } else {
+        // Without chapter labels: just the heading text, larger
+        output.push(`{\\fontsize{28pt}{32pt}\\selectfont\\textbf{${headingText}}}`);
+        chapter++; // Still increment for potential TOC numbering
+      }
+      
+      output.push('\\end{center}');
+      output.push('```');
+      output.push('');
+    } else {
+      output.push(line);
+    }
+  }
+  
+  return output.join('\n').replace(/^\s*\n/, '').replace(/\n\s*$/, '') + '\n';
+}
+
+/**
+ * Debug function to analyze what's happening with Cloudinary images
+ */
+async function debugCloudinaryProcessing(markdown, tempDir) {
+  console.log('\n=== CLOUDINARY DEBUG SESSION ===');
+  console.log(`Markdown length: ${markdown.length} characters`);
+  console.log(`Temp directory: ${tempDir}`);
+  
+  // Step 1: Show raw markdown sample
+  console.log('\n1. RAW MARKDOWN SAMPLE (first 1000 chars):');
+  console.log(markdown.substring(0, 1000));
+  
+  // Step 2: Test each pattern individually
+  console.log('\n2. PATTERN TESTING:');
+  
+  const patterns = [
+    {
+      name: 'Custom {{IMAGE:...}} syntax',
+      pattern: /\{\{IMAGE:(https:\/\/res\.cloudinary\.com\/[^|]+)\|([^|]*)\|([^}]*)\}\}/g
+    },
+    {
+      name: 'Standard markdown images',
+      pattern: /!\[([^\]]*)\]\((https:\/\/res\.cloudinary\.com\/[^)]+)\)/g
+    },
+    {
+      name: 'LaTeX includegraphics',
+      pattern: /\\includegraphics(?:\[[^\]]*\])?\{(https:\/\/res\.cloudinary\.com\/[^}]+)\}/g
+    },
+    {
+      name: 'Raw Cloudinary URLs',
+      pattern: /(https:\/\/res\.cloudinary\.com\/[^\s\[\](){}'"<>]+)/g
+    }
+  ];
+  
+  const allUrls = new Set();
+  
+  patterns.forEach(({ name, pattern }) => {
+    const matches = [...markdown.matchAll(pattern)];
+    console.log(`${name}: ${matches.length} matches`);
+    
+    matches.forEach((match, i) => {
+      console.log(`  ${i + 1}. ${match[0]}`);
+      // Extract URL (different positions for different patterns)
+      const url = match[1] || match[2];
+      if (url && url.includes('cloudinary.com')) {
+        allUrls.add(url);
+      }
+    });
+  });
+  
+  console.log(`\nTotal unique URLs found: ${allUrls.size}`);
+  console.log('=== DEBUG SESSION COMPLETE ===\n');
+  
+  return Array.from(allUrls);
+}
+
+/**
+ * MAIN EXPORT FUNCTION - Enhanced with better debugging and error handling
  */
 async function exportPdf(assembledPath, outputPath, options = {}) {
   return new Promise(async (resolve, reject) => {
-    console.log(`[PDF EXPORT] Starting export: ${assembledPath} -> ${outputPath}`);
+    console.log(`[PDF EXPORT] Starting enhanced export: ${assembledPath} -> ${outputPath}`);
     
     const tempDir = path.dirname(assembledPath);
     let downloadedFiles = [];
@@ -959,27 +989,12 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
        let markdown = fs.readFileSync(assembledPath, 'utf8');
        console.log(`[PDF EXPORT] Read ${markdown.length} characters from ${assembledPath}`);
        
-       // DEBUG: Log the raw markdown content to see what URLs are present
-       console.log(`[PDF EXPORT] DEBUG - First 1000 characters of markdown:`, markdown.substring(0, 1000));
-       console.log(`[PDF EXPORT] DEBUG - Last 1000 characters of markdown:`, markdown.substring(Math.max(0, markdown.length - 1000)));
-       
-       // Look for ALL image patterns in the raw markdown
-       const allImagePatterns = [
-         /!\[([^\]]*)\]\(([^)]+)\)/g,
-         /\{\{IMAGE:([^|]+)\|([^|]*)\|([^}]*)\}\}/g,
-         /https:\/\/res\.cloudinary\.com\/[^\s\]()]+/g
-       ];
-       
-       console.log(`[PDF EXPORT] DEBUG - Searching for ALL image patterns in raw markdown:`);
-       allImagePatterns.forEach((pattern, i) => {
-         const matches = [...markdown.matchAll(pattern)];
-         console.log(`[PDF EXPORT] DEBUG - Pattern ${i + 1} (${pattern.source}) found ${matches.length} matches:`);
-         matches.forEach((match, j) => {
-           console.log(`[PDF EXPORT] DEBUG - Match ${j + 1}:`, match[0]);
-         });
-       });
-       
-       // STEP 1: Process Cloudinary images
+      // ENHANCED DEBUG: Run debug analysis
+      console.log(`[PDF EXPORT] Running Cloudinary debug analysis...`);
+      const debugUrls = await debugCloudinaryProcessing(markdown, tempDir);
+      console.log(`[PDF EXPORT] Debug found ${debugUrls.length} potential Cloudinary URLs`);
+      
+      // STEP 1: Process Cloudinary images with enhanced function
        console.log(`[PDF EXPORT] Step 1: Processing Cloudinary images...`);
       const cloudinaryResult = await processCloudinaryImages(markdown, tempDir);
       markdown = cloudinaryResult.markdown;
@@ -987,14 +1002,28 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
       
              console.log(`[PDF EXPORT] Cloudinary processing stats:`, cloudinaryResult.stats);
        
-       // DEBUG: Add processing summary to the response for frontend debugging
        if (cloudinaryResult.stats.total > 0) {
          console.log(`[PDF EXPORT] ✓ Processed ${cloudinaryResult.stats.successful} images successfully`);
          console.log(`[PDF EXPORT] ✗ Failed to process ${cloudinaryResult.stats.failed} images`);
+        
+        // Show downloaded files
+        if (downloadedFiles.length > 0) {
+          console.log(`[PDF EXPORT] Downloaded files:`);
+          downloadedFiles.forEach(file => {
+            if (fs.existsSync(file)) {
+              const stats = fs.statSync(file);
+              console.log(`  ✓ ${path.basename(file)} (${stats.size} bytes)`);
+            } else {
+              console.log(`  ✗ ${path.basename(file)} (missing)`);
+            }
+          });
+        }
        } else {
          console.log(`[PDF EXPORT] ⚠️  No Cloudinary images found in markdown`);
-         console.log(`[PDF EXPORT] First 500 chars of markdown:`, markdown.substring(0, 500));
        }
+      
+      // STEP 1.5: Replace custom images with LaTeX for PDF
+      markdown = replaceCustomImages(markdown, 'pdf');
       
       // STEP 2: Resolve any remaining image paths
       console.log(`[PDF EXPORT] Step 2: Resolving remaining image paths...`);
@@ -1013,7 +1042,7 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
       fs.writeFileSync(assembledPath, markdown, 'utf8');
       console.log(`[PDF EXPORT] Updated markdown file with processed content`);
       
-      // Additional verification: Check if any Cloudinary URLs remain in the final markdown
+      // Final verification: Check if any Cloudinary URLs remain
       const finalCheck = markdown.match(/https:\/\/res\.cloudinary\.com\/[^\s]*/g);
       if (finalCheck && finalCheck.length > 0) {
         console.error(`[PDF EXPORT] ERROR: ${finalCheck.length} Cloudinary URLs still present in final markdown:`);
@@ -1111,13 +1140,13 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
       console.log(`[PDF EXPORT] Using page size: ${pageSizeKey} (${geometry.width}in x ${geometry.height}in)`);
       console.log(`[PDF EXPORT] Estimated pages: ${estimatedPages} for margin calculation`);
       
-      // STEP 6: Run Pandoc
-      console.log(`[PDF EXPORT] Step 5: Running Pandoc...`);
+      // STEP 7: Run Pandoc
+      console.log(`[PDF EXPORT] Step 7: Running Pandoc...`);
         console.log(`[PDF EXPORT] Command: ${PANDOC_PATH} ${args.join(' ')}`);
   
          execFile(PANDOC_PATH, args, { 
          maxBuffer: 1024 * 1024 * 10, // 10MB buffer
-         timeout: 120000 // 2 minute timeout
+        timeout: 180000 // 3 minute timeout (increased)
        }, (error, stdout, stderr) => {
          // Function to cleanup temporary files
          const doCleanup = () => {
@@ -1137,6 +1166,7 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
          if (error) {
            console.error('[PDF EXPORT] ✗ Pandoc error:', error.message);
            console.error('[PDF EXPORT] ✗ Pandoc stderr:', stderr);
+          console.error('[PDF EXPORT] ✗ Pandoc stdout:', stdout);
           
           // Enhanced error analysis
           if (stderr.includes('File ') && stderr.includes(' not found')) {
@@ -1176,8 +1206,9 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
       
          } catch (processingError) {
        console.error('[PDF EXPORT] ✗ Processing error:', processingError);
+      console.error('[PDF EXPORT] ✗ Stack trace:', processingError.stack);
        
-       // Cleanup on error - only clean downloaded files, not LaTeX files that may not exist yet
+      // Cleanup on error - only clean downloaded files
        downloadedFiles.forEach(file => {
          try {
            if (fs.existsSync(file)) {
@@ -1195,75 +1226,7 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
 }
 
 /**
- * Enhanced chapter styling function with page breaks and conditional chapter labels
- */
-function rewriteMarkdownWithStyledChapters(markdown, options = {}) {
-  const lines = markdown.split('\n');
-  let chapter = 1;
-  const output = [];
-  
-  // Check if chapter labels should be added
-  const shouldAddChapterLabels = options.chapterLabelFormat !== 'none' && options.useChapterPrefix !== false;
-  
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const h1Match = /^# (?!#)(.*)/.exec(line);
-    
-    if (h1Match) {
-      const headingText = h1Match[1].trim();
-      
-      // Add page break before each chapter (except the first one)
-      if (chapter > 1) {
-        if (output.length > 0 && output[output.length - 1].trim() !== '') {
-          output.push('');
-        }
-        output.push('```{=latex}');
-        output.push('\\clearpage');
-        output.push('```');
-        output.push('');
-      } else {
-        // For first chapter, just ensure proper spacing
-        if (output.length > 0 && output[output.length - 1].trim() !== '') {
-          output.push('');
-        }
-      }
-      
-      // Add entry to TOC using LaTeX commands (without creating visible heading)
-      output.push('```{=latex}');
-      if (shouldAddChapterLabels) {
-        // Add "Chapter X: Heading" to TOC
-        output.push(`\\addcontentsline{toc}{chapter}{Chapter ${chapter}: ${headingText}}`);
-      } else {
-        // Add just the heading text to TOC
-        output.push(`\\addcontentsline{toc}{chapter}{${headingText}}`);
-      }
-      
-      // Add visual styling (this is the only visible heading)
-      output.push('\\begin{center}');
-      
-      if (shouldAddChapterLabels) {
-        // With chapter labels: "Chapter X" + heading text
-        output.push(`{\\fontsize{24pt}{28pt}\\selectfont\\textbf{Chapter ${chapter++}}}\\\\[0.5em]`);
-        output.push(`{\\fontsize{16pt}{20pt}\\selectfont\\textit{${headingText}}}`);
-      } else {
-        // Without chapter labels: just the heading text, larger
-        output.push(`{\\fontsize{28pt}{32pt}\\selectfont\\textbf{${headingText}}}`);
-        chapter++; // Still increment for potential TOC numbering
-      }
-      
-      output.push('\\end{center}');
-      output.push('```');
-      output.push('');
-    } else {
-      output.push(line);
-    }
-  }
-  
-  return output.join('\n').replace(/^\s*\n/, '').replace(/\n\s*$/, '') + '\n';
-}
-
-/**
- * Utility function to validate Cloudinary URLs
+ * Utility functions for debugging and analysis
  */
 function isValidCloudinaryUrl(url) {
   try {
@@ -1274,9 +1237,6 @@ function isValidCloudinaryUrl(url) {
   }
 }
 
-/**
- * Utility function to clean up temp directory
- */
 function cleanupTempDirectory(tempDir, maxAge = 30 * 60 * 1000) {
   if (!fs.existsSync(tempDir)) return;
   
@@ -1306,15 +1266,13 @@ function cleanupTempDirectory(tempDir, maxAge = 30 * 60 * 1000) {
   }
 }
 
-/**
- * Enhanced error reporting for debugging
- */
 function analyzeMarkdownForImages(markdown) {
   const patterns = {
     'Standard Markdown': /!\[([^\]]*)\]\(([^)]+)\)/g,
     'LaTeX includegraphics': /\\includegraphics(?:\[[^\]]*\])?\{([^}]+)\}/g,
     'HTML img tags': /<img[^>]*src=["']([^"']+)["'][^>]*>/g,
-    'Raw Cloudinary URLs': /https:\/\/res\.cloudinary\.com\/[^\s\[\](){}'"<>]+/g
+    'Raw Cloudinary URLs': /https:\/\/res\.cloudinary\.com\/[^\s\[\](){}'"<>]+/g,
+    'Custom {{IMAGE:...}}': /\{\{IMAGE:[^}]+\}\}/g
   };
   
   const analysis = {
@@ -1356,31 +1314,21 @@ function analyzeMarkdownForImages(markdown) {
   return analysis;
 }
 
-// Font platform/allowed fonts logic
-const exportPlatform = (process.env.EXPORT_PLATFORM || 'windows').toLowerCase();
-const WINDOWS_FONTS = ['Times New Roman', 'Tahoma', 'Courier New'];
-const LINUX_FONTS = [
-  'Liberation Serif',
-  'TeX Gyre Termes',
-  'TeX Gyre Pagella',
-  'Linux Libertine O',
-  'DejaVu Serif'
-];
-const allowedFonts = (exportPlatform === 'ubuntu' || exportPlatform === 'linux') ? LINUX_FONTS : WINDOWS_FONTS;
-const defaultFont = allowedFonts[0];
-
 module.exports = { 
   exportPdf, 
   pageSizes, 
   getDynamicMargins, 
   estimatePageCount, 
   resolveImagePaths, 
-  downloadCloudinaryImage,
   processCloudinaryImages,
+  extractAllCloudinaryUrls,
+  downloadCloudinaryImagesRobust,
+  downloadSingleCloudinaryImage,
   rewriteMarkdownWithStyledChapters,
   cleanupTempDirectory,
   analyzeMarkdownForImages,
   isValidCloudinaryUrl,
+  debugCloudinaryProcessing,
   
   // Legacy compatibility (deprecated)
   findImageRecursively: (dir, filename) => {
