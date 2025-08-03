@@ -84,10 +84,7 @@ What is your name
 
 This is a short chapter 1.
 
-\begin{center}
-\includegraphics[width=0.1\textwidth]{https://res.cloudinary.com/dq6ngwhbq/image/upload/f_png,q_95/v1754180104/publishjockey/68085d116bf75556bb7894ac/687eae898dff87df5d086db5/1754180103843-HealingwithHerbsandFaith.jpg}
-{itshape HealingwithHerbsandFaith}
-\end{center}
+{{IMAGE:https://res.cloudinary.com/dq6ngwhbq/image/upload/v1754220583/publishjockey/68085d116bf75556bb7894ac/687eae898dff87df5d086db5/1754220582154-SecuretheBagFoundationLogo.png|Image|0.6}}<!-- scale:0.5 -->
 
 Have a nice day.
 
@@ -95,7 +92,4 @@ Have a nice day.
 
 This is a short chapter 2.
 
-\begin{center}
-\includegraphics[width=0.5\textwidth]{https://res.cloudinary.com/dq6ngwhbq/image/upload/f_png,q_95/v1754180737/publishjockey/68085d116bf75556bb7894ac/687eae898dff87df5d086db5/1754180736806-publishjockeylogo.png}
-{itshape Publish Jockey Logo}
-\end{center}
+{{IMAGE:https://res.cloudinary.com/dq6ngwhbq/image/upload/v1754180737/publishjockey/68085d116bf75556bb7894ac/687eae898dff87df5d086db5/1754180736806-publishjockeylogo.png|Publish Jockey Logo|0.5}}

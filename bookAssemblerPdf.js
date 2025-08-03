@@ -1,7 +1,7 @@
 // PDF-specific book assembler
 const { removeEmojis } = require('./utils');
 const { assembleBookPlain } = require('./assembleBookPlain');
-const { replaceCustomImages } = require('./utils');
+// Image processing now handled by exportPdf.js
 
 /**
  * Processes markdown content to automatically number chapters.
@@ -118,13 +118,13 @@ function assembleBookPdf(sections, options = {}) {
       continue;
     }
     
-    // Sort remaining sections by matter
+    // Sort remaining sections by matter (image processing now handled by exportPdf.js)
     if (section.matter === 'front') {
-      frontMatterSections.push({ ...section, content: replaceCustomImages(section.content, 'pdf') });
+      frontMatterSections.push({ ...section, content: section.content });
     } else if (section.matter === 'main') {
-      mainMatterSections.push({ ...section, content: replaceCustomImages(section.content, 'pdf') });
+      mainMatterSections.push({ ...section, content: section.content });
     } else if (section.matter === 'back') {
-      backMatterSections.push({ ...section, content: replaceCustomImages(section.content, 'pdf') });
+      backMatterSections.push({ ...section, content: section.content });
     }
   }
 
@@ -141,7 +141,7 @@ function assembleBookPdf(sections, options = {}) {
     output += '\\thispagestyle{empty}\n';
     output += '```\n\n';
     // Center each line of the title page content
-    const titleLines = replaceCustomImages(titlePageSection.content, 'pdf').split(/\r?\n/);
+    const titleLines = titlePageSection.content.split(/\r?\n/);
     let firstNonEmptyFound = false;
     const centeredTitlePage = titleLines
       .map(line => {
@@ -176,7 +176,7 @@ function assembleBookPdf(sections, options = {}) {
     output += '```{=latex}\n';
     output += '\\clearpage\n';
     output += '```\n\n';
-    output += replaceCustomImages(copyrightSection.content, 'pdf').trim() + '\n\n';
+    output += copyrightSection.content.trim() + '\n\n';
   }
   
   // Insert TOC
