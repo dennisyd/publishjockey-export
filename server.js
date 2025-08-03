@@ -4,6 +4,7 @@ const cors = require('cors');
 const { execFile, execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+// Image processing is handled by exportPdf function
 const Epub = require('epub-gen');
 const multer = require('multer');
 const { exec } = require('child_process');
@@ -396,11 +397,9 @@ app.post('/export/pdf', rateLimiting.export, authenticateJWT, async (req, res) =
 
       // Also write directly to temp for Pandoc
       try {
-        // NEW: Optimize markdown by replacing Cloudinary URLs with PDF-optimized versions
-        console.log(`[CLOUDINARY] Optimizing markdown for PDF generation with enhanced transformations...`);
-        const finalMarkdown = optimizeMarkdownForPDF(processedMarkdown, 'pdf');
-        
-        fs.writeFileSync(mdPath, finalMarkdown, 'utf8');
+        // Write the processed markdown to disk - exportPdf will handle image processing
+        fs.writeFileSync(mdPath, processedMarkdown, 'utf8');  
+
         console.log(`PANDOC INPUT: Saved markdown for PDF processing to ${mdPath}`);
         
         // IMPORTANT: Also copy local uploaded images to temp directory

@@ -4,7 +4,7 @@ const path = require('path');
 const https = require('https');
 const crypto = require('crypto');
 const os = require('os');
-const { replaceCustomImages } = require('./utils');
+// Custom image processing handled by functions in this file
 
 // Use custom Pandoc version if available, fallback to system pandoc
 const PANDOC_PATH = process.env.PANDOC_PATH || '/root/.cache/pandoc-3.6.4';
@@ -115,7 +115,7 @@ function extractAllCloudinaryUrls(markdown) {
 function convertCustomImageSyntax(markdown) {
   console.log(`[CLOUDINARY] Converting custom image syntax...`);
   
-  const customImagePattern = /\{\{IMAGE:(https:\/\/res\.cloudinary\.com\/[^|]+)\|([^|]*)\|([^}]*)\}\}/g;
+  const customImagePattern = /\{\{IMAGE:([^|]+)\|([^|]*)\|([^}]*)\}\}/g;
   let convertCount = 0;
   
   const converted = markdown.replace(customImagePattern, (match, url, alt, scale) => {
@@ -400,7 +400,7 @@ function replaceCloudinaryUrlsWithLocalPaths(markdown, downloadResults) {
       
       // CRITICAL FIX: Convert Windows paths to LaTeX-compatible forward slashes
       // LaTeX doesn't understand backslashes in file paths on Windows
-      localPath = localPath.replace(/\\/g, '/');
+      localPath = localPath.replaceAll('\\', '/');
       
       console.log(`[CLOUDINARY] Replacing: ${urlToReplace} -> ${localPath}`);
       
@@ -414,14 +414,22 @@ function replaceCloudinaryUrlsWithLocalPaths(markdown, downloadResults) {
       processedMarkdown = processedMarkdown.replace(scalePattern, (match, alt, scale) => {
         totalReplacements++;
         const scaleValue = parseFloat(scale) || 0.5;
-        return `\\includegraphics[width=${scaleValue}\\textwidth]{${localPath}}`;
+        const result = alt && alt.trim()
+          ? `\\begin{figure}[ht]\n  \\centering\n  \\includegraphics[width=${scaleValue}\\textwidth]{${localPath}}\n  \\caption{${alt.trim()}}\n\\end{figure}`
+          : `\\includegraphics[width=${scaleValue}\\textwidth]{${localPath}}`;
+        console.log(`[CLOUDINARY] ✓ Converted markdown with scale to LaTeX figure: ${result.substring(0, 100)}...`);
+        return result;
       });
       
       // Replace standard markdown (no scale) — apply default scale 0.5
       const markdownPattern = new RegExp(`!\\[([^\\]]*)\\]\\(${escapedUrl}\\)`, 'g');
       processedMarkdown = processedMarkdown.replace(markdownPattern, (match, alt) => {
         totalReplacements++;
-        return `\\includegraphics[width=0.5\\textwidth]{${localPath}}`;
+        const result = alt && alt.trim()
+          ? `\\begin{figure}[ht]\n  \\centering\n  \\includegraphics[width=0.5\\textwidth]{${localPath}}\n  \\caption{${alt.trim()}}\n\\end{figure}`
+          : `\\includegraphics[width=0.5\\textwidth]{${localPath}}`;
+        console.log(`[CLOUDINARY] ✓ Converted standard markdown to LaTeX figure: ${result.substring(0, 100)}...`);
+        return result;
       });
       
       // Replace LaTeX includegraphics - check if width already exists
@@ -463,7 +471,13 @@ function resolveImagePaths(markdown, basePath) {
   console.log(`[IMAGE RESOLUTION] Starting resolution from: ${basePath}`);
   
   // Only process remaining markdown images (not LaTeX includegraphics)
+  console.log(`[IMAGE RESOLUTION] Processing markdown, length: ${markdown.length}`);
+  console.log(`[IMAGE RESOLUTION] Looking for markdown image patterns...`);
+  
   return markdown.replace(/!\[([^\]]*)\]\(([^)]+)\)(<!-- scale:([0-9.]+) -->)?/g, (match, alt, imagePath, scaleComment, scale) => {
+    console.log(`[IMAGE RESOLUTION] Found markdown image: ${match}`);
+    console.log(`[IMAGE RESOLUTION] Alt: "${alt}", Path: "${imagePath}", Scale: "${scale}"`);
+    
     // Skip URLs (should already be processed)
     if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
       console.log(`[IMAGE RESOLUTION] Skipping URL: ${imagePath}`);
@@ -472,20 +486,26 @@ function resolveImagePaths(markdown, basePath) {
     
     const scaleValue = scale ? parseFloat(scale) : 0.5;
     
-    // Skip if it looks like a processed filename (img_hash.jpg)
-    if (imagePath.match(/^img_[a-f0-9]+\.(jpg|png|gif|webp)$/)) {
+    // Skip if it looks like a processed filename (img_hash.jpg) - check full path or basename
+    if (imagePath.match(/img_[a-f0-9]+\.(jpg|png|gif|webp)$/)) {
       console.log(`[IMAGE RESOLUTION] Skipping processed image: ${imagePath}`);
       // Convert to forward slashes for LaTeX
-      const latexPath = imagePath.replace(/\\/g, '/');
-      return `\\includegraphics[width=${scaleValue}\\textwidth]{${latexPath}}`;
+      const latexPath = imagePath.replaceAll('\\', '/');
+      const result = alt && alt.trim()
+        ? `\\begin{figure}[ht]\n  \\centering\n  \\includegraphics[width=${scaleValue}\\textwidth]{${latexPath}}\n  \\caption{${alt.trim()}}\n\\end{figure}`
+        : `\\includegraphics[width=${scaleValue}\\textwidth]{${latexPath}}`;
+      console.log(`[IMAGE RESOLUTION] ✓ Converted to LaTeX figure: ${result.substring(0, 100)}...`);
+      return result;
     }
     
     // Skip if already absolute
     if (path.isAbsolute(imagePath)) {
       if (fs.existsSync(imagePath)) {
         // Convert to forward slashes for LaTeX
-        const latexPath = imagePath.replace(/\\/g, '/');
-        return `\\includegraphics[width=${scaleValue}\\textwidth]{${latexPath}}`;
+        const latexPath = imagePath.replaceAll('\\', '/');
+        return alt && alt.trim()
+          ? `\\begin{figure}[ht]\n  \\centering\n  \\includegraphics[width=${scaleValue}\\textwidth]{${latexPath}}\n  \\caption{${alt.trim()}}\n\\end{figure}`
+          : `\\includegraphics[width=${scaleValue}\\textwidth]{${latexPath}}`;
       } else {
         console.warn(`[IMAGE RESOLUTION] Absolute path not found: ${imagePath}`);
         return `\\textit{[Image not found: ${path.basename(imagePath)}]}`;
@@ -504,8 +524,10 @@ function resolveImagePaths(markdown, basePath) {
       if (fs.existsSync(searchPath)) {
         console.log(`[IMAGE RESOLUTION] ✓ Found: ${imagePath} -> ${searchPath}`);
         // Convert to forward slashes for LaTeX
-        const latexPath = searchPath.replace(/\\/g, '/');
-        return `\\includegraphics[width=${scaleValue}\\textwidth]{${latexPath}}`;
+        const latexPath = searchPath.replaceAll('\\', '/');
+        return alt && alt.trim()
+          ? `\\begin{figure}[ht]\n  \\centering\n  \\includegraphics[width=${scaleValue}\\textwidth]{${latexPath}}\n  \\caption{${alt.trim()}}\n\\end{figure}`
+          : `\\includegraphics[width=${scaleValue}\\textwidth]{${latexPath}}`;
       }
     }
     
@@ -861,7 +883,14 @@ function getPandocMetadata(options) {
 function convertAlignmentDivsToLatex(markdown) {
   markdown = markdown.replace(
     /::: *\{\.center\}[\r\n]+([\s\S]*?)[\r\n]+:::/g,
-    (match, content) => `\\begin{center}\n${content.trim()}\n\\end{center}`
+    (match, content) => {
+      // Improved guard: Do not wrap if content contains an image/figure (even across lines)
+      if (/\\begin\{figure\}|\\includegraphics/.test(content)) {
+        console.warn('[ALIGNMENT PATCH] Skipping center wrap for image/figure block.');
+        return content.trim();
+      }
+      return `\\begin{center}\n${content.trim()}\n\\end{center}`;
+    }
   );
   markdown = markdown.replace(
     /::: *\{\.right\}[\r\n]+([\s\S]*?)[\r\n]+:::/g,
@@ -1009,6 +1038,9 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
        let markdown = fs.readFileSync(assembledPath, 'utf8');
        console.log(`[PDF EXPORT] Read ${markdown.length} characters from ${assembledPath}`);
        
+      // Convert custom image blocks to markdown images (critical for figure/caption logic)
+      markdown = convertCustomImageSyntax(markdown);
+      
       // ENHANCED DEBUG: Run debug analysis
       console.log(`[PDF EXPORT] Running Cloudinary debug analysis...`);
       const debugUrls = await debugCloudinaryProcessing(markdown, tempDir);
@@ -1042,8 +1074,8 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
          console.log(`[PDF EXPORT] ⚠️  No Cloudinary images found in markdown`);
        }
       
-      // STEP 1.5: Replace custom images with LaTeX for PDF
-      markdown = replaceCustomImages(markdown, 'pdf');
+      // STEP 1.5: Custom images are now processed by resolveImagePaths and replaceCloudinaryUrlsWithLocalPaths
+      // No need for replaceCustomImages since we have proper figure logic
       
       // STEP 2: Resolve any remaining image paths
       console.log(`[PDF EXPORT] Step 2: Resolving remaining image paths...`);
@@ -1057,6 +1089,9 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
       // STEP 4: Convert alignment divs
       console.log(`[PDF EXPORT] Step 4: Converting alignment divs...`);
       markdown = convertAlignmentDivsToLatex(markdown);
+      
+      // SANITIZE: Remove only the {itshape ...} LaTeX wrapper, keep caption text
+      markdown = markdown.replace(/\{itshape ([^}]+)\}/g, '$1');
       
       // STEP 5: Write processed markdown back to file
       fs.writeFileSync(assembledPath, markdown, 'utf8');
