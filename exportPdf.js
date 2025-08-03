@@ -386,13 +386,21 @@ function validateImageBuffer(buffer) {
 /**
  * Replace Cloudinary URLs with local paths in all contexts
  */
+/**
+ * Replace Cloudinary URLs with local paths in all contexts
+ * FIXED: Properly handle Windows file paths for LaTeX
+ */
 function replaceCloudinaryUrlsWithLocalPaths(markdown, downloadResults) {
   let processedMarkdown = markdown;
   
   downloadResults.forEach(result => {
     if (result.success) {
       const urlToReplace = result.original;
-      const localPath = result.localPath;
+      let localPath = result.localPath;
+      
+      // CRITICAL FIX: Convert Windows paths to LaTeX-compatible forward slashes
+      // LaTeX doesn't understand backslashes in file paths on Windows
+      localPath = localPath.replace(/\\/g, '/');
       
       console.log(`[CLOUDINARY] Replacing: ${urlToReplace} -> ${localPath}`);
       
@@ -405,24 +413,27 @@ function replaceCloudinaryUrlsWithLocalPaths(markdown, downloadResults) {
       const scalePattern = new RegExp(`!\\[([^\\]]*)\\]\\(${escapedUrl}\\)<!-- scale:([0-9.]+) -->`, 'g');
       processedMarkdown = processedMarkdown.replace(scalePattern, (match, alt, scale) => {
         totalReplacements++;
-     const scaleValue = parseFloat(scale) || 1.0;
-        return scaleValue !== 1.0 
-          ? `\\includegraphics[width=${scaleValue}\\textwidth]{${localPath.replace(/\\/g, '/')}}`
-          : `\\includegraphics{${localPath.replace(/\\/g, '/')}}`;
+        const scaleValue = parseFloat(scale) || 0.5;
+        return `\\includegraphics[width=${scaleValue}\\textwidth]{${localPath}}`;
       });
       
-      // Replace standard markdown
+      // Replace standard markdown (no scale) — apply default scale 0.5
       const markdownPattern = new RegExp(`!\\[([^\\]]*)\\]\\(${escapedUrl}\\)`, 'g');
       processedMarkdown = processedMarkdown.replace(markdownPattern, (match, alt) => {
         totalReplacements++;
-        return `\\includegraphics{${localPath.replace(/\\/g, '/')}}`;
+        return `\\includegraphics[width=0.5\\textwidth]{${localPath}}`;
       });
       
-      // Replace LaTeX includegraphics
-      const latexPattern = new RegExp(`\\\\includegraphics(?:\\[[^\\]]*\\])?\\{${escapedUrl}\\}`, 'g');
-      processedMarkdown = processedMarkdown.replace(latexPattern, (match) => {
+      // Replace LaTeX includegraphics - check if width already exists
+      const latexPattern = new RegExp(`\\\\includegraphics(?:\\[([^\\]]*)\\])?\\{${escapedUrl}\\}`, 'g');
+      processedMarkdown = processedMarkdown.replace(latexPattern, (match, existingParams) => {
         totalReplacements++;
-        return `\\includegraphics{${localPath.replace(/\\/g, '/')}}`;
+        // If already has width parameter, preserve it; otherwise add default
+        if (existingParams && existingParams.includes('width=')) {
+          return `\\includegraphics[${existingParams}]{${localPath}}`;
+        } else {
+          return `\\includegraphics[width=0.5\\textwidth]{${localPath}}`;
+        }
       });
       
       // Replace raw URLs
@@ -435,13 +446,72 @@ function replaceCloudinaryUrlsWithLocalPaths(markdown, downloadResults) {
       
       console.log(`[CLOUDINARY] ✓ Made ${totalReplacements} replacements for ${urlToReplace}`);
       
-      } else {
+    } else {
       // Replace failed downloads with error text
       processedMarkdown = replaceFailedDownload(processedMarkdown, result);
     }
   });
   
   return processedMarkdown;
+}
+
+/**
+ * Enhanced image path resolution with better error handling
+ * FIXED: Properly handle Windows file paths for LaTeX
+ */
+function resolveImagePaths(markdown, basePath) {
+  console.log(`[IMAGE RESOLUTION] Starting resolution from: ${basePath}`);
+  
+  // Only process remaining markdown images (not LaTeX includegraphics)
+  return markdown.replace(/!\[([^\]]*)\]\(([^)]+)\)(<!-- scale:([0-9.]+) -->)?/g, (match, alt, imagePath, scaleComment, scale) => {
+    // Skip URLs (should already be processed)
+    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+      console.log(`[IMAGE RESOLUTION] Skipping URL: ${imagePath}`);
+      return match;
+    }
+    
+    const scaleValue = scale ? parseFloat(scale) : 0.5;
+    
+    // Skip if it looks like a processed filename (img_hash.jpg)
+    if (imagePath.match(/^img_[a-f0-9]+\.(jpg|png|gif|webp)$/)) {
+      console.log(`[IMAGE RESOLUTION] Skipping processed image: ${imagePath}`);
+      // Convert to forward slashes for LaTeX
+      const latexPath = imagePath.replace(/\\/g, '/');
+      return `\\includegraphics[width=${scaleValue}\\textwidth]{${latexPath}}`;
+    }
+    
+    // Skip if already absolute
+    if (path.isAbsolute(imagePath)) {
+      if (fs.existsSync(imagePath)) {
+        // Convert to forward slashes for LaTeX
+        const latexPath = imagePath.replace(/\\/g, '/');
+        return `\\includegraphics[width=${scaleValue}\\textwidth]{${latexPath}}`;
+      } else {
+        console.warn(`[IMAGE RESOLUTION] Absolute path not found: ${imagePath}`);
+        return `\\textit{[Image not found: ${path.basename(imagePath)}]}`;
+      }
+    }
+    
+    // Search locations
+    const searchPaths = [
+      path.resolve(basePath, imagePath),
+      path.resolve(process.cwd(), imagePath),
+      path.resolve(process.cwd(), path.basename(imagePath)),
+      path.resolve(basePath, path.basename(imagePath))
+    ];
+    
+    for (const searchPath of searchPaths) {
+      if (fs.existsSync(searchPath)) {
+        console.log(`[IMAGE RESOLUTION] ✓ Found: ${imagePath} -> ${searchPath}`);
+        // Convert to forward slashes for LaTeX
+        const latexPath = searchPath.replace(/\\/g, '/');
+        return `\\includegraphics[width=${scaleValue}\\textwidth]{${latexPath}}`;
+      }
+    }
+    
+    console.warn(`[IMAGE RESOLUTION] ✗ Not found: ${imagePath}`);
+    return `\\textit{[Image not found: ${path.basename(imagePath)}]}`;
+  });
 }
 
 /**
@@ -496,56 +566,6 @@ function verifyCloudinaryProcessing(markdown) {
   
   return { remainingUrls };
 }
-
-/**
- * Enhanced image path resolution with better error handling
- */
- function resolveImagePaths(markdown, basePath) {
-   console.log(`[IMAGE RESOLUTION] Starting resolution from: ${basePath}`);
-   
-   // Only process remaining markdown images (not LaTeX includegraphics)
-   return markdown.replace(/!\[([^\]]*)\]\(([^)]+)\)(?!<!-- scale)/g, (match, alt, imagePath) => {
-     // Skip URLs (should already be processed)
-     if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
-       console.log(`[IMAGE RESOLUTION] Skipping URL: ${imagePath}`);
-       return match;
-     }
-     
-    // Skip if it looks like a processed filename (img_hash.jpg)
-    if (imagePath.match(/^img_[a-f0-9]+\.(jpg|png|gif|webp)$/)) {
-       console.log(`[IMAGE RESOLUTION] Skipping processed image: ${imagePath}`);
-      return `\\includegraphics{${imagePath.replace(/\\/g, '/')}}`;
-     }
-     
-     // Skip if already absolute
-     if (path.isAbsolute(imagePath)) {
-       if (fs.existsSync(imagePath)) {
-        return `\\includegraphics{${imagePath.replace(/\\/g, '/')}}`;
-       } else {
-         console.warn(`[IMAGE RESOLUTION] Absolute path not found: ${imagePath}`);
-         return `\\textit{[Image not found: ${path.basename(imagePath)}]}`;
-       }
-     }
-     
-     // Search locations
-     const searchPaths = [
-       path.resolve(basePath, imagePath),
-       path.resolve(process.cwd(), imagePath),
-       path.resolve(process.cwd(), path.basename(imagePath)),
-       path.resolve(basePath, path.basename(imagePath))
-     ];
-     
-     for (const searchPath of searchPaths) {
-       if (fs.existsSync(searchPath)) {
-         console.log(`[IMAGE RESOLUTION] ✓ Found: ${imagePath} -> ${searchPath}`);
-        return `\\includegraphics{${searchPath.replace(/\\/g, '/')}}`;
-       }
-     }
-     
-     console.warn(`[IMAGE RESOLUTION] ✗ Not found: ${imagePath}`);
-     return `\\textit{[Image not found: ${path.basename(imagePath)}]}`;
-   });
- }
 
 // Page Size Mappings
 const pageSizes = {
