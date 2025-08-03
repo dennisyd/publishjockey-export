@@ -120,11 +120,14 @@ function convertCustomImageSyntax(markdown) {
   
   const converted = markdown.replace(customImagePattern, (match, url, alt, scale) => {
     convertCount++;
-    console.log(`[CLOUDINARY] Converting image ${convertCount}: ${alt} (scale: ${scale})`);
+    console.log(`[CLOUDINARY] Converting image ${convertCount}: "${alt}" (scale: ${scale})`);
     console.log(`[CLOUDINARY] URL: ${url}`);
     
     const scaleValue = parseFloat(scale) || 1.0;
-    return `![${alt}](${url})<!-- scale:${scaleValue} -->`;
+    // Don't use default captions - if alt is "Image" or empty, make it empty
+    const cleanAlt = (alt && alt.trim() && alt.trim() !== 'Image') ? alt.trim() : '';
+    console.log(`[CLOUDINARY] Alt cleaned: "${alt}" -> "${cleanAlt}"`);
+    return `![${cleanAlt}](${url})<!-- scale:${scaleValue} -->`;
   });
   
   console.log(`[CLOUDINARY] Converted ${convertCount} custom images to markdown`);
@@ -414,9 +417,16 @@ function replaceCloudinaryUrlsWithLocalPaths(markdown, downloadResults) {
       processedMarkdown = processedMarkdown.replace(scalePattern, (match, alt, scale) => {
         totalReplacements++;
         const scaleValue = parseFloat(scale) || 0.5;
-        const result = alt && alt.trim()
-          ? `\\begin{figure}[ht]\n  \\centering\n  \\includegraphics[width=${scaleValue}\\textwidth]{${localPath}}\n  \\caption{${alt.trim()}}\n\\end{figure}`
-          : `\\includegraphics[width=${scaleValue}\\textwidth]{${localPath}}`;
+        // Clean caption: remove any unwanted prefixes, keep only the actual description
+        let cleanCaption = '';
+        if (alt && alt.trim()) {
+          cleanCaption = alt.trim();
+        }
+        console.log(`[CLOUDINARY] Alt text: "${alt}" -> Clean caption: "${cleanCaption}"`);
+        
+        const result = cleanCaption
+          ? `\\begin{figure}[ht]\n  \\centering\n  \\includegraphics[width=${scaleValue}\\textwidth]{${localPath}}\n  \\caption{${cleanCaption}}\n\\end{figure}`
+          : `\\begin{center}\n\\includegraphics[width=${scaleValue}\\textwidth]{${localPath}}\n\\end{center}`;
         console.log(`[CLOUDINARY] ✓ Converted markdown with scale to LaTeX figure: ${result.substring(0, 100)}...`);
         return result;
       });
@@ -425,8 +435,15 @@ function replaceCloudinaryUrlsWithLocalPaths(markdown, downloadResults) {
       const markdownPattern = new RegExp(`!\\[([^\\]]*)\\]\\(${escapedUrl}\\)`, 'g');
       processedMarkdown = processedMarkdown.replace(markdownPattern, (match, alt) => {
         totalReplacements++;
-        const result = alt && alt.trim()
-          ? `\\begin{figure}[ht]\n  \\centering\n  \\includegraphics[width=0.5\\textwidth]{${localPath}}\n  \\caption{${alt.trim()}}\n\\end{figure}`
+        // Clean caption: remove any unwanted prefixes, keep only the actual description
+        let cleanCaption = '';
+        if (alt && alt.trim()) {
+          cleanCaption = alt.trim();
+        }
+        console.log(`[CLOUDINARY] Alt text: "${alt}" -> Clean caption: "${cleanCaption}"`);
+        
+        const result = cleanCaption
+          ? `\\begin{figure}[ht]\n  \\centering\n  \\includegraphics[width=0.5\\textwidth]{${localPath}}\n  \\caption{${cleanCaption}}\n\\end{figure}`
           : `\\includegraphics[width=0.5\\textwidth]{${localPath}}`;
         console.log(`[CLOUDINARY] ✓ Converted standard markdown to LaTeX figure: ${result.substring(0, 100)}...`);
         return result;
@@ -478,10 +495,11 @@ function resolveImagePaths(markdown, basePath) {
     console.log(`[IMAGE RESOLUTION] Found markdown image: ${match}`);
     console.log(`[IMAGE RESOLUTION] Alt: "${alt}", Path: "${imagePath}", Scale: "${scale}"`);
     
-    // Skip URLs (should already be processed)
+    // Skip URLs (should already be processed) - but remove scale comments
     if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
       console.log(`[IMAGE RESOLUTION] Skipping URL: ${imagePath}`);
-      return match;
+      // Return the match but without scale comments (both regular and HTML entities)
+      return match.replace(/<!-- scale:[^>]*-->/g, '').replace(/&lt;!-- scale:[^&]*--&gt;/g, '');
     }
     
     const scaleValue = scale ? parseFloat(scale) : 0.5;
@@ -491,8 +509,14 @@ function resolveImagePaths(markdown, basePath) {
       console.log(`[IMAGE RESOLUTION] Skipping processed image: ${imagePath}`);
       // Convert to forward slashes for LaTeX
       const latexPath = imagePath.replaceAll('\\', '/');
-      const result = alt && alt.trim()
-        ? `\\begin{figure}[ht]\n  \\centering\n  \\includegraphics[width=${scaleValue}\\textwidth]{${latexPath}}\n  \\caption{${alt.trim()}}\n\\end{figure}`
+      // Clean caption: remove "Figure X:" prefix if present, keep only the actual description
+      let cleanCaption = '';
+      if (alt && alt.trim()) {
+        cleanCaption = alt.trim().replace(/^Figure\s*\d*\s*[:.]?\s*/i, '').trim();
+      }
+      
+      const result = cleanCaption
+        ? `\\begin{figure}[ht]\n  \\centering\n  \\includegraphics[width=${scaleValue}\\textwidth]{${latexPath}}\n  \\caption{${cleanCaption}}\n\\end{figure}`
         : `\\includegraphics[width=${scaleValue}\\textwidth]{${latexPath}}`;
       console.log(`[IMAGE RESOLUTION] ✓ Converted to LaTeX figure: ${result.substring(0, 100)}...`);
       return result;
@@ -503,8 +527,15 @@ function resolveImagePaths(markdown, basePath) {
       if (fs.existsSync(imagePath)) {
         // Convert to forward slashes for LaTeX
         const latexPath = imagePath.replaceAll('\\', '/');
-        return alt && alt.trim()
-          ? `\\begin{figure}[ht]\n  \\centering\n  \\includegraphics[width=${scaleValue}\\textwidth]{${latexPath}}\n  \\caption{${alt.trim()}}\n\\end{figure}`
+        // Clean caption: remove any unwanted prefixes, keep only the actual description
+        let cleanCaption = '';
+        if (alt && alt.trim()) {
+          cleanCaption = alt.trim();
+        }
+        console.log(`[CLOUDINARY] Alt text: "${alt}" -> Clean caption: "${cleanCaption}"`);
+        
+        return cleanCaption
+          ? `\\begin{figure}[ht]\n  \\centering\n  \\includegraphics[width=${scaleValue}\\textwidth]{${latexPath}}\n  \\caption{${cleanCaption}}\n\\end{figure}`
           : `\\includegraphics[width=${scaleValue}\\textwidth]{${latexPath}}`;
       } else {
         console.warn(`[IMAGE RESOLUTION] Absolute path not found: ${imagePath}`);
@@ -525,8 +556,15 @@ function resolveImagePaths(markdown, basePath) {
         console.log(`[IMAGE RESOLUTION] ✓ Found: ${imagePath} -> ${searchPath}`);
         // Convert to forward slashes for LaTeX
         const latexPath = searchPath.replaceAll('\\', '/');
-        return alt && alt.trim()
-          ? `\\begin{figure}[ht]\n  \\centering\n  \\includegraphics[width=${scaleValue}\\textwidth]{${latexPath}}\n  \\caption{${alt.trim()}}\n\\end{figure}`
+        // Clean caption: remove any unwanted prefixes, keep only the actual description
+        let cleanCaption = '';
+        if (alt && alt.trim()) {
+          cleanCaption = alt.trim();
+        }
+        console.log(`[CLOUDINARY] Alt text: "${alt}" -> Clean caption: "${cleanCaption}"`);
+        
+        return cleanCaption
+          ? `\\begin{figure}[ht]\n  \\centering\n  \\includegraphics[width=${scaleValue}\\textwidth]{${latexPath}}\n  \\caption{${cleanCaption}}\n\\end{figure}`
           : `\\includegraphics[width=${scaleValue}\\textwidth]{${latexPath}}`;
       }
     }
@@ -1082,6 +1120,15 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
       const basePath = path.dirname(assembledPath);
       markdown = resolveImagePaths(markdown, basePath);
       
+      // EARLY SANITIZE: Remove scale comments immediately after image processing
+      console.log(`[PDF EXPORT] Step 2.5: Early sanitization of scale comments...`);
+      const beforeEarlySanitize = markdown.length;
+      markdown = markdown.replace(/<!--\s*scale:[^>]*-->/gi, '');
+      markdown = markdown.replace(/&lt;!--\s*scale:[^&]*--&gt;/gi, '');
+      markdown = markdown.replace(/<!-- scale:[^>]*-->/g, '');
+      const afterEarlySanitize = markdown.length;
+      console.log(`[PDF EXPORT] Early sanitization removed ${beforeEarlySanitize - afterEarlySanitize} characters`);
+      
              // STEP 3: Apply proper chapter styling
        console.log(`[PDF EXPORT] Step 3: Applying chapter styling...`);
        markdown = rewriteMarkdownWithStyledChapters(markdown, options);
@@ -1092,6 +1139,16 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
       
       // SANITIZE: Remove only the {itshape ...} LaTeX wrapper, keep caption text
       markdown = markdown.replace(/\{itshape ([^}]+)\}/g, '$1');
+      
+      // SANITIZE: Remove any remaining scale comments that might have slipped through
+      const beforeSanitize = markdown.length;
+      markdown = markdown.replace(/<!--\s*scale:[^>]*-->/gi, '');
+      markdown = markdown.replace(/&lt;!--\s*scale:[^&]*--&gt;/gi, '');
+      markdown = markdown.replace(/<!-- scale:[^>]*-->/g, '');
+      const afterSanitize = markdown.length;
+      if (beforeSanitize !== afterSanitize) {
+        console.log(`[SANITIZE] Removed ${beforeSanitize - afterSanitize} characters of scale comments`);
+      }
       
       // STEP 5: Write processed markdown back to file
       fs.writeFileSync(assembledPath, markdown, 'utf8');
@@ -1128,6 +1185,10 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
 \\usepackage{float}
 \\floatplacement{figure}{!htbp}
 \\floatplacement{table}{!htbp}
+
+% Disable figure numbering - show only caption text
+\\usepackage{caption}
+\\captionsetup[figure]{labelformat=empty}
 
 % Better figure handling
 \\renewcommand{\\floatpagefraction}{0.7}
