@@ -44,7 +44,9 @@ const { upscaleImage, KDP_SIZES } = require('./imagemagic'); // Import ImageMagi
 const execPromise = util.promisify(exec);
 
 // Use custom Pandoc version if available, fallback to system pandoc
-const PANDOC_PATH = process.env.PANDOC_PATH || '/root/.cache/pandoc-3.6.4';
+// Handle Windows vs Linux defaults properly
+const PANDOC_PATH = process.env.PANDOC_PATH || 
+  (process.platform === 'win32' ? 'pandoc' : '/root/.cache/pandoc-3.6.4');
 
 const app = express();
 
@@ -595,13 +597,25 @@ app.post('/export/epub', rateLimiting.export, authenticateJWT, async (req, res) 
       generateTitlePage: false
     });
     
-    const tempInputFile = path.join(os.tmpdir(), `${uuidv4()}.md`);
-    const tempOutputFile = path.join(os.tmpdir(), `${uuidv4()}.epub`);
+    // Create temp files with better error handling
+    let tempInputFile, tempOutputFile;
     
-    fs.writeFileSync(tempInputFile, assembledMarkdown);
+    tempInputFile = path.join(os.tmpdir(), `epub_input_${uuidv4()}.md`);
+    tempOutputFile = path.join(os.tmpdir(), `epub_output_${uuidv4()}.epub`);
+    
+    console.log(`[EPUB EXPORT] Creating temp input file: ${tempInputFile}`);
+    console.log(`[EPUB EXPORT] Target temp output file: ${tempOutputFile}`);
+    
+    try {
+      fs.writeFileSync(tempInputFile, assembledMarkdown);
+      console.log(`[EPUB EXPORT] Successfully wrote ${assembledMarkdown.length} characters to temp file`);
+    } catch (tempFileError) {
+      console.error('Error creating temp files:', tempFileError);
+      return res.status(500).send('EPUB export failed: Cannot create temp files - ' + tempFileError.message);
+    }
     
     // Define arguments for pandoc
-    const args = [
+    let args = [
       tempInputFile,
       '-o', tempOutputFile,
       '-f', 'markdown',
@@ -624,8 +638,12 @@ app.post('/export/epub', rateLimiting.export, authenticateJWT, async (req, res) 
 
     // Use the persistent epub-style.css file
     const cssFile = path.join(__dirname, 'epub-style.css');
-    args.push(`--css=${cssFile}`);
-    console.log('Using persistent CSS file:', cssFile);
+    if (fs.existsSync(cssFile)) {
+      args.push(`--css=${cssFile}`);
+      console.log('Using persistent CSS file:', cssFile);
+    } else {
+      console.warn('CSS file not found, proceeding without custom styles:', cssFile);
+    }
 
     // Add cover image if provided, or use default if not
     let coverPath = null;
@@ -671,12 +689,56 @@ app.post('/export/epub', rateLimiting.export, authenticateJWT, async (req, res) 
 
     // Log the Pandoc command for debugging
     console.log('Pandoc EPUB command:', args.join(' '));
+    console.log('Using PANDOC_PATH:', PANDOC_PATH);
 
-    // Run Pandoc to generate EPUB
-    execFile(PANDOC_PATH, args, (err) => {
-      if (err) {
-        console.error('Pandoc EPUB error:', err);
-        return res.status(500).send('EPUB generation failed');
+    // Check if Pandoc exists (skip check for system PATH commands like 'pandoc')
+    const needsPathCheck = PANDOC_PATH !== 'pandoc' && 
+                           !PANDOC_PATH.includes('pandoc.exe') && 
+                           path.isAbsolute(PANDOC_PATH);
+    
+    if (needsPathCheck && !fs.existsSync(PANDOC_PATH)) {
+      console.error('Pandoc not found at path:', PANDOC_PATH);
+      console.error('Available environment variables:', process.env.PANDOC_PATH || 'PANDOC_PATH not set');
+      
+      // Try fallback to system pandoc
+      const systemPandoc = process.platform === 'win32' ? 'pandoc' : 'pandoc';
+      console.log('Falling back to system Pandoc:', systemPandoc);
+      
+      // Use system pandoc with original args
+      execFile(systemPandoc, args, (err, stdout, stderr) => {
+        if (err) {
+          console.error('Pandoc EPUB error (system fallback):', err);
+          console.error('Pandoc stderr:', stderr);
+          console.error('Pandoc stdout:', stdout);
+          
+          // Cleanup temp input file on error
+          if (tempInputFile && fs.existsSync(tempInputFile)) {
+            try {
+              fs.unlinkSync(tempInputFile);
+              console.log('Cleaned up temp input file on fallback error');
+            } catch (cleanupErr) {
+              console.warn('Failed to cleanup temp input file:', cleanupErr.message);
+            }
+          }
+          
+          return res.status(500).send('EPUB generation failed: ' + err.message);
+        }
+        
+        handleEpubSuccess();
+      });
+      return;
+    }
+
+    // Function to handle successful EPUB generation
+    const handleEpubSuccess = () => {
+      // Cleanup temp input file immediately after successful generation
+      if (tempInputFile && fs.existsSync(tempInputFile)) {
+        try {
+          fs.unlinkSync(tempInputFile);
+          console.log('[EPUB EXPORT] Cleaned up temp input file after successful generation');
+        } catch (cleanupErr) {
+          console.warn('Failed to cleanup temp input file:', cleanupErr.message);
+        }
       }
       
       // Generate a unique file ID for tracking (include "epub" in the ID)
@@ -710,9 +772,51 @@ app.post('/export/epub', rateLimiting.export, authenticateJWT, async (req, res) 
       };
       console.log(`[EPUB EXPORT] Sending response to client:`, response);
       res.json(response);
+    };
+
+    // Run Pandoc to generate EPUB
+    execFile(PANDOC_PATH, args, (err, stdout, stderr) => {
+      if (err) {
+        console.error('Pandoc EPUB error:', err);
+        console.error('Pandoc stderr:', stderr);
+        console.error('Pandoc stdout:', stdout);
+        
+        // Cleanup temp input file on error
+        if (tempInputFile && fs.existsSync(tempInputFile)) {
+          try {
+            fs.unlinkSync(tempInputFile);
+            console.log('Cleaned up temp input file on main error');
+          } catch (cleanupErr) {
+            console.warn('Failed to cleanup temp input file:', cleanupErr.message);
+          }
+        }
+        
+        return res.status(500).send('EPUB generation failed: ' + err.message);
+      }
+      
+      handleEpubSuccess();
     });
   } catch (err) {
-    console.error(err);
+    console.error('EPUB export error:', err);
+    
+    // Cleanup temp files on error
+    if (tempInputFile && fs.existsSync(tempInputFile)) {
+      try {
+        fs.unlinkSync(tempInputFile);
+        console.log('Cleaned up temp input file on error');
+      } catch (cleanupErr) {
+        console.warn('Failed to cleanup temp input file:', cleanupErr.message);
+      }
+    }
+    if (tempOutputFile && fs.existsSync(tempOutputFile)) {
+      try {
+        fs.unlinkSync(tempOutputFile);
+        console.log('Cleaned up temp output file on error');
+      } catch (cleanupErr) {
+        console.warn('Failed to cleanup temp output file:', cleanupErr.message);
+      }
+    }
+    
     res.status(500).send('EPUB export failed: ' + err.message);
   }
 });
@@ -1365,6 +1469,47 @@ app.listen(3002, () => console.log('Export server running on port 3002'));
  */
 app.get('/health', rateLimiting.healthCheck, (req, res) => {
   res.status(200).send({ status: 'ok', message: 'Export server is healthy' });
+});
+
+/**
+ * GET /debug/environment
+ * Environment debug endpoint for production debugging
+ */
+app.get('/debug/environment', (req, res) => {
+  const envInfo = {
+    nodeVersion: process.version,
+    platform: process.platform,
+    arch: process.arch,
+    cwd: process.cwd(),
+    tmpDir: os.tmpdir(),
+    pandocPath: PANDOC_PATH,
+    pandocPathExists: PANDOC_PATH === 'pandoc' ? 'System PATH command - cannot check' : fs.existsSync(PANDOC_PATH),
+    env: {
+      NODE_ENV: process.env.NODE_ENV,
+      PANDOC_PATH: process.env.PANDOC_PATH || 'Not set - using platform default'
+    }
+  };
+  
+  // Check for alternative pandoc paths
+  const pandocFallbacks = process.platform === 'win32' 
+    ? ['pandoc', 'pandoc.exe'] 
+    : ['/usr/bin/pandoc', '/usr/local/bin/pandoc', 'pandoc'];
+  envInfo.pandocFallbacks = {};
+  
+  pandocFallbacks.forEach(fallbackPath => {
+    if (fallbackPath === 'pandoc' || fallbackPath === 'pandoc.exe') {
+      envInfo.pandocFallbacks[fallbackPath] = 'System PATH command - cannot check';
+    } else {
+      envInfo.pandocFallbacks[fallbackPath] = fs.existsSync(fallbackPath);
+    }
+  });
+  
+  // Check if CSS file exists
+  const cssFile = path.join(__dirname, 'epub-style.css');
+  envInfo.cssFileExists = fs.existsSync(cssFile);
+  envInfo.cssFilePath = cssFile;
+  
+  res.json(envInfo);
 });
 
 /**
