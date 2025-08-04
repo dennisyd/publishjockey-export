@@ -629,11 +629,10 @@ app.post('/export/epub', rateLimiting.export, authenticateJWT, async (req, res) 
 
     // Add number-sections flag based on numberedHeadings setting
     if (exportOptions?.numberedHeadings) {
-      args.push('--number-sections=true');
-      console.log('Adding --number-sections=true flag for numbered headings');
+      args.push('--number-sections');
+      console.log('Adding --number-sections flag for numbered headings');
     } else {
-      args.push('--number-sections=false');
-      console.log('Adding --number-sections=false flag to disable numbered headings');
+      console.log('Skipping --number-sections flag to disable numbered headings');
     }
 
     // Use the persistent epub-style.css file
