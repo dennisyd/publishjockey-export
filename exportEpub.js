@@ -42,7 +42,10 @@ function exportEpub(assembledPath, outputPath, options = {}) {
     '--variable=toc-title:CONTENTS',
     '--variable=toc-unnumbered:true',
     '--standalone',
-    '--top-level-division=chapter'
+    '--top-level-division=chapter',
+    // Enhanced image handling for better EPUB compatibility
+    '--variable=graphics:true',
+    '--variable=document-css:true'
   ];
 
   if (options.title) baseArgs.push('--metadata', `title=${options.title}`);
