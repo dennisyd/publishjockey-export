@@ -32,7 +32,7 @@ const UserSchema = new mongoose.Schema({
   },
   subscription: {
     type: String,
-    enum: ['free', 'beta', 'author', 'starter', 'growth', 'professional', 'power', 'custom'],
+    enum: ['free', 'beta', 'author', 'starter', 'growth', 'professional', 'power', 'custom', 'single', 'bundle20', 'bundle'],
     default: 'free'
   },
   booksRemaining: {
@@ -42,6 +42,18 @@ const UserSchema = new mongoose.Schema({
   booksAllowed: {
     type: Number,
     default: 1, // Default for free plan is 1 book
+  },
+  imagesUsed: {
+    type: Number,
+    default: 0, // Number of images currently uploaded
+  },
+  imagesAllowed: {
+    type: Number,
+    default: 10, // Default for single plan is 10 images
+  },
+  additionalImageSlots: {
+    type: Number,
+    default: 0, // Additional image slots purchased beyond plan limit
   },
   subscriptionExpires: {
     type: Date,
@@ -118,9 +130,9 @@ UserSchema.methods.comparePassword = async function(candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
-// Method to update books remaining after subscription update
-UserSchema.methods.updateBooksAllowance = function() {
-  const planLimits = {
+// Method to update books and images remaining after subscription update
+UserSchema.methods.updatePlanLimits = function() {
+  const bookLimits = {
     'free': 1,
     'beta': 1, // Beta users get 1 book, like free users, but do not pay
     'author': 1,
@@ -128,9 +140,29 @@ UserSchema.methods.updateBooksAllowance = function() {
     'growth': 10,
     'professional': 20,
     'power': 30,
-    'custom': 50 // Default for custom, can be overridden
+    'custom': 50, // Default for custom, can be overridden
+    'single': 1,
+    'bundle20': 20,
+    'bundle': 10 // 10 books for bundle plan
   };
-  this.booksAllowed = planLimits[this.subscription] || 1;
+
+  const imageLimits = {
+    'free': 10,
+    'beta': 10,
+    'author': 10,
+    'starter': 10,
+    'growth': 10,
+    'professional': 10,
+    'power': 10,
+    'custom': 10,
+    'single': 10,      // Single-book plan: 10 images
+    'bundle20': 20,    // Bundle20 plan: 20 images
+    'bundle': 10       // Bundle plan: 10 images
+  };
+  
+  this.booksAllowed = bookLimits[this.subscription] || 1;
+  this.imagesAllowed = imageLimits[this.subscription] || 10;
+  
   // If this is a new subscription or upgrade, set remaining books to the full allowance
   // If it's a downgrade, make sure we don't exceed the new plan's limit
   if (this.booksRemaining > this.booksAllowed) {
@@ -141,10 +173,30 @@ UserSchema.methods.updateBooksAllowance = function() {
   // Otherwise keep the current remaining count
 };
 
-// Pre-save hook to update books allowance when subscription changes
+// Keep the old method name for backward compatibility
+UserSchema.methods.updateBooksAllowance = function() {
+  return this.updatePlanLimits();
+};
+
+// Method to get total image limit (plan limit + additional slots)
+UserSchema.methods.getTotalImageLimit = function() {
+  return this.imagesAllowed + this.additionalImageSlots;
+};
+
+// Method to check if user can upload more images
+UserSchema.methods.canUploadImages = function() {
+  return this.imagesUsed < this.getTotalImageLimit();
+};
+
+// Method to purchase additional image slots
+UserSchema.methods.purchaseImageSlots = function(quantity) {
+  this.additionalImageSlots += quantity;
+};
+
+// Pre-save hook to update plan limits when subscription changes
 UserSchema.pre('save', function(next) {
   if (this.isModified('subscription')) {
-    this.updateBooksAllowance();
+    this.updatePlanLimits();
   }
   next();
 });
