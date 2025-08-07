@@ -2986,7 +2986,7 @@ async function enforceExportLimitOrSlice(req, res, sections) {
         break;
       }
     }
-    console.log(`[EXPORT PARTIAL] Free user: Exporting up to ${pageLimit} pages`); pages (estimated). Sections included: ${includedSections.length}`);
+    console.log(`[EXPORT PARTIAL] Free user: Exporting up to ${pageLimit} pages (estimated). Sections included: ${includedSections.length}`);
     return { sections: includedSections, partial: true };
   }
   // Paid/beta users: no limit
