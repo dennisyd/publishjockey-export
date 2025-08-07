@@ -2935,7 +2935,7 @@ async function enforceExportLimitOrSlice(req, res, sections) {
     console.error('User not found for export:', userId);
     return { error: res.status(401).json({ error: 'User not found' }) };
   }
-  const pageLimit = 10;
+  const pageLimit = 12;
   const pageEstimate = (s) => (s.content ? s.content.split(/\s+/).length : 0) / 350;
   let totalPages = 0;
   let includedSections = [];
@@ -2986,7 +2986,7 @@ async function enforceExportLimitOrSlice(req, res, sections) {
         break;
       }
     }
-    console.log(`[EXPORT PARTIAL] Free user: Exporting up to ${pageLimit} pages (estimated). Sections included: ${includedSections.length}`);
+    console.log(`[EXPORT PARTIAL] Free user: Exporting up to ${pageLimit} pages`); pages (estimated). Sections included: ${includedSections.length}`);
     return { sections: includedSections, partial: true };
   }
   // Paid/beta users: no limit
