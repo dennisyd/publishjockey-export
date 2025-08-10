@@ -32,7 +32,7 @@ const UserSchema = new mongoose.Schema({
   },
   subscription: {
     type: String,
-    enum: ['free', 'beta', 'single', 'single_promo', 'bundle', 'bundle_promo', 'bundle20', 'additional', 'annual', 'custom'],
+    enum: ['free', 'beta', 'single', 'single_promo', 'bundle10', 'bundle10_promo', 'bundle20', 'bundle20_promo', 'additional', 'custom'],
     default: 'free'
   },
   booksRemaining: {
@@ -136,25 +136,25 @@ UserSchema.methods.updatePlanLimits = function() {
     'free': 1,
     'beta': 1, // Beta users get 1 book, like free users, but do not pay
     'single': 1,
-    'single_promo': 1, // Same as single
-    'bundle': 10, // 10 books for bundle plan
-    'bundle_promo': 10, // Same as bundle
-    'bundle20': 20, // Temporary: for production compatibility
+    'single_promo': 1,
+    'bundle10': 10,
+    'bundle10_promo': 10,
+    'bundle20': 20,
+    'bundle20_promo': 20,
     'additional': 1, // Additional book purchase
-    'annual': 25, // Annual subscription gets 25 books
     'custom': 50 // Default for custom, can be overridden
   };
 
   const imageLimits = {
     'free': 2,        // Free plan: 2 images max for testing
     'beta': 10,       // Beta users: 10 images (granted by admin)
-    'single': 10,     // Single book plan: 10 images
-    'single_promo': 10, // Same as single
-    'bundle': 100,    // Bundle plan: 100 images (regular)
-    'bundle_promo': 250, // Bundle plan: 250 images (launch offer bonus)
-    'bundle20': 500,  // Temporary: for production compatibility
-    'additional': 10, // Additional book: +10 images
-    'annual': 100     // Annual subscription: 100 images (3 years)
+    'single': 10,
+    'single_promo': 12,
+    'bundle10': 100,
+    'bundle10_promo': 120,
+    'bundle20': 200,
+    'bundle20_promo': 220,
+    'additional': 10,
   };
   
   this.booksAllowed = bookLimits[this.subscription] || 1;
