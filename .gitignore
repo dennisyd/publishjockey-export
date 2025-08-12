@@ -8,4 +8,5 @@
 *.html
 .env
 .env.local
-.env.production 
+.env.production
+node_modules/
