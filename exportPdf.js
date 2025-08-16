@@ -7,7 +7,9 @@ const os = require('os');
 // Custom image processing handled by functions in this file
 
 // Use custom Pandoc version if available, fallback to system pandoc
-const PANDOC_PATH = process.env.PANDOC_PATH || '/root/.cache/pandoc-3.6.4';
+// Handle Windows vs Linux defaults properly
+const PANDOC_PATH = process.env.PANDOC_PATH || 
+  (process.platform === 'win32' ? 'pandoc' : '/root/.cache/pandoc-3.6.4');
 
 /**
  * ENHANCED: More robust Cloudinary image detection and processing

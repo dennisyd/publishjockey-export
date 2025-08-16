@@ -5,7 +5,9 @@ const os = require('os');
 const { v4: uuidv4 } = require('uuid');
 
 // Use custom Pandoc version if available, fallback to system pandoc
-const PANDOC_PATH = process.env.PANDOC_PATH || '/root/.cache/pandoc-3.6.4';
+// Handle Windows vs Linux defaults properly
+const PANDOC_PATH = process.env.PANDOC_PATH || 
+  (process.platform === 'win32' ? 'pandoc' : '/root/.cache/pandoc-3.6.4');
 
 /**
  * Exports an EPUB using Pandoc.

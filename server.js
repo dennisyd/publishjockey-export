@@ -94,7 +94,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({ 
   storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB limit
+  limits: { fileSize: 15 * 1024 * 1024 }, // 15 MB limit
   fileFilter: (req, file, cb) => {
     // Accept only specific file types
     if (file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || // docx
@@ -102,7 +102,7 @@ const upload = multer({
         file.mimetype === 'text/plain') {
       cb(null, true);
     } else {
-      cb(new Error('Unsupported file type'), false);
+      cb(new Error('Unsupported file type. Only DOCX, Markdown, and TXT files are allowed.'), false);
     }
   }
 });
@@ -110,12 +110,12 @@ const upload = multer({
 // Multer instance for cover image uploads (only allow jpg, jpeg, png)
 const coverUpload = multer({
   storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB limit
+  limits: { fileSize: 15 * 1024 * 1024 }, // 15 MB limit
   fileFilter: (req, file, cb) => {
     if (file.mimetype === 'image/jpeg' || file.mimetype === 'image/png') {
       cb(null, true);
     } else {
-      cb(new Error('Unsupported file type'), false);
+      cb(new Error('Unsupported file type. Only JPEG and PNG images are allowed.'), false);
     }
   }
 });
@@ -1956,17 +1956,18 @@ const imageUpload = multer({
       cb(null, `${Date.now()}-${file.originalname}`);
     }
   }),
-  limits: { fileSize: 20 * 1024 * 1024 }, // 20 MB limit
+  limits: { fileSize: 15 * 1024 * 1024 }, // 15 MB limit
   fileFilter: (req, file, cb) => {
     if ([
       'image/jpeg',
       'image/png',
       'image/gif',
-      'image/jpg'
+      'image/jpg',
+      'image/webp'
     ].includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Unsupported image type'), false);
+      cb(new Error('Unsupported image type. Only JPEG, PNG, GIF, and WebP images are allowed.'), false);
     }
   }
 });

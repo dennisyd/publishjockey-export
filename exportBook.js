@@ -1,7 +1,9 @@
 const { execFileSync } = require('child_process');
 
 // Use custom Pandoc version if available, fallback to system pandoc
-const PANDOC_PATH = process.env.PANDOC_PATH || '/root/.cache/pandoc-3.6.4';
+// Handle Windows vs Linux defaults properly
+const PANDOC_PATH = process.env.PANDOC_PATH || 
+  (process.platform === 'win32' ? 'pandoc' : '/root/.cache/pandoc-3.6.4');
 
 function exportBook(assembledPath, outputPath, templatePath, numberedHeadings) {
   const baseArgs = [
