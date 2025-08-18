@@ -46,6 +46,14 @@ $if(CJKmainfont)$
 \setCJKfallbackfamilyfont{zhhei}{Noto Sans CJK SC}
 \setCJKfallbackfamilyfont{zhkai}{Noto Sans CJK SC}
 \setCJKfallbackfamilyfont{zhfs}{Noto Sans CJK SC}
+
+% CJK-specific spacing and text wrapping settings
+$if(CJKspacing)$
+\XeCJKsetup{
+  CJKspace=true,
+  CJKglue=\hspace{0.25em plus 0.08em minus 0.08em}
+}
+$endif$
 $endif$
 
 $if(dir)$

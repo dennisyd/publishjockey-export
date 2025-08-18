@@ -910,12 +910,22 @@ function getPandocVariables(options) {
     if (language === 'zh') {
       vars.push('CJKmainfont=Noto Sans CJK SC');
       vars.push('CJKoptions=AutoFakeBold=2,AutoFakeSlant=0.2');
+      // Add CJK-specific settings for proper text wrapping
+      vars.push('CJKspacing=true');
+      vars.push('CJKspace=true');
+      vars.push('CJKglue=true');
     } else if (language === 'ja') {
       vars.push('CJKmainfont=Noto Sans CJK JP');
       vars.push('CJKoptions=AutoFakeBold=2,AutoFakeSlant=0.2');
+      vars.push('CJKspacing=true');
+      vars.push('CJKspace=true');
+      vars.push('CJKglue=true');
     } else {
       vars.push('CJKmainfont=Noto Sans CJK SC');
       vars.push('CJKoptions=AutoFakeBold=2,AutoFakeSlant=0.2');
+      vars.push('CJKspacing=true');
+      vars.push('CJKspace=true');
+      vars.push('CJKglue=true');
     }
   }
   
