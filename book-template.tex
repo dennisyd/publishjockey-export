@@ -53,6 +53,13 @@ $if(CJKspacing)$
   CJKspace=true,
   CJKglue=\hspace{0.25em plus 0.08em minus 0.08em}
 }
+
+% Chinese-specific settings
+$if(CJKchinese)$
+\XeCJKsetup{
+  CJKchinesespacing=true,
+  CJKchinese=true
+}
 $endif$
 $endif$
 

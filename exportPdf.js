@@ -914,6 +914,9 @@ function getPandocVariables(options) {
       vars.push('CJKspacing=true');
       vars.push('CJKspace=true');
       vars.push('CJKglue=true');
+      // Add Chinese-specific settings
+      vars.push('CJKchinese=true');
+      vars.push('CJKchinesespacing=true');
     } else if (language === 'ja') {
       vars.push('CJKmainfont=Noto Sans CJK JP');
       vars.push('CJKoptions=AutoFakeBold=2,AutoFakeSlant=0.2');
