@@ -876,10 +876,68 @@ function getPandocVariables(options) {
     vars.push('bleed=true');
     vars.push('bleedmargin=0.125in');
   }
-  // Platform-aware font selection
+  
+  // Language-specific configuration
+  const language = options.language || 'en';
+  const isRTL = language === 'ar';
+  const isCJK = ['zh', 'ja', 'ko'].includes(language);
+  const isCyrillic = language === 'ru';
+  
+  // Platform-aware font selection with language support
   const exportPlatform = process.env.EXPORT_PLATFORM || 'server';
-  const defaultFont = exportPlatform === 'windows' ? 'Times New Roman' : 'Liberation Serif';
+  let defaultFont = exportPlatform === 'windows' ? 'Times New Roman' : 'Liberation Serif';
+  
+  // Language-specific font selection
+  if (isCJK) {
+    // Use more widely available CJK fonts that work on Linux servers
+    if (language === 'zh') {
+      defaultFont = 'Noto Sans CJK SC'; // Chinese font - widely available
+    } else if (language === 'ja') {
+      defaultFont = 'Noto Sans CJK JP'; // Japanese font - widely available
+    } else {
+      defaultFont = 'Noto Sans CJK SC'; // Default to Chinese for CJK
+    }
+  } else if (isCyrillic) {
+    defaultFont = 'Times New Roman'; // Good Cyrillic support
+  } else if (isRTL) {
+    defaultFont = 'Amiri'; // Arabic font
+  }
+  
   vars.push(`mainfont=${options.fontFamily || defaultFont}`);
+  
+  // Language-specific LaTeX packages
+  if (isCJK) {
+    if (language === 'zh') {
+      vars.push('CJKmainfont=Noto Sans CJK SC');
+      vars.push('CJKoptions=AutoFakeBold=2,AutoFakeSlant=0.2');
+    } else if (language === 'ja') {
+      vars.push('CJKmainfont=Noto Sans CJK JP');
+      vars.push('CJKoptions=AutoFakeBold=2,AutoFakeSlant=0.2');
+    } else {
+      vars.push('CJKmainfont=Noto Sans CJK SC');
+      vars.push('CJKoptions=AutoFakeBold=2,AutoFakeSlant=0.2');
+    }
+  }
+  
+  if (isRTL) {
+    vars.push('latex-dir-rtl=true');
+  }
+  
+  // Add language variable for babel
+  if (language !== 'en') {
+    const babelMap = {
+      'ru': 'russian',
+      'zh': 'chinese',
+      'ar': 'arabic',
+      'es': 'spanish',
+      'de': 'german',
+      'fr': 'french',
+      'it': 'italian'
+    };
+    const babelLang = babelMap[language] || language;
+    vars.push(`babel-lang=${babelLang}`);
+  }
+  
   vars.push('secstyle=\\Large\\bfseries\\filcenter');
   vars.push('pagestyle=empty');
   vars.push('disable-headers=true');

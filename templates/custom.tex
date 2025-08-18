@@ -42,6 +42,11 @@ $endif$
 $if(CJKmainfont)$
     \usepackage{xeCJK}
     \setCJKmainfont[$for(CJKoptions)$$CJKoptions$$sep$,$endfor$]{$CJKmainfont$}
+    % Fallback fonts for CJK - Linux compatible
+    \setCJKfallbackfamilyfont{zhsong}{Noto Sans CJK SC}
+    \setCJKfallbackfamilyfont{zhhei}{Noto Sans CJK SC}
+    \setCJKfallbackfamilyfont{zhkai}{Noto Sans CJK SC}
+    \setCJKfallbackfamilyfont{zhfs}{Noto Sans CJK SC}
 $endif$
 \fi
 
@@ -52,6 +57,25 @@ $endif$
 \usepackage[$for(microtypeoptions)$$microtypeoptions$$sep$,$endfor$]{microtype}
 \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
 }{}
+
+% Language-specific packages for RTL support
+$if(dir)$
+\ifxetex
+  % load bidi as late as possible as it modifies e.g. graphicx
+  $if(latex-dir-rtl)$
+  \usepackage[RTLdocument]{bidi}
+  $else$
+  \usepackage{bidi}
+  $endif$
+\fi
+\ifnum 0\ifxetex 1\fi\ifluatex 1\fi=0 % if pdftex
+  \TeXXeTstate=1
+  \newcommand{\RL}[1]{\beginR #1\endR}
+  \newcommand{\LR}[1]{\beginL #1\endL}
+  \newenvironment{RTL}{\beginR}{\endR}
+  \newenvironment{LTR}{\beginL}{\endL}
+\fi
+$endif$
 
 % CUSTOM PACKAGES FOR BETTER BOOK FORMATTING
 \usepackage{sectsty}               % For section formatting
@@ -111,7 +135,11 @@ $endif$
   {1ex plus .2ex}                   % space after
 
 % Enable proper hyphenation
+$if(babel-lang)$
+\usepackage[$babel-lang$]{babel}
+$else$
 \usepackage[english]{babel}
+$endif$
 
 % Improved list typesetting
 \usepackage{enumitem}

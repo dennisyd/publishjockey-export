@@ -37,6 +37,35 @@
 \setmainfont{Times New Roman}
 \setsansfont{Arial}
 
+% --- Language-specific packages ---
+$if(CJKmainfont)$
+\usepackage{xeCJK}
+\setCJKmainfont[$for(CJKoptions)$$CJKoptions$$sep$,$endfor$]{$CJKmainfont$}
+% Fallback fonts for CJK - Linux compatible
+\setCJKfallbackfamilyfont{zhsong}{Noto Sans CJK SC}
+\setCJKfallbackfamilyfont{zhhei}{Noto Sans CJK SC}
+\setCJKfallbackfamilyfont{zhkai}{Noto Sans CJK SC}
+\setCJKfallbackfamilyfont{zhfs}{Noto Sans CJK SC}
+$endif$
+
+$if(dir)$
+\ifxetex
+  % load bidi as late as possible as it modifies e.g. graphicx
+  $if(latex-dir-rtl)$
+  \usepackage[RTLdocument]{bidi}
+  $else$
+  \usepackage{bidi}
+  $endif$
+\fi
+\ifnum 0\ifxetex 1\fi\ifluatex 1\fi=0 % if pdftex
+  \TeXXeTstate=1
+  \newcommand{\RL}[1]{\beginR #1\endR}
+  \newcommand{\LR}[1]{\beginL #1\endL}
+  \newenvironment{RTL}{\beginR}{\endR}
+  \newenvironment{LTR}{\beginL}{\endL}
+\fi
+$endif$
+
 % --- Page geometry ---
 \usepackage{geometry}
 \geometry{$if(geometry)$$geometry$$else$letterpaper$endif$}
@@ -47,7 +76,11 @@
 \typeout{DEBUG - Binding type: $if(binding)$$binding$$else$paperback$endif$}
 
 % --- Hyphenation and justification ---
+$if(babel-lang)$
+\usepackage[$babel-lang$]{babel}
+$else$
 \usepackage[english]{babel}
+$endif$
 \usepackage{microtype}
 \sloppy
 
