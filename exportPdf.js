@@ -892,11 +892,11 @@ function getPandocVariables(options) {
   if (isCJK) {
     // Use more widely available CJK fonts that work on Linux servers
     if (language === 'zh') {
-      defaultFont = 'Noto Sans CJK SC'; // Chinese font - widely available
+      defaultFont = 'Noto Sans CJK'; // Use generic CJK font for Chinese
     } else if (language === 'ja') {
       defaultFont = 'Noto Sans CJK JP'; // Japanese font - widely available
     } else {
-      defaultFont = 'Noto Sans CJK SC'; // Default to Chinese for CJK
+      defaultFont = 'Noto Sans CJK'; // Default to generic CJK
     }
   } else if (isCyrillic) {
     defaultFont = 'Times New Roman'; // Good Cyrillic support
@@ -911,7 +911,7 @@ function getPandocVariables(options) {
   // Language-specific LaTeX packages
   if (isCJK) {
     if (language === 'zh') {
-      vars.push('CJKmainfont=Noto Sans CJK SC');
+      vars.push('CJKmainfont=Noto Sans CJK'); // Use generic CJK font
       vars.push('CJKoptions=AutoFakeBold=2,AutoFakeSlant=0.2');
       // Enhanced Chinese-specific settings for proper text wrapping and margins
       vars.push('CJKspacing=true');
@@ -930,7 +930,7 @@ function getPandocVariables(options) {
       vars.push('CJKspace=true');
       vars.push('CJKglue=true');
     } else {
-      vars.push('CJKmainfont=Noto Sans CJK SC');
+      vars.push('CJKmainfont=Noto Sans CJK'); // Use generic CJK font
       vars.push('CJKoptions=AutoFakeBold=2,AutoFakeSlant=0.2');
       vars.push('CJKspacing=true');
       vars.push('CJKspace=true');
