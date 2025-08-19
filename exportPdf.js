@@ -913,13 +913,16 @@ function getPandocVariables(options) {
     if (language === 'zh') {
       vars.push('CJKmainfont=Noto Sans CJK SC');
       vars.push('CJKoptions=AutoFakeBold=2,AutoFakeSlant=0.2');
-      // Add CJK-specific settings for proper text wrapping
+      // Enhanced Chinese-specific settings for proper text wrapping and margins
       vars.push('CJKspacing=true');
       vars.push('CJKspace=true');
       vars.push('CJKglue=true');
-      // Add Chinese-specific settings
       vars.push('CJKchinese=true');
       vars.push('CJKchinesespacing=true');
+      // Additional Chinese text flow controls
+      vars.push('CJKtextwidth=true');
+      vars.push('CJKlinebreak=true');
+      vars.push('CJKwordspacing=true');
     } else if (language === 'ja') {
       vars.push('CJKmainfont=Noto Sans CJK JP');
       vars.push('CJKoptions=AutoFakeBold=2,AutoFakeSlant=0.2');

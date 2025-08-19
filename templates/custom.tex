@@ -241,6 +241,31 @@ $endif$
   \end{titlepage}
 }
 
+% CJK-specific spacing and text wrapping settings
+$if(CJKspacing)$
+\XeCJKsetup{
+  CJKspace=true,
+  CJKglue=\hspace{0.25em plus 0.08em minus 0.08em}
+}
+$endif$
+
+% Chinese-specific settings
+$if(CJKchinese)$
+\XeCJKsetup{
+  CJKchinesespacing=true,
+  CJKchinese=true
+}
+$endif$
+
+% Enhanced Chinese text flow controls
+$if(CJKtextwidth)$
+\XeCJKsetup{
+  CJKtextwidth=true,
+  CJKlinebreak=true,
+  CJKwordspacing=true
+}
+$endif$
+
 \begin{document}
 % Start with front matter (roman numerals)
 \frontmatter
