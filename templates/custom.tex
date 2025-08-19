@@ -222,6 +222,9 @@ $if(dir)$
   \usepackage{bidi}
   $endif$
 \fi
+$endif$
+
+% Additional bidirectional text support for pdfTeX
 \ifnum 0\ifxetex 1\fi\ifluatex 1\fi=0 % if pdftex
   \TeXXeTstate=1
   \newcommand{\RL}[1]{\beginR #1\endR}
@@ -229,7 +232,6 @@ $if(dir)$
   \newenvironment{RTL}{\beginR}{\endR}
   \newenvironment{LTR}{\beginL}{\endL}
 \fi
-$endif$
 
 $for(header-includes)$
 $header-includes$
