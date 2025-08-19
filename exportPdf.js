@@ -882,6 +882,7 @@ function getPandocVariables(options) {
   const isRTL = language === 'ar';
   const isCJK = ['zh', 'ja', 'ko'].includes(language);
   const isCyrillic = language === 'ru';
+  const isDevanagari = language === 'hi'; // Hindi uses Devanagari script
   
   // Platform-aware font selection with language support
   const exportPlatform = process.env.EXPORT_PLATFORM || 'server';
@@ -901,6 +902,8 @@ function getPandocVariables(options) {
     defaultFont = 'Times New Roman'; // Good Cyrillic support
   } else if (isRTL) {
     defaultFont = 'Amiri'; // Arabic font
+  } else if (isDevanagari) {
+    defaultFont = 'Noto Sans Devanagari'; // Hindi font
   }
   
   vars.push(`mainfont=${options.fontFamily || defaultFont}`);
@@ -945,7 +948,8 @@ function getPandocVariables(options) {
       'es': 'spanish',
       'de': 'german',
       'fr': 'french',
-      'it': 'italian'
+      'it': 'italian',
+      'hi': 'hindi' // Added Hindi
     };
     const babelLang = babelMap[language] || language;
     vars.push(`babel-lang=${babelLang}`);
