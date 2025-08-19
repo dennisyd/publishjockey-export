@@ -1346,6 +1346,27 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
       // STEP 7: Run Pandoc
       console.log(`[PDF EXPORT] Step 7: Running Pandoc...`);
       console.log(`[PDF EXPORT] Command: ${PANDOC_PATH} ${args.join(' ')}`);
+      // Calculate default font for logging
+      const exportPlatform = process.env.EXPORT_PLATFORM || 'server';
+      let defaultFont = exportPlatform === 'windows' ? 'Times New Roman' : 'Liberation Serif';
+      
+      // Language-specific font selection for logging
+      const language = options.language || 'en';
+      const isRTL = language === 'ar' || language === 'he' || language === 'yi';
+      const isCyrillic = language === 'ru';
+      const isDevanagari = language === 'hi';
+      const isHebrew = language === 'he' || language === 'yi';
+      
+      if (isCyrillic) {
+        defaultFont = 'Times New Roman';
+      } else if (isHebrew) {
+        defaultFont = 'Noto Sans Hebrew';
+      } else if (isRTL && language === 'ar') {
+        defaultFont = 'Noto Sans Arabic';
+      } else if (isDevanagari) {
+        defaultFont = 'Noto Sans Devanagari';
+      }
+      
       console.log(`[PDF EXPORT] Template being used: templates/custom.tex`);
       console.log(`[PDF EXPORT] Font being used: ${options.fontFamily || defaultFont}`);
       console.log(`[PDF EXPORT] Language: ${language}, RTL: ${isRTL}`);
