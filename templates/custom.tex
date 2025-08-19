@@ -82,15 +82,13 @@ $if(dir)$
   \usepackage{polyglossia}
   % Set up languages with specific fonts
   \setdefaultlanguage{english}
-  $if(babel-lang)$
-  $if(babel-lang=arabic)$
+  $if(lang.arabic)$
   \setotherlanguage{arabic}
   \newfontfamily\arabicfont[Script=Arabic]{Noto Sans Arabic}
   $endif$
-  $if(babel-lang=hebrew)$
+  $if(lang.hebrew)$
   \setotherlanguage{hebrew}
   \newfontfamily\hebrewfont[Script=Hebrew]{Noto Sans Hebrew}
-  $endif$
   $endif$
 \fi
 $endif$

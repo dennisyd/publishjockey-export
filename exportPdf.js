@@ -957,6 +957,9 @@ function getPandocVariables(options) {
     };
     const babelLang = babelMap[language] || language;
     vars.push(`babel-lang=${babelLang}`);
+    
+    // Add language variable for template conditionals
+    vars.push(`lang=${language}`);
   }
   
   vars.push('secstyle=\\Large\\bfseries\\filcenter');
