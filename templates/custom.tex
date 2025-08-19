@@ -30,6 +30,21 @@ $endif$
 $if(mainfont)$
     \setmainfont[$for(mainfontoptions)$$mainfontoptions$$sep$,$endfor$]{$mainfont$}
 $endif$
+
+% --- Additional font setup for RTL languages ---
+$if(dir)$
+\ifxetex
+  % Ensure proper font loading for RTL languages
+  $if(mainfont)$
+  \setmainfont{$mainfont$}
+  $endif$
+  % Additional font features for RTL languages
+  \defaultfontfeatures{Ligatures=TeX,Scale=MatchLowercase}
+  % Explicit font loading for RTL languages
+  \newfontfamily\arabicfont[Script=Arabic]{Noto Sans Arabic}
+  \newfontfamily\hebrewfont[Script=Hebrew]{Noto Sans Hebrew}
+\fi
+$endif$
 $if(sansfont)$
     \setsansfont[$for(sansfontoptions)$$sansfontoptions$$sep$,$endfor$]{$sansfont$}
 $endif$
@@ -58,6 +73,24 @@ $if(dir)$
   \usepackage[RTLdocument]{bidi}
   $else$
   \usepackage{bidi}
+  $endif$
+  % Additional bidirectional text support for XeLaTeX
+  \usepackage{fontspec}
+  \usepackage{xunicode}
+  \usepackage{xltxtra}
+  % Additional packages for better RTL text rendering
+  \usepackage{polyglossia}
+  % Set up languages with specific fonts
+  \setdefaultlanguage{english}
+  $if(babel-lang)$
+  $if(babel-lang = arabic)$
+  \setotherlanguage{arabic}
+  \newfontfamily\arabicfont[Script=Arabic]{Noto Sans Arabic}
+  $endif$
+  $if(babel-lang = hebrew)$
+  \setotherlanguage{hebrew}
+  \newfontfamily\hebrewfont[Script=Hebrew]{Noto Sans Hebrew}
+  $endif$
   $endif$
 \fi
 \ifnum 0\ifxetex 1\fi\ifluatex 1\fi=0 % if pdftex
@@ -127,10 +160,14 @@ $endif$
   {1ex plus .2ex}                   % space after
 
 % Enable proper hyphenation
+$if(dir)$
+% For RTL languages, use polyglossia instead of babel
+$else$
 $if(babel-lang)$
 \usepackage[$babel-lang$]{babel}
 $else$
 \usepackage[english]{babel}
+$endif$
 $endif$
 
 % Improved list typesetting

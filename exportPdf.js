@@ -894,10 +894,43 @@ function getPandocVariables(options) {
   } else if (isHebrew) {
     defaultFont = 'Noto Sans Hebrew'; // Hebrew font
   } else if (isRTL && language === 'ar') {
-    defaultFont = 'Amiri'; // Arabic font
+    defaultFont = 'Noto Sans Arabic'; // Arabic font (changed from Amiri)
   } else if (isDevanagari) {
     defaultFont = 'Noto Sans Devanagari'; // Hindi font
   }
+  
+  // Ensure font names match exactly what's available on the system
+  if (isRTL) {
+    // Use exact font names from fc-list output
+    if (language === 'ar') {
+      defaultFont = 'Noto Sans Arabic';
+    } else if (language === 'he' || language === 'yi') {
+      defaultFont = 'Noto Sans Hebrew';
+    }
+  }
+  
+  // Try alternative font names if the primary ones don't work
+  // These are the font family names that might work better with LaTeX
+  if (isRTL && !options.fontFamily) {
+    if (language === 'ar') {
+      // Try alternative Arabic font names
+      defaultFont = 'Noto Sans Arabic';
+    } else if (language === 'he' || language === 'yi') {
+      // Try alternative Hebrew font names
+      defaultFont = 'Noto Sans Hebrew';
+    }
+  }
+  
+  // Debug: Log available fonts for RTL languages
+  if (isRTL) {
+    console.log(`[FONT DEBUG] RTL language detected: ${language}`);
+    console.log(`[FONT DEBUG] Selected font: ${defaultFont}`);
+    console.log(`[FONT DEBUG] Font from options: ${options.fontFamily}`);
+  }
+  
+  console.log(`[FONT] Language: ${language}, RTL: ${isRTL}, Selected font: ${options.fontFamily || defaultFont}`);
+  console.log(`[FONT] Font family from options: ${options.fontFamily}`);
+  console.log(`[FONT] Default font: ${defaultFont}`);
   
   vars.push(`mainfont=${options.fontFamily || defaultFont}`);
   
@@ -905,6 +938,8 @@ function getPandocVariables(options) {
   
   if (isRTL) {
     vars.push('latex-dir-rtl=true');
+    // Add additional RTL-specific variables
+    vars.push('dir=rtl');
   }
   
   // Add language variable for babel
@@ -1310,7 +1345,10 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
       
       // STEP 7: Run Pandoc
       console.log(`[PDF EXPORT] Step 7: Running Pandoc...`);
-        console.log(`[PDF EXPORT] Command: ${PANDOC_PATH} ${args.join(' ')}`);
+      console.log(`[PDF EXPORT] Command: ${PANDOC_PATH} ${args.join(' ')}`);
+      console.log(`[PDF EXPORT] Template being used: templates/custom.tex`);
+      console.log(`[PDF EXPORT] Font being used: ${options.fontFamily || defaultFont}`);
+      console.log(`[PDF EXPORT] Language: ${language}, RTL: ${isRTL}`);
   
          execFile(PANDOC_PATH, args, { 
          maxBuffer: 1024 * 1024 * 10, // 10MB buffer

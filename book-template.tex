@@ -37,6 +37,22 @@
 \setmainfont{Times New Roman}
 \setsansfont{Arial}
 
+% --- Font setup for RTL languages ---
+$if(mainfont)$
+\setmainfont{$mainfont$}
+$endif$
+
+% --- Additional font features for better rendering ---
+\defaultfontfeatures{Ligatures=TeX,Scale=MatchLowercase}
+
+% --- Enhanced RTL support ---
+$if(dir)$
+\ifxetex
+  % Additional packages for better RTL text rendering
+  \usepackage{polyglossia}
+\fi
+$endif$
+
 % --- Language-specific packages ---
 
 $if(dir)$
@@ -47,6 +63,10 @@ $if(dir)$
   $else$
   \usepackage{bidi}
   $endif$
+  % Additional bidirectional text support for XeLaTeX
+  \usepackage{fontspec}
+  \usepackage{xunicode}
+  \usepackage{xltxtra}
 \fi
 \ifnum 0\ifxetex 1\fi\ifluatex 1\fi=0 % if pdftex
   \TeXXeTstate=1
