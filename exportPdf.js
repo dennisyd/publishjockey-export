@@ -1183,6 +1183,12 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
       console.log(`[PDF EXPORT] Step 4: Converting alignment divs...`);
       markdown = convertAlignmentDivsToLatex(markdown);
       
+      // STEP 4.5: Process bidirectional text for RTL languages
+      if (options.language && ['ar', 'he', 'yi'].includes(options.language)) {
+        console.log(`[PDF EXPORT] Step 4.5: Processing bidirectional text for ${options.language}...`);
+        markdown = processBidirectionalText(markdown, options.language);
+      }
+      
       // SANITIZE: Remove only the {itshape ...} LaTeX wrapper, keep caption text
       markdown = markdown.replace(/\{itshape ([^}]+)\}/g, '$1');
       
@@ -1476,6 +1482,65 @@ function analyzeMarkdownForImages(markdown) {
   return analysis;
 }
 
+/**
+ * Process bidirectional text for RTL languages using LaTeX bidi package
+ * Handles mixed content like Hebrew text with English names, URLs, numbers, etc.
+ */
+function processBidirectionalText(markdown, language) {
+  console.log(`[BIDI] Processing bidirectional text for language: ${language}`);
+  
+  // Only process for RTL languages
+  if (!['ar', 'he', 'yi'].includes(language)) {
+    return markdown;
+  }
+  
+  let processedMarkdown = markdown;
+  
+  // Simple patterns for LTR content within RTL text
+  const ltrPatterns = [
+    // URLs
+    { pattern: /(https?:\/\/[^\s]+)/g, type: 'URL' },
+    // Email addresses
+    { pattern: /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g, type: 'Email' },
+    // English words (basic pattern)
+    { pattern: /([a-zA-Z]+)/g, type: 'English' },
+    // Numbers
+    { pattern: /(\d+)/g, type: 'Number' }
+  ];
+  
+  let totalReplacements = 0;
+  
+  ltrPatterns.forEach(({ pattern, type }) => {
+    const matches = processedMarkdown.match(pattern);
+    if (matches) {
+      console.log(`[BIDI] Found ${matches.length} ${type} patterns`);
+      
+      processedMarkdown = processedMarkdown.replace(pattern, (match) => {
+        // Don't wrap if it's already wrapped or if it's part of LaTeX commands
+        if (match.includes('\\') || match.includes('{') || match.includes('}')) {
+          return match;
+        }
+        
+        // Don't wrap if it's already in a LaTeX environment
+        if (match.includes('\\begin{') || match.includes('\\end{')) {
+          return match;
+        }
+        
+        // Don't wrap if it's already wrapped in bidi commands
+        if (match.includes('\\LR{') || match.includes('\\RL{')) {
+          return match;
+        }
+        
+        totalReplacements++;
+        return `\\LR{${match}}`; // LaTeX bidi command for LTR content in RTL text
+      });
+    }
+  });
+  
+  console.log(`[BIDI] Applied ${totalReplacements} bidirectional text replacements`);
+  return processedMarkdown;
+}
+
 module.exports = { 
   exportPdf, 
   pageSizes, 
@@ -1491,6 +1556,7 @@ module.exports = {
   analyzeMarkdownForImages,
   isValidCloudinaryUrl,
   debugCloudinaryProcessing,
+  processBidirectionalText,
   
   // Legacy compatibility (deprecated)
   findImageRecursively: (dir, filename) => {

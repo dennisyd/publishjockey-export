@@ -6,7 +6,7 @@
  * @returns {string}
  */
 function removeEmojis(str) {
-  return str.replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|[\uD83C-\uDBFF\uDC00-\uDFFF]+|[\u2011-\u26FF]|\uD83D[\uDE00-\uDE4F])/g, '');
+  return str.replace(/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu, '');
 }
 
 /**
@@ -60,4 +60,4 @@ function assembleBookPlain(sections, options = {}) {
   return output.trim();
 }
 
-module.exports = { assembleBookPlain, removeEmojis }; 
+module.exports = { assembleBookPlain, removeEmojis };

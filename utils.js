@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 function removeEmojis(str) {
-  return str.replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, '');
+  return str.replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|[\uD83C-\uDBFF\uDC00-\uDFFF]+|[\u2011-\u26FF]|[\uD83D\uDE00-\uDE4F])/g, '');
 }
 
 function saveDebugFile(content, filename, directory = 'debug') {
