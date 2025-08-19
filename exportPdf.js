@@ -879,28 +879,21 @@ function getPandocVariables(options) {
   
   // Language-specific configuration
   const language = options.language || 'en';
-  const isRTL = language === 'ar';
-  const isCJK = ['zh', 'ja', 'ko'].includes(language);
+  const isRTL = language === 'ar' || language === 'he' || language === 'yi';
   const isCyrillic = language === 'ru';
   const isDevanagari = language === 'hi'; // Hindi uses Devanagari script
+  const isHebrew = language === 'he' || language === 'yi'; // Hebrew and Yiddish use Hebrew script
   
   // Platform-aware font selection with language support
   const exportPlatform = process.env.EXPORT_PLATFORM || 'server';
   let defaultFont = exportPlatform === 'windows' ? 'Times New Roman' : 'Liberation Serif';
   
   // Language-specific font selection
-  if (isCJK) {
-    // Use more widely available CJK fonts that work on Linux servers
-    if (language === 'zh') {
-      defaultFont = 'Noto Sans CJK TC'; // Use Traditional Chinese font (available on system)
-    } else if (language === 'ja') {
-      defaultFont = 'Noto Sans CJK JP'; // Japanese font - widely available
-    } else {
-      defaultFont = 'Noto Sans CJK SC'; // Default to Simplified Chinese for CJK
-    }
-  } else if (isCyrillic) {
+  if (isCyrillic) {
     defaultFont = 'Times New Roman'; // Good Cyrillic support
-  } else if (isRTL) {
+  } else if (isHebrew) {
+    defaultFont = 'Noto Sans Hebrew'; // Hebrew font
+  } else if (isRTL && language === 'ar') {
     defaultFont = 'Amiri'; // Arabic font
   } else if (isDevanagari) {
     defaultFont = 'Noto Sans Devanagari'; // Hindi font
@@ -908,42 +901,7 @@ function getPandocVariables(options) {
   
   vars.push(`mainfont=${options.fontFamily || defaultFont}`);
   
-  // Language-specific LaTeX packages
-  if (isCJK) {
-    if (language === 'zh') {
-      vars.push('CJKmainfont=Noto Sans CJK TC'); // Use Traditional Chinese font
-      vars.push('CJKoptions=AutoFakeBold=2,AutoFakeSlant=0.2');
-      // Enhanced Chinese-specific settings for proper text wrapping and margins
-      vars.push('CJKspacing=true');
-      vars.push('CJKspace=true');
-      vars.push('CJKglue=true');
-      vars.push('CJKchinese=true');
-      vars.push('CJKchinesespacing=true');
-      // Additional Chinese text flow controls
-      vars.push('CJKtextwidth=true');
-      vars.push('CJKlinebreak=true');
-      vars.push('CJKwordspacing=true');
-      // Force text width constraints and prevent overflow
-      vars.push('CJKtextwidth=true');
-      vars.push('CJKlinebreak=true');
-      vars.push('CJKwordspacing=true');
-      // Additional margin controls
-      vars.push('CJKmargin=true');
-      vars.push('CJKparindent=true');
-    } else if (language === 'ja') {
-      vars.push('CJKmainfont=Noto Sans CJK JP');
-      vars.push('CJKoptions=AutoFakeBold=2,AutoFakeSlant=0.2');
-      vars.push('CJKspacing=true');
-      vars.push('CJKspace=true');
-      vars.push('CJKglue=true');
-    } else {
-      vars.push('CJKmainfont=Noto Sans CJK TC'); // Use Traditional Chinese font
-      vars.push('CJKoptions=AutoFakeBold=2,AutoFakeSlant=0.2');
-      vars.push('CJKspacing=true');
-      vars.push('CJKspace=true');
-      vars.push('CJKglue=true');
-    }
-  }
+
   
   if (isRTL) {
     vars.push('latex-dir-rtl=true');
@@ -953,8 +911,9 @@ function getPandocVariables(options) {
   if (language !== 'en') {
     const babelMap = {
       'ru': 'russian',
-      'zh': 'chinese',
       'ar': 'arabic',
+      'he': 'hebrew',
+      'yi': 'hebrew', // Yiddish uses Hebrew babel
       'es': 'spanish',
       'de': 'german',
       'fr': 'french',

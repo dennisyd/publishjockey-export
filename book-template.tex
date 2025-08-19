@@ -38,40 +38,6 @@
 \setsansfont{Arial}
 
 % --- Language-specific packages ---
-$if(CJKmainfont)$
-\usepackage{xeCJK}
-\setCJKmainfont[$for(CJKoptions)$$CJKoptions$$sep$,$endfor$]{$CJKmainfont$}
-% Fallback fonts for CJK - Linux compatible
-\setCJKfallbackfamilyfont{zhsong}{Noto Sans CJK TC}
-\setCJKfallbackfamilyfont{zhhei}{Noto Sans CJK TC}
-\setCJKfallbackfamilyfont{zhkai}{Noto Sans CJK TC}
-\setCJKfallbackfamilyfont{zhfs}{Noto Sans CJK TC}
-
-% CJK-specific spacing and text wrapping settings
-$if(CJKspacing)$
-\XeCJKsetup{
-  CJKspace=true,
-  CJKglue=\hspace{0.25em plus 0.08em minus 0.08em}
-}
-$endif$
-
-% Chinese-specific settings
-$if(CJKchinese)$
-\XeCJKsetup{
-  CJKchinesespacing=true,
-  CJKchinese=true
-}
-$endif$
-
-% Enhanced Chinese text flow controls
-$if(CJKtextwidth)$
-\XeCJKsetup{
-  CJKtextwidth=true,
-  CJKlinebreak=true,
-  CJKwordspacing=true
-}
-$endif$
-$endif$
 
 $if(dir)$
 \ifxetex
