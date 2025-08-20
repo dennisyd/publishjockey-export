@@ -93,13 +93,9 @@ $if(dir)$
 \fi
 $endif$
 
-% Bidirectional text support for all engines
+% Basic RTL support for pdfTeX (simplified)
 \ifnum 0\ifxetex 1\fi\ifluatex 1\fi=0 % if pdftex
   \TeXXeTstate=1
-  \newcommand{\RL}[1]{\beginR #1\endR}
-  \newcommand{\LR}[1]{\beginL #1\endL}
-  \newenvironment{RTL}{\beginR}{\endR}
-  \newenvironment{LTR}{\beginL}{\endL}
 \fi
 
 % CUSTOM PACKAGES FOR BETTER BOOK FORMATTING
@@ -222,13 +218,9 @@ $if(dir)$
 \fi
 $endif$
 
-% Additional bidirectional text support for pdfTeX
+% Additional RTL support for pdfTeX (simplified)
 \ifnum 0\ifxetex 1\fi\ifluatex 1\fi=0 % if pdftex
   \TeXXeTstate=1
-  \newcommand{\RL}[1]{\beginR #1\endR}
-  \newcommand{\LR}[1]{\beginL #1\endL}
-  \newenvironment{RTL}{\beginR}{\endR}
-  \newenvironment{LTR}{\beginL}{\endL}
 \fi
 
 $for(header-includes)$

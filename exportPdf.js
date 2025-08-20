@@ -1221,11 +1221,15 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
       console.log(`[PDF EXPORT] Step 4: Converting alignment divs...`);
       markdown = convertAlignmentDivsToLatex(markdown);
       
-      // STEP 4.5: Process bidirectional text for RTL languages
-      if (options.language && ['ar', 'he', 'yi'].includes(options.language)) {
-        console.log(`[PDF EXPORT] Step 4.5: Processing bidirectional text for ${options.language}...`);
-        markdown = processBidirectionalText(markdown, options.language);
-      }
+             // STEP 4.5: RTL language validation and warnings
+       if (options.language && ['ar', 'he', 'yi'].includes(options.language)) {
+         console.log(`[PDF EXPORT] Step 4.5: Validating RTL language content for ${options.language}...`);
+         const rtlValidation = validateRTLContent(markdown, options.language);
+         if (rtlValidation.hasMixedContent) {
+           console.warn(`[PDF EXPORT] ⚠️  Mixed language content detected in ${options.language} document`);
+           console.warn(`[PDF EXPORT] ⚠️  For best results, use pure ${options.language} content only`);
+         }
+       }
       
       // SANITIZE: Remove only the {itshape ...} LaTeX wrapper, keep caption text
       markdown = markdown.replace(/\{itshape ([^}]+)\}/g, '$1');
@@ -1545,62 +1549,55 @@ function analyzeMarkdownForImages(markdown) {
 }
 
 /**
- * Process bidirectional text for RTL languages using LaTeX bidi package
- * Handles mixed content like Hebrew text with English names, URLs, numbers, etc.
+ * Validate RTL content for mixed language issues
+ * Provides warnings but doesn't modify content
  */
-function processBidirectionalText(markdown, language) {
-  console.log(`[BIDI] Processing bidirectional text for language: ${language}`);
+function validateRTLContent(markdown, language) {
+  console.log(`[RTL VALIDATION] Validating content for language: ${language}`);
   
-  // Only process for RTL languages
+  // Only validate for RTL languages
   if (!['ar', 'he', 'yi'].includes(language)) {
-    return markdown;
+    return { hasMixedContent: false, issues: [] };
   }
   
-  let processedMarkdown = markdown;
+  const issues = [];
+  let hasMixedContent = false;
   
-  // Simple patterns for LTR content within RTL text
-  const ltrPatterns = [
-    // URLs
-    { pattern: /(https?:\/\/[^\s]+)/g, type: 'URL' },
-    // Email addresses
-    { pattern: /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g, type: 'Email' },
-    // English words (basic pattern)
-    { pattern: /([a-zA-Z]+)/g, type: 'English' },
-    // Numbers
-    { pattern: /(\d+)/g, type: 'Number' }
+  // Check for common mixed content patterns
+  const mixedContentPatterns = [
+    { pattern: /[a-zA-Z]+/g, type: 'English text' },
+    { pattern: /https?:\/\/[^\s]+/g, type: 'URLs' },
+    { pattern: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, type: 'Email addresses' }
   ];
   
-  let totalReplacements = 0;
-  
-  ltrPatterns.forEach(({ pattern, type }) => {
-    const matches = processedMarkdown.match(pattern);
-    if (matches) {
-      console.log(`[BIDI] Found ${matches.length} ${type} patterns`);
+  mixedContentPatterns.forEach(({ pattern, type }) => {
+    const matches = markdown.match(pattern);
+    if (matches && matches.length > 0) {
+      // Filter out LaTeX commands and environments
+      const filteredMatches = matches.filter(match => 
+        !match.includes('\\') && 
+        !match.includes('{') && 
+        !match.includes('}') &&
+        !match.includes('\\begin{') && 
+        !match.includes('\\end{')
+      );
       
-      processedMarkdown = processedMarkdown.replace(pattern, (match) => {
-        // Don't wrap if it's already wrapped or if it's part of LaTeX commands
-        if (match.includes('\\') || match.includes('{') || match.includes('}')) {
-          return match;
-        }
-        
-        // Don't wrap if it's already in a LaTeX environment
-        if (match.includes('\\begin{') || match.includes('\\end{')) {
-          return match;
-        }
-        
-        // Don't wrap if it's already wrapped in bidi commands
-        if (match.includes('\\LR{') || match.includes('\\RL{')) {
-          return match;
-        }
-        
-        totalReplacements++;
-        return `\\LR{${match}}`; // LaTeX bidi command for LTR content in RTL text
-      });
+      if (filteredMatches.length > 0) {
+        hasMixedContent = true;
+        issues.push(`${filteredMatches.length} instances of ${type} detected`);
+        console.log(`[RTL VALIDATION] Found ${filteredMatches.length} instances of ${type}`);
+      }
     }
   });
   
-  console.log(`[BIDI] Applied ${totalReplacements} bidirectional text replacements`);
-  return processedMarkdown;
+  if (hasMixedContent) {
+    console.warn(`[RTL VALIDATION] ⚠️  Mixed content detected in ${language} document`);
+    console.warn(`[RTL VALIDATION] ⚠️  For best results, use pure ${language} content only`);
+  } else {
+    console.log(`[RTL VALIDATION] ✓ Pure ${language} content detected`);
+  }
+  
+  return { hasMixedContent, issues };
 }
 
 module.exports = { 
@@ -1618,7 +1615,7 @@ module.exports = {
   analyzeMarkdownForImages,
   isValidCloudinaryUrl,
   debugCloudinaryProcessing,
-  processBidirectionalText,
+     validateRTLContent,
   
   // Legacy compatibility (deprecated)
   findImageRecursively: (dir, filename) => {
