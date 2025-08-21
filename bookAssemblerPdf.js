@@ -1,6 +1,7 @@
 // PDF-specific book assembler
 const { removeEmojis } = require('./utils');
 const { assembleBookPlain } = require('./assembleBookPlain');
+const { getTocTitle } = require('./translations');
 // Image processing now handled by exportPdf.js
 
 /**
@@ -66,6 +67,7 @@ function assembleBookPdf(sections, options = {}) {
     includeTitlePage = true,
     metadata = {},
     tocDepth = 1, // Default to 1 if not provided
+    language = 'en', // Default to English
   } = options;
 
   // Convert tocDepth to number and ensure it's valid - declare at function level
@@ -84,7 +86,7 @@ function assembleBookPdf(sections, options = {}) {
   if (metadata.author) output += `author: "${metadata.author.replace(/"/g, '\"')}"\n`;
   if (metadata.subtitle) output += `subtitle: "${metadata.subtitle.replace(/"/g, '\"')}"\n`;
   if (metadata.isbn) output += `isbn: "${metadata.isbn.replace(/"/g, '\"')}"\n`;
-  output += 'toc-title: "CONTENTS"\n';
+  output += `toc-title: "${getTocTitle(language)}"\n`;
   output += `toc-depth: ${numericTocDepth}\n`;  // Use converted numeric value
   output += 'geometry: "footskip=1.0in"\n';
   output += 'header-includes: |\n';

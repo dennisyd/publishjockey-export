@@ -22,6 +22,7 @@ const { assembleBookPdf } = require('./bookAssemblerPdf');
 const { assembleBookEpub } = require('./bookAssemblerEpub');
 const { assembleBookDocx } = require('./bookAssemblerDocx');
 const { saveDebugFile } = require('./utils');
+const { getTocTitle } = require('./translations');
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 // Use the same JWT secret as the main backend
@@ -334,6 +335,7 @@ app.post('/export/pdf', rateLimiting.export, authenticateJWT, async (req, res) =
         includeToc: exportOptions?.includeToc !== false,
         useAutoChapterNumbers: exportOptions?.useAutoChapterNumbers === true, // Only for PDF
         tocDepth: exportOptions?.tocDepth || exportOptions?.bookOptions?.tocDepth || 3, // Pass tocDepth to assembler
+        language: exportOptions?.language || 'en', // Pass language for TOC translation
         metadata: {
           title,
           subtitle,
@@ -623,7 +625,7 @@ app.post('/export/epub', rateLimiting.export, authenticateJWT, async (req, res) 
       '--toc',
       '--standalone',
       '--top-level-division=chapter',
-      '--variable=toc-title:CONTENTS',
+      `--variable=toc-title:${getTocTitle(exportOptions?.language || 'en')}`,
       '--toc-depth=2' // Always use depth 2 for EPUB
     ];
 
@@ -862,7 +864,8 @@ app.post('/export/docx', rateLimiting.export, authenticateJWT, async (req, res) 
       // Ensure continuous sections in frontMatter (no page breaks between them)
       frontMatterContinuous: exportOptions?.frontMatterContinuous !== false,
       // Make sure noSeparatorPages is passed from the frontend options 
-      noSeparatorPages: exportOptions?.noSeparatorPages === true
+      noSeparatorPages: exportOptions?.noSeparatorPages === true,
+      language: exportOptions?.language || 'en', // Pass language for TOC translation
     };
     
     // Assemble the book - sections order will be preserved in assembleBook
@@ -882,7 +885,7 @@ app.post('/export/docx', rateLimiting.export, authenticateJWT, async (req, res) 
     metadataBlock += `title: "${bookTitle.replace(/"/g, '\"')}"\n`;
     metadataBlock += `author: "${author.replace(/"/g, '\"')}"\n`;
     if (subtitle) metadataBlock += `subtitle: "${subtitle.replace(/"/g, '\"')}"\n`;
-    metadataBlock += 'toc-title: "CONTENTS"\n';
+    metadataBlock += `toc-title: "${getTocTitle(exportOptions?.language || 'en')}"\n`;
     metadataBlock += '---\n\n';
 
     // Prepend metadata block to assembledMarkdown
@@ -948,7 +951,7 @@ app.post('/export/docx', rateLimiting.export, authenticateJWT, async (req, res) 
       '-o', docxPath,
       '--toc',
       `--toc-depth=${tocDepth}`,
-      '-V', 'toc-title=CONTENTS',
+      '-V', `toc-title=${getTocTitle(exportOptions?.language || 'en')}`,
       // Add section page breaks
     ];
     // Use a reference.docx to map .center divs to the 'center' style in Word
@@ -1619,7 +1622,7 @@ app.post('/export-epub', rateLimiting.export, authenticateJWT, async (req, res) 
     exportEpub(
       assembledPath,
       outputPath,
-      { title, author, tocDepth: 2 }
+      { title, author, tocDepth: 2, language: exportOptions?.language || 'en' }
     );
 
     // Send the EPUB

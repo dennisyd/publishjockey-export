@@ -1,3 +1,5 @@
+const { getTocTitle } = require('./translations');
+
 // Shared book assembler logic for all formats
 
 /**
@@ -12,7 +14,7 @@ function removeEmojis(str) {
 /**
  * Shared book assembler for all formats (plain logic)
  * @param {Array} sections - Array of {title, content}
- * @param {Object} options - { numberedHeadings, includeTitlePage, includeToc, metadata, removeEmojis: bool }
+ * @param {Object} options - { numberedHeadings, includeTitlePage, includeToc, metadata, removeEmojis: bool, language: string }
  * @returns {string} - Assembled markdown
  */
 function assembleBookPlain(sections, options = {}) {
@@ -22,6 +24,7 @@ function assembleBookPlain(sections, options = {}) {
     includeToc = true, // (ignored for PDF, handled by Pandoc)
     metadata = {},
     removeEmojis: removeEmojiFlag = false,
+    language = 'en', // Default to English
   } = options;
 
   let output = '';
@@ -32,7 +35,7 @@ function assembleBookPlain(sections, options = {}) {
     if (metadata.title) output += `title: "${metadata.title.replace(/"/g, '\"')}"\n`;
     if (metadata.author) output += `author: "${metadata.author.replace(/"/g, '\"')}"\n`;
     if (metadata.subtitle) output += `subtitle: "${metadata.subtitle.replace(/"/g, '\"')}"\n`;
-    output += 'toc-title: "CONTENTS"\n';
+    output += `toc-title: "${getTocTitle(language)}"\n`;
     output += '---\n\n';
   }
 

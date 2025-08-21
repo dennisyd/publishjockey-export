@@ -4,6 +4,7 @@ const path = require('path');
 const https = require('https');
 const crypto = require('crypto');
 const os = require('os');
+const { getTocTitle } = require('./translations');
 // Custom image processing handled by functions in this file
 
 // Use custom Pandoc version if available, fallback to system pandoc
@@ -969,7 +970,7 @@ function getPandocVariables(options) {
   vars.push('plainfoot=');
   vars.push('emptyfoot=');
   if (options.includeToc !== false) {
-    vars.push('toc-title=CONTENTS');
+    vars.push(`toc-title=${getTocTitle(language)}`);
   }
   if (options.numberedHeadings !== true) {
     vars.push('numbersections=false');

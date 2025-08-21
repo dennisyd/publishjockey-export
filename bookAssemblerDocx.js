@@ -1,5 +1,6 @@
 const { assembleBookPlain } = require('./assembleBookPlain');
 const { replaceCustomImages } = require('./utils');
+const { getTocTitle } = require('./translations');
 // DOCX-specific book assembler
 function assembleBookDocx(sections, options = {}) {
   const {
@@ -7,6 +8,7 @@ function assembleBookDocx(sections, options = {}) {
     includeTitlePage = true,
     includeToc = true,
     metadata = {},
+    language = 'en', // Default to English
   } = options;
 
   // Add YAML metadata block if present
@@ -16,7 +18,7 @@ function assembleBookDocx(sections, options = {}) {
     if (metadata.title) output += `title: "${metadata.title.replace(/"/g, '\"')}"\n`;
     if (metadata.author) output += `author: "${metadata.author.replace(/"/g, '\"')}"\n`;
     if (metadata.subtitle) output += `subtitle: "${metadata.subtitle.replace(/"/g, '\"')}"\n`;
-    output += 'toc-title: "CONTENTS"\n';
+    output += `toc-title: "${getTocTitle(language)}"\n`;
     output += '---\n\n';
   }
 

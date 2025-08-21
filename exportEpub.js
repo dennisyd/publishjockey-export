@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { v4: uuidv4 } = require('uuid');
+const { getTocTitle } = require('./translations');
 
 // Use custom Pandoc version if available, fallback to system pandoc
 // Handle Windows vs Linux defaults properly
@@ -13,7 +14,7 @@ const PANDOC_PATH = process.env.PANDOC_PATH ||
  * Exports an EPUB using Pandoc.
  * @param {string} assembledPath - Path to the assembled markdown file.
  * @param {string} outputPath - Path to output the .epub file.
- * @param {Object} options - { title, author, tocDepth }
+ * @param {Object} options - { title, author, tocDepth, language }
  */
 function exportEpub(assembledPath, outputPath, options = {}) {
   // Use the persistent epub-style.css file
@@ -41,7 +42,7 @@ function exportEpub(assembledPath, outputPath, options = {}) {
     '--toc',
     '--toc-depth=2',
     '--css', tempCssFile,
-    '--variable=toc-title:CONTENTS',
+    `--variable=toc-title:${getTocTitle(options.language || 'en')}`,
     '--variable=toc-unnumbered:true',
     '--standalone',
     '--top-level-division=chapter',
