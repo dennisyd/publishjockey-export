@@ -953,7 +953,8 @@ function getPandocVariables(options) {
       'de': 'german',
       'fr': 'french',
       'it': 'italian',
-      'hi': 'hindi' // Added Hindi
+      'hi': 'hindi', // Added Hindi
+      'ta': 'tamil' // Added Tamil
     };
     const babelLang = babelMap[language] || language;
     vars.push(`babel-lang=${babelLang}`);
@@ -1362,6 +1363,7 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
       const isRTL = language === 'ar' || language === 'he' || language === 'yi';
       const isCyrillic = language === 'ru';
       const isDevanagari = language === 'hi';
+      const isTamil = language === 'ta';
       const isHebrew = language === 'he' || language === 'yi';
       
       if (isCyrillic) {
@@ -1372,6 +1374,8 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
         defaultFont = 'Noto Sans Arabic';
       } else if (isDevanagari) {
         defaultFont = 'Noto Sans Devanagari';
+      } else if (isTamil) {
+        defaultFont = 'Noto Sans Tamil';
       }
       
       console.log(`[PDF EXPORT] Template being used: templates/custom.tex`);
