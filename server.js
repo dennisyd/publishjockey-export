@@ -344,6 +344,11 @@ app.post('/export/pdf', rateLimiting.export, authenticateJWT, async (req, res) =
         }
       };
 
+      // Debug language for TOC translation in PDF export
+      console.log(`[PDF EXPORT] Language from exportOptions: "${exportOptions?.language}"`);
+      console.log(`[PDF EXPORT] TOC title will be: "${getTocTitle(exportOptions?.language || 'en')}"`);
+      // Yancy Dennis - Added debugging for TOC translation
+
       // Preprocess all section content to convert legacy image syntax
       const validSections = limitedSections.map(section => ({
         ...section,
