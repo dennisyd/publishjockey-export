@@ -632,9 +632,8 @@ app.post('/export/epub', rateLimiting.export, authenticateJWT, async (req, res) 
     console.log(`[EPUB EXPORT] TOC title will be: "${getTocTitle(exportOptions?.language || 'en')}"`);
     // Yancy Dennis - Added debugging for TOC translation
     
-    args.push(`--variable=toc-title:${getTocTitle(exportOptions?.language || 'en')}`),
-      '--toc-depth=2' // Always use depth 2 for EPUB
-    ];
+    args.push(`--variable=toc-title:${getTocTitle(exportOptions?.language || 'en')}`);
+    args.push('--toc-depth=2'); // Always use depth 2 for EPUB
 
     // Add number-sections flag based on numberedHeadings setting
     if (exportOptions?.numberedHeadings) {
@@ -963,12 +962,13 @@ app.post('/export/docx', rateLimiting.export, authenticateJWT, async (req, res) 
       '--toc',
       `--toc-depth=${tocDepth}`,
       // Debug language for TOC translation in DOCX pandoc args
-      console.log(`[DOCX PANDOC] Language from exportOptions: "${exportOptions?.language}"`);
-      console.log(`[DOCX PANDOC] TOC title will be: "${getTocTitle(exportOptions?.language || 'en')}"`);
-      
       '-V', `toc-title=${getTocTitle(exportOptions?.language || 'en')}`,
       // Add section page breaks
     ];
+    
+    // Debug language for TOC translation in DOCX pandoc args
+    console.log(`[DOCX PANDOC] Language from exportOptions: "${exportOptions?.language}"`);
+    console.log(`[DOCX PANDOC] TOC title will be: "${getTocTitle(exportOptions?.language || 'en')}"`);
     // Use a reference.docx to map .center divs to the 'center' style in Word
     let referenceDocPath = path.join(__dirname, 'templates', 'reference.docx');
     if (exportOptions?.bookSize) {
