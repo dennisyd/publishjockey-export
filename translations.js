@@ -1,51 +1,53 @@
 // Translation utility for backend TOC titles
+// Using Unicode escape sequences for better performance and reliability
+// Yancy Dennis - Updated to use Unicode escape sequences and added debugging
 const tocTranslations = {
   'en': 'Table of Contents',
   'es': 'Tabla de Contenidos',
-  'fr': 'Table des Matières',
+  'fr': 'Table des Mati\u00E8res',  // è
   'de': 'Inhaltsverzeichnis',
   'it': 'Indice',
   'id': 'Daftar Isi',
-  'ru': 'Содержание',
+  'ru': '\u0421\u043E\u0434\u0435\u0440\u0436\u0430\u043D\u0438\u0435',  // Содержание
   'ro': 'Cuprins',
-  'hi': 'विषय सूची',
-  'ar': 'جدول المحتويات',
-  'ta': 'பொருளடக்கம்',
-  'hr': 'Sadržaj',
+  'hi': '\u0935\u093F\u0937\u092F \u0938\u0942\u091A\u0940',  // विषय सूची
+  'ar': '\u062C\u062F\u0648\u0644 \u0627\u0644\u0645\u062D\u062A\u0648\u064A\u0627\u062A',  // جدول المحتويات
+  'ta': '\u0BAA\u0BCB\u0BB0\u0BC1\u0BB3\u0BA4\u0BCD\u0BA4\u0BC1',  // பொருளடக்கம்
+  'hr': 'Sadr\u017Eaj',  // ž
   'cs': 'Obsah',
   'da': 'Indhold',
   'nl': 'Inhoudsopgave',
   'et': 'Sisukord',
-  'fi': 'Sisällysluettelo',
-  'gl': 'Índice',
-  'el': 'Περιεχόμενα',
+  'fi': 'Sis\u00E4llysluettelo',  // ä
+  'gl': '\u00CDndice',  // Í
+  'el': '\u03A0\u03B5\u03C1\u03B9\u03B5\u03C7\u03CC\u03BC\u03B5\u03BD\u03B1',  // Περιεχόμενα
   'ha': 'Teburin Abubuwa',
-  'hu': 'Tartalomjegyzék',
+  'hu': 'Tartalomjegyz\u00E9k',  // é
   'is': 'Efnisyfirlit',
-  'ig': 'Ndepụta Isiokwu',
+  'ig': 'Ndep\u1EE5ta Isiokwu',  // ụ
   'ki': 'Orodha ya Maudhui',
   'lt': 'Turinys',
   'lg': 'Ennyiriza',
   'lv': 'Saturs',
-  'mk': 'Содржина',
+  'mk': '\u0421\u043E\u0434\u0440\u0436\u0438\u043D\u0430',  // Содржина
   'mg': 'Tafiditra',
   'ms': 'Jadual Kandungan',
   'no': 'Innhold',
-  'pl': 'Spis Treści',
-  'pt': 'Sumário',
+  'pl': 'Spis Tre\u015Bci',  // ś
+  'pt': 'Sum\u00E1rio',  // á
   'rn': 'Orodha ya Maudhui',
   'rw': 'Orodha ya Maudhui',
   'sl': 'Kazalo',
   'sk': 'Obsah',
   'sn': 'Mazita ezvinyorwa',
-  'sr': 'Sadržaj',
+  'sr': 'Sadr\u017Eaj',  // ž
   'st': 'Tafole ea Likahare',
-  'sv': 'Innehållsförteckning',
+  'sv': 'Inneh\u00E5llsf\u00F6rteckning',  // å, ö
   'tn': 'Tafole ya Dikahare',
-  'tr': 'İçindekiler',
+  'tr': '\u0130\u00E7indekiler',  // İ, ç
   'xh': 'Iindeksa',
-  'yo': 'Atọka',
-  'vi': 'Mục Lục',
+  'yo': 'At\u1ECDka',  // ọ
+  'vi': 'M\u1EE5c L\u1EE5c',  // ụ, ụ
   'zu': 'Isiqephu'
 };
 
@@ -57,6 +59,11 @@ const tocTranslations = {
 function getTocTitle(language) {
   // Normalize language code (take first part if it contains a dash)
   const langCode = language ? language.split('-')[0].toLowerCase() : 'en';
+  
+  // Debug logging
+  console.log(`[TOC TRANSLATION] Requested language: "${language}", normalized: "${langCode}"`);
+  console.log(`[TOC TRANSLATION] Available translations:`, Object.keys(tocTranslations));
+  console.log(`[TOC TRANSLATION] Translation found: "${tocTranslations[langCode] || tocTranslations['en']}"`);
   
   // Return translation if available, otherwise fallback to English
   return tocTranslations[langCode] || tocTranslations['en'];

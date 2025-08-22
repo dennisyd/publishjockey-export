@@ -625,7 +625,14 @@ app.post('/export/epub', rateLimiting.export, authenticateJWT, async (req, res) 
       '--toc',
       '--standalone',
       '--top-level-division=chapter',
-      `--variable=toc-title:${getTocTitle(exportOptions?.language || 'en')}`,
+    ];
+
+    // Debug language for TOC translation
+    console.log(`[EPUB EXPORT] Language from exportOptions: "${exportOptions?.language}"`);
+    console.log(`[EPUB EXPORT] TOC title will be: "${getTocTitle(exportOptions?.language || 'en')}"`);
+    // Yancy Dennis - Added debugging for TOC translation
+    
+    args.push(`--variable=toc-title:${getTocTitle(exportOptions?.language || 'en')}`),
       '--toc-depth=2' // Always use depth 2 for EPUB
     ];
 
@@ -885,6 +892,10 @@ app.post('/export/docx', rateLimiting.export, authenticateJWT, async (req, res) 
     metadataBlock += `title: "${bookTitle.replace(/"/g, '\"')}"\n`;
     metadataBlock += `author: "${author.replace(/"/g, '\"')}"\n`;
     if (subtitle) metadataBlock += `subtitle: "${subtitle.replace(/"/g, '\"')}"\n`;
+    // Debug language for TOC translation in DOCX
+    console.log(`[DOCX EXPORT] Language from exportOptions: "${exportOptions?.language}"`);
+    console.log(`[DOCX EXPORT] TOC title will be: "${getTocTitle(exportOptions?.language || 'en')}"`);
+    
     metadataBlock += `toc-title: "${getTocTitle(exportOptions?.language || 'en')}"\n`;
     metadataBlock += '---\n\n';
 
@@ -951,6 +962,10 @@ app.post('/export/docx', rateLimiting.export, authenticateJWT, async (req, res) 
       '-o', docxPath,
       '--toc',
       `--toc-depth=${tocDepth}`,
+      // Debug language for TOC translation in DOCX pandoc args
+      console.log(`[DOCX PANDOC] Language from exportOptions: "${exportOptions?.language}"`);
+      console.log(`[DOCX PANDOC] TOC title will be: "${getTocTitle(exportOptions?.language || 'en')}"`);
+      
       '-V', `toc-title=${getTocTitle(exportOptions?.language || 'en')}`,
       // Add section page breaks
     ];
