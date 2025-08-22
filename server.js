@@ -24,6 +24,7 @@ const { assembleBookDocx } = require('./bookAssemblerDocx');
 const { saveDebugFile } = require('./utils');
 const { getTocTitle } = require('./translations');
 const mongoose = require('mongoose');
+const { getLocalizedBookStructure } = require('./utils/bookStructureLocalization');
 const jwt = require('jsonwebtoken');
 // Use the same JWT secret as the main backend
 const JWT_SECRET = process.env.JWT_ACCESS_TOKEN_SECRET || process.env.JWT_SECRET || 'changeme';
@@ -2615,13 +2616,21 @@ app.post('/api/projects', authenticateJWT, async (req, res) => {
       // Continue with creation but log the error
     }
     
+    // Get the language from the request body or default to English
+    const language = req.body.language || 'en';
+    console.log('Creating project with language:', language);
+    
+    // Use localized book structure based on the language
+    const localizedStructure = getLocalizedBookStructure(language);
+    
     const project = new Project({
       title,
       description,
       author: author || '',
       subtitle: subtitle || '',
       isbn: isbn || '',
-      userId: req.user.id || req.user.userId
+      userId: req.user.id || req.user.userId,
+      structure: localizedStructure
     });
     await project.save();
     // --- EXTRA LOGGING: Print the full project document after save ---
