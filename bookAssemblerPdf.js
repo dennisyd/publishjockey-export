@@ -2,6 +2,7 @@
 const { removeEmojis } = require('./utils');
 const { assembleBookPlain } = require('./assembleBookPlain');
 const { getTocTitle } = require('./translations');
+const { identifySpecialSections } = require('./utils/bookStructureLocalization');
 // Image processing now handled by exportPdf.js
 
 /**
@@ -99,8 +100,7 @@ function assembleBookPdf(sections, options = {}) {
   output += '---\n\n';
 
   // Find special sections and split by matter
-  let copyrightSection = null;
-  let titlePageSection = null;
+  const { titlePageSection, copyrightSection } = identifySpecialSections(sections);
   const frontMatterSections = [];
   const mainMatterSections = [];
   const backMatterSections = [];
@@ -108,15 +108,8 @@ function assembleBookPdf(sections, options = {}) {
   for (const section of sections) {
     if (!section.content || !section.content.trim()) continue;
     
-    const title = section.title ? section.title.toLowerCase() : '';
-    
-    // Extract title page and copyright for special handling
-    if (!titlePageSection && title.includes('title page')) {
-      titlePageSection = section;
-      continue;
-    }
-    if (!copyrightSection && title.includes('copyright')) {
-      copyrightSection = section;
+    // Skip title page and copyright sections as they're handled separately
+    if (section === titlePageSection || section === copyrightSection) {
       continue;
     }
     

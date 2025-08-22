@@ -122,7 +122,36 @@ const getLocalizedBookStructure = (language = 'en') => {
   return localizedStructures[normalizedLang] || localizedStructures.en;
 };
 
+/**
+ * Helper function to identify special sections by their matter and position
+ * instead of relying on English title keywords
+ * @param {Array} sections - Array of sections with matter property
+ * @returns {Object} Object with titlePageSection and copyrightSection
+ */
+const identifySpecialSections = (sections) => {
+  let titlePageSection = null;
+  let copyrightSection = null;
+  
+  // Group sections by matter
+  const frontMatterSections = sections.filter(s => s.matter === 'front');
+  const mainMatterSections = sections.filter(s => s.matter === 'main');
+  const backMatterSections = sections.filter(s => s.matter === 'back');
+  
+  // Title page is typically the first front matter section
+  if (frontMatterSections.length > 0) {
+    titlePageSection = frontMatterSections[0];
+  }
+  
+  // Copyright is typically the second front matter section
+  if (frontMatterSections.length > 1) {
+    copyrightSection = frontMatterSections[1];
+  }
+  
+  return { titlePageSection, copyrightSection };
+};
+
 module.exports = {
   getLocalizedBookStructure,
-  localizedStructures
+  localizedStructures,
+  identifySpecialSections
 };

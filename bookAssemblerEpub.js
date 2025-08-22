@@ -1,5 +1,6 @@
 const { assembleBookPlain } = require('./assembleBookPlain');
 const { replaceCustomImages } = require('./utils');
+const { identifySpecialSections } = require('./utils/bookStructureLocalization');
 // EPUB-specific book assembler
 function assembleBookEpub(sections, options = {}) {
   const {
@@ -22,26 +23,17 @@ function assembleBookEpub(sections, options = {}) {
   }
 
   // Find and extract copyright and title page sections
-  let copyrightSection = null;
-  let titlePageSection = null;
+  const { titlePageSection, copyrightSection } = identifySpecialSections(sections);
   const otherSections = [];
   for (let i = 0; i < sections.length; i++) {
     const section = sections[i];
     if (!section.content || !section.content.trim()) continue;
-    const title = section.title ? section.title.toLowerCase() : '';
-    if (!copyrightSection && title.includes('copyright')) {
-      copyrightSection = section;
+    
+    // Skip title page and copyright sections as they're handled separately
+    if (section === titlePageSection || section === copyrightSection) {
       continue;
     }
-    if (!titlePageSection && title.includes('title page')) {
-      titlePageSection = section;
-      continue;
-    }
-    // If no explicit title page section found, treat the first section as the title page
-    if (!titlePageSection && i === 0) {
-      titlePageSection = section;
-      continue;
-    }
+    
     // Convert markdown tables to centered HTML tables in section content for EPUB only
     let centeredContent = convertMarkdownTablesToCenteredHtml(replaceCustomImages(section.content, 'epub'));
     
