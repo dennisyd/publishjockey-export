@@ -51,6 +51,12 @@ function assembleBookPlain(sections, options = {}) {
   for (let i = 0; i < sections.length; i++) {
     let section = sections[i];
     let content = section.content || '';
+    
+    // Skip empty sections - no content, no headings
+    if (!content.trim()) {
+      continue;
+    }
+    
     if (numberedHeadings) {
       content = content.replace(/^# (.*)$/gm, (_, t) => `# Chapter ${chapterCount++}: ${t}`);
     }

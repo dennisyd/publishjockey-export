@@ -194,6 +194,12 @@ function assembleBookPdf(sections, options = {}) {
   for (const section of frontMatterSections) {
     let content = section.content.trim();
     
+    // Skip empty sections - no content, no headings
+    if (!content) {
+      console.log(`[Front Matter] Skipping empty section: ${section.title}`);
+      continue;
+    }
+    
     // Debug: Log what we're processing
     console.log(`[Front Matter] Processing section: ${section.title}, tocDepth: ${numericTocDepth}`);
     
@@ -239,6 +245,12 @@ function assembleBookPdf(sections, options = {}) {
     
     for (const section of mainMatterSections) {
       let content = section.content.trim();
+      
+      // Skip empty sections - no content, no headings
+      if (!content) {
+        console.log(`[Main Matter] Skipping empty section: ${section.title}`);
+        continue;
+      }
       
       // Check if this section is a Part divider
       const isPartDivider = section.title && /^Part [IVXLCDM]+:/.test(section.title);
@@ -295,6 +307,12 @@ function assembleBookPdf(sections, options = {}) {
     // Continue arabic numbering, but use unnumbered chapters
     for (const section of backMatterSections) {
       let content = section.content.trim();
+      
+      // Skip empty sections - no content, no headings
+      if (!content) {
+        console.log(`[Back Matter] Skipping empty section: ${section.title}`);
+        continue;
+      }
       
       // Convert # Heading to unnumbered chapter
       content = content.replace(/^# (.*)$/gm, (match, title) => {

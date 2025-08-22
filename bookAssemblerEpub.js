@@ -83,7 +83,17 @@ ${copyrightContent}
   // Prepare TOC data for main-matter sections
   const tocData = [];
   let chapterCount = 1;
-  const processedSections = otherSections.map((section, idx) => {
+  const processedSections = otherSections
+    .filter(section => {
+      // Skip empty sections - no content, no headings
+      const hasContent = section.content && section.content.trim();
+      if (!hasContent) {
+        console.log(`[EPUB] Skipping empty section: ${section.title}`);
+        return false;
+      }
+      return true;
+    })
+    .map((section, idx) => {
     let content = section.content || '';
     let anchor = '';
     let subtitle = '';

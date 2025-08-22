@@ -37,6 +37,13 @@ function assembleBookDocx(sections, options = {}) {
   for (let i = 0; i < sections.length; i++) {
     let section = sections[i];
     let content = replaceCustomImages(section.content || '', 'docx');
+    
+    // Skip empty sections - no content, no headings
+    if (!content.trim()) {
+      console.log(`[DOCX] Skipping empty section: ${section.title}`);
+      continue;
+    }
+    
     if (numberedHeadings) {
       content = content.replace(/^# (.*)$/gm, (_, t) => `# Chapter ${chapterCount++}: ${t}`);
     }
