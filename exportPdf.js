@@ -946,19 +946,99 @@ function getPandocVariables(options) {
   // Add language variable for babel
   if (language !== 'en') {
     const babelMap = {
-      'ru': 'russian',
-      'ar': 'arabic',
-      'he': 'hebrew',
-      'yi': 'hebrew', // Yiddish uses Hebrew babel
+      // European languages
       'es': 'spanish',
       'de': 'german',
       'fr': 'frenchb', // Fixed: babel package expects 'frenchb' for French
       'it': 'italian',
-      'hi': 'hindi', // Added Hindi
-      'ta': 'tamil' // Added Tamil
+      'pt': 'portuguese',
+      'nl': 'dutch',
+      'sv': 'swedish',
+      'no': 'norsk',
+      'da': 'danish',
+      'fi': 'finnish',
+      'pl': 'polish',
+      'cs': 'czech',
+      'sk': 'slovak',
+      'hu': 'hungarian',
+      'ro': 'romanian',
+      'bg': 'bulgarian',
+      'hr': 'croatian',
+      'sr': 'serbian',
+      'sl': 'slovene',
+      'et': 'estonian',
+      'lv': 'latvian',
+      'lt': 'lithuanian',
+      'mt': 'maltese',
+      'ga': 'irish',
+      'cy': 'welsh',
+      'eu': 'basque',
+      'ca': 'catalan',
+      'gl': 'galician',
+      
+      // Cyrillic languages
+      'ru': 'russian',
+      'uk': 'ukrainian',
+      'be': 'belarusian',
+      'mk': 'macedonian',
+      
+      // RTL languages
+      'ar': 'arabic',
+      'he': 'hebrew',
+      'yi': 'hebrew', // Yiddish uses Hebrew babel
+      'fa': 'persian',
+      'ur': 'urdu',
+      
+      // Asian languages
+      'hi': 'hindi',
+      'ta': 'tamil',
+      'te': 'telugu',
+      'kn': 'kannada',
+      'ml': 'malayalam',
+      'bn': 'bengali',
+      'gu': 'gujarati',
+      'pa': 'punjabi',
+      'mr': 'marathi',
+      'ne': 'nepali',
+      'si': 'sinhala',
+      'th': 'thai',
+      'vi': 'vietnamese',
+      'ko': 'korean',
+      'ja': 'japanese',
+      'zh': 'chinese',
+      'zh-cn': 'chinese',
+      'zh-tw': 'chinese',
+      'zh-hk': 'chinese',
+      
+      // African languages
+      'sw': 'swahili',
+      'zu': 'zulu',
+      'xh': 'xhosa',
+      'af': 'afrikaans',
+      'yo': 'yoruba',
+      'ig': 'igbo',
+      'ha': 'hausa',
+      'am': 'amharic',
+      'so': 'somali',
+      'rw': 'kinyarwanda',
+      'rn': 'kirundi',
+      'mg': 'malagasy',
+      'sn': 'shona',
+      'st': 'sesotho',
+      'tn': 'tswana',
+      'ki': 'kikuyu',
+      'lg': 'luganda'
     };
-    const babelLang = babelMap[language] || language;
-    vars.push(`babel-lang=${babelLang}`);
+    
+    // Check if the language has a valid babel mapping
+    const babelLang = babelMap[language];
+    if (babelLang) {
+      vars.push(`babel-lang=${babelLang}`);
+      console.log(`[BABEL] Using babel language: ${babelLang} for ${language}`);
+    } else {
+      // For languages without babel support, skip babel-lang to avoid errors
+      console.log(`[BABEL] No babel support for language: ${language}, skipping babel-lang`);
+    }
     
     // Add language variable for template conditionals
     vars.push(`lang=${language}`);
