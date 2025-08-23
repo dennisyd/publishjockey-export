@@ -46,6 +46,35 @@ $if(dir)$
 \fi
 $endif$
 
+% --- Hindi language setup with polyglossia ---
+$if(polyglossia)$
+\ifxetex
+  % Load polyglossia for Hindi language support
+  \usepackage{polyglossia}
+  \setdefaultlanguage{english}
+  \setotherlanguage{hindi}
+  
+  % Set up Hindi font with proper script support
+  \newfontfamily\hindifont{Noto Sans Devanagari}[
+    Script=Devanagari,
+    Ligatures=TeX,
+    Scale=MatchLowercase,
+    Language=Hindi
+  ]
+  
+  % Set Hindi as the main language for the document
+  \setmainlanguage{hindi}
+  
+  % Configure Unicode-aware PDF bookmarks
+  \usepackage[unicode]{hyperref}
+  \hypersetup{
+    pdfencoding=auto,
+    bookmarksopen=true,
+    bookmarksopenlevel=1
+  }
+\fi
+$endif$
+
 
 $if(sansfont)$
     \setsansfont[$for(sansfontoptions)$$sansfontoptions$$sep$,$endfor$]{$sansfont$}
@@ -160,6 +189,8 @@ $endif$
 % Enable proper hyphenation
 $if(dir)$
 % For RTL languages, use polyglossia instead of babel
+$elseif(polyglossia)$
+% Hindi uses polyglossia
 $else$
 % Note: babel-lang is no longer automatically set to avoid LaTeX package issues
 % TOC title translation is handled via YAML metadata instead

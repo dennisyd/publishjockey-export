@@ -885,6 +885,10 @@ function getPandocVariables(options) {
   const isDevanagari = language === 'hi'; // Hindi uses Devanagari script
   const isHebrew = language === 'he' || language === 'yi'; // Hebrew and Yiddish use Hebrew script
   
+  // Debug language detection
+  console.log(`[LANGUAGE DEBUG] Language detected: "${language}"`);
+  console.log(`[LANGUAGE DEBUG] isRTL: ${isRTL}, isCyrillic: ${isCyrillic}, isDevanagari: ${isDevanagari}, isHebrew: ${isHebrew}`);
+  
   // Platform-aware font selection with language support
   const exportPlatform = process.env.EXPORT_PLATFORM || 'server';
   let defaultFont = exportPlatform === 'windows' ? 'Times New Roman' : 'Liberation Serif';
@@ -896,12 +900,23 @@ function getPandocVariables(options) {
     defaultFont = 'Noto Sans Hebrew'; // Hebrew font
   } else if (isRTL && language === 'ar') {
     defaultFont = 'Noto Sans Arabic'; // Arabic font (changed from Amiri)
+  } else if (language === 'pt' || language === 'pt-BR' || language === 'pt-PT') {
+    defaultFont = 'Noto Sans'; // Portuguese - use Noto Sans for better Latin script support
   } else if (isDevanagari) {
     defaultFont = 'Noto Sans Devanagari'; // Hindi font
-    // Add font options for better mixed script support
+    // Comprehensive Hindi font setup using fontspec + polyglossia
+    vars.push('mainfont=Noto Sans Devanagari');
     vars.push('mainfontoptions=Script=Devanagari');
     vars.push('mainfontoptions=Ligatures=TeX');
     vars.push('mainfontoptions=Scale=MatchLowercase');
+    vars.push('mainfontoptions=Language=Hindi');
+    
+    // Add polyglossia for proper Hindi language support
+    vars.push('lang=hi');
+    vars.push('polyglossia=true');
+    
+    // Add Unicode-aware PDF bookmarks
+    vars.push('hyperref-unicode=true');
   }
   
   // Ensure font names match exactly what's available on the system

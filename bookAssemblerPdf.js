@@ -89,6 +89,12 @@ function assembleBookPdf(sections, options = {}) {
   if (metadata.isbn) output += `isbn: "${metadata.isbn.replace(/"/g, '\"')}"\n`;
   output += `toc-title: "${getTocTitle(language)}"\n`;
   output += `toc-depth: ${numericTocDepth}\n`;  // Use converted numeric value
+  
+  // Add language metadata for proper font and language support
+  if (language && language !== 'en') {
+    output += `lang: ${language}\n`;
+  }
+  
   output += 'geometry: "footskip=1.0in"\n';
   output += 'header-includes: |\n';
   output += '  \\setlength{\\footskip}{1.0in}\n';
