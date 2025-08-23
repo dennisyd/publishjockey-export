@@ -975,6 +975,9 @@ function getPandocVariables(options) {
       'eu': 'basque',
       'ca': 'catalan',
       'gl': 'galician',
+      'el': 'greek',
+      'is': 'icelandic',
+      'tr': 'turkish',
       
       // Cyrillic languages
       'ru': 'russian',
@@ -1004,6 +1007,9 @@ function getPandocVariables(options) {
       'th': 'thai',
       'vi': 'vietnamese',
       'ko': 'korean',
+      'id': 'indonesian',
+      'ms': 'malaysian',
+      'tl': 'filipino',
       'ja': 'japanese',
       'zh': 'chinese',
       'zh-cn': 'chinese',
