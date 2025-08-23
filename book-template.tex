@@ -278,7 +278,9 @@ $endif$
 }
 
 % --- Table of Contents Configuration ---
-\renewcommand{\contentsname}{CONTENTS}
+$if(toc-title)$
+\renewcommand{\contentsname}{$toc-title$}
+$endif$
 
 % --- Book metadata ---
 $if(title)$
