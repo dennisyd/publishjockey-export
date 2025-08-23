@@ -1,7 +1,7 @@
 % Custom LaTeX template for PublishJockey
 % This template handles all formatting for PDF exports
 
-\documentclass[$if(fontsize)$$fontsize$,$endif$$if(lang)$$babel-lang$,$endif$$if(papersize)$$papersize$paper,$endif$$for(classoption)$$classoption$$sep$,$endfor$]{$documentclass$}
+\documentclass[$if(fontsize)$$fontsize$,$endif$$if(papersize)$$papersize$paper,$endif$$for(classoption)$$classoption$$sep$,$endfor$]{$documentclass$}
 
 % Note: Using book class for proper front/main matter handling
 
@@ -159,11 +159,9 @@ $endif$
 $if(dir)$
 % For RTL languages, use polyglossia instead of babel
 $else$
-$if(babel-lang)$
-\usepackage[$babel-lang$]{babel}
-$else$
+% Note: babel-lang is no longer automatically set to avoid LaTeX package issues
+% TOC title translation is handled via YAML metadata instead
 \usepackage[english]{babel}
-$endif$
 $endif$
 
 % Improved list typesetting
