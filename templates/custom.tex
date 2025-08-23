@@ -284,13 +284,20 @@ $for(include-before)$
 $include-before$
 $endfor$
 
+% Table of Contents Configuration
+$if(toc-title)$
+\renewcommand{\contentsname}{$toc-title$}
+$endif$
+
 % Always include table of contents
-% {
-% \hypersetup{linkcolor=black}
-% \setcounter{tocdepth}{$if(toc-depth)$$toc-depth$$else$2$endif$}
-% \tableofcontents
-% \clearpage
-% }
+$if(toc)$
+{
+\hypersetup{linkcolor=black}
+\setcounter{tocdepth}{$if(toc-depth)$$toc-depth$$else$2$endif$}
+\tableofcontents
+\clearpage
+}
+$endif$
 
 $if(lot)$
 \listoftables
