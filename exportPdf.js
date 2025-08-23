@@ -898,6 +898,10 @@ function getPandocVariables(options) {
     defaultFont = 'Noto Sans Arabic'; // Arabic font (changed from Amiri)
   } else if (isDevanagari) {
     defaultFont = 'Noto Sans Devanagari'; // Hindi font
+    // Add font options for better mixed script support
+    vars.push('mainfontoptions=Script=Devanagari');
+    vars.push('mainfontoptions=Ligatures=TeX');
+    vars.push('mainfontoptions=Scale=MatchLowercase');
   }
   
   // Ensure font names match exactly what's available on the system
@@ -934,6 +938,14 @@ function getPandocVariables(options) {
   console.log(`[FONT] Default font: ${defaultFont}`);
   
   vars.push(`mainfont=${options.fontFamily || defaultFont}`);
+  
+  // Add fallback font for Hindi documents to handle mixed script content
+  if (isDevanagari) {
+    vars.push('sansfont=Noto Sans');
+    vars.push('sansfontoptions=Script=Latin');
+    vars.push('sansfontoptions=Ligatures=TeX');
+    vars.push('sansfontoptions=Scale=MatchLowercase');
+  }
   
 
   

@@ -46,23 +46,7 @@ $if(dir)$
 \fi
 $endif$
 
-% --- Hindi font setup for mixed script support ---
-$if(lang.hi)$
-\ifxetex
-  % Set up Noto Sans Devanagari with fallback for English text
-  \setmainfont{Noto Sans Devanagari}[
-    Script=Devanagari,
-    Ligatures=TeX,
-    Scale=MatchLowercase
-  ]
-  % Add fallback font for English text in Hindi documents
-  \newfontfamily\englishfont{Noto Sans}[
-    Script=Latin,
-    Ligatures=TeX,
-    Scale=MatchLowercase
-  ]
-\fi
-$endif$
+
 $if(sansfont)$
     \setsansfont[$for(sansfontoptions)$$sansfontoptions$$sep$,$endfor$]{$sansfont$}
 $endif$
