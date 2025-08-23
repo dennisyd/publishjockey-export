@@ -952,7 +952,7 @@ function getPandocVariables(options) {
       'yi': 'hebrew', // Yiddish uses Hebrew babel
       'es': 'spanish',
       'de': 'german',
-      'fr': 'french',
+      'fr': 'frenchb', // Fixed: babel package expects 'frenchb' for French
       'it': 'italian',
       'hi': 'hindi', // Added Hindi
       'ta': 'tamil' // Added Tamil
