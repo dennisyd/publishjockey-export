@@ -2076,10 +2076,18 @@ app.post('/delete-all-images', (req, res) => {
  * Upscales an image to KDP-compatible resolution using the ImageMagic module
  * Expects: multipart/form-data with file upload and optional parameters
  * Returns: JSON with original and new image information
- * Required auth: JWT token
+ * Required auth: JWT token and paid subscription
  */
 app.post('/upscale-image', rateLimiting.image, authenticateJWT, imageUpload.single('image'), async (req, res) => {
   try {
+    // Check if user has a paid subscription (not free)
+    if (req.user.subscription === 'free') {
+      return res.status(403).json({ 
+        error: 'ImageMagic requires a paid subscription',
+        message: 'Please upgrade your account to access professional image upscaling features.'
+      });
+    }
+
     if (!req.file) {
       return res.status(400).json({ error: 'No image uploaded' });
     }
