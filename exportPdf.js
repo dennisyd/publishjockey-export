@@ -951,6 +951,13 @@ function getPandocVariables(options) {
     vars.push(`lang=${language}`);
   }
   
+  // Add TOC title variable to ensure proper translation
+  if (language !== 'en') {
+    const tocTitle = getTocTitle(language);
+    console.log(`[TOC TITLE] Setting toc-title variable: "${tocTitle}"`);
+    vars.push(`toc-title=${tocTitle}`);
+  }
+  
   vars.push('secstyle=\\Large\\bfseries\\filcenter');
   vars.push('pagestyle=empty');
   vars.push('disable-headers=true');
