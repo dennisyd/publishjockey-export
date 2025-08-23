@@ -900,12 +900,12 @@ function getPandocVariables(options) {
     defaultFont = 'Noto Sans Hebrew'; // Hebrew font
   } else if (isRTL && language === 'ar') {
     defaultFont = 'Noto Sans Arabic'; // Arabic font (changed from Amiri)
-  } else if (language === 'pt' || language === 'pt-BR' || language === 'pt-PT') {
-    defaultFont = 'Noto Sans'; // Portuguese - use Noto Sans for better Latin script support
+  } else if (language === 'pt' || language === 'pt-BR' || language === 'pt-PT' || 
+             language === 'is' || language === 'hr') {
+    defaultFont = 'Noto Sans'; // Portuguese, Icelandic, Croatian - use Noto Sans for better Latin script support
   } else if (isDevanagari) {
     defaultFont = 'Noto Sans Devanagari'; // Hindi font
     // Comprehensive Hindi font setup using fontspec + polyglossia
-    vars.push('mainfont=Noto Sans Devanagari');
     vars.push('mainfontoptions=Script=Devanagari');
     vars.push('mainfontoptions=Ligatures=TeX');
     vars.push('mainfontoptions=Scale=MatchLowercase');
