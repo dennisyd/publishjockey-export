@@ -981,7 +981,8 @@ app.post('/export/docx', rateLimiting.export, authenticateJWT, async (req, res) 
       '--toc',
       `--toc-depth=${tocDepth}`,
       // Debug language for TOC translation in DOCX pandoc args
-      '-V', `toc-title=${getTocTitle(exportOptions?.language || 'en')}`,
+      // Note: toc-title is now set in YAML metadata block, not as command line variable
+      // '-V', `toc-title=${getTocTitle(exportOptions?.language || 'en')}`,
       // Add section page breaks
     ];
     

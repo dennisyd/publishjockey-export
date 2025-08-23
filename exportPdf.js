@@ -952,10 +952,12 @@ function getPandocVariables(options) {
   }
   
   // Add TOC title variable to ensure proper translation
+  // Note: toc-title is now set in YAML metadata block in bookAssemblerPdf.js
+  // We don't need to set it here as a command line variable
   if (language !== 'en') {
     const tocTitle = getTocTitle(language);
-    console.log(`[TOC TITLE] Setting toc-title variable: "${tocTitle}"`);
-    vars.push(`toc-title=${tocTitle}`);
+    console.log(`[TOC TITLE] TOC title will be: "${tocTitle}" (set in YAML metadata)`);
+    // vars.push(`toc-title=${tocTitle}`); // Commented out - using YAML metadata instead
   }
   
   vars.push('secstyle=\\Large\\bfseries\\filcenter');
