@@ -600,8 +600,19 @@ app.post('/export/epub', rateLimiting.export, authenticateJWT, async (req, res) 
       title: section.title || 'Untitled Section'
     }));
     
+    // Prepare metadata for EPUB assembler
+    const epubMetadata = {
+      title: exportOptions?.metadata?.title || title || 'Untitled Document',
+      author: exportOptions?.metadata?.author || exportOptions?.author || 'Anonymous',
+      subtitle: exportOptions?.metadata?.subtitle || exportOptions?.subtitle || '',
+      tocTitle: getTocTitle(exportOptions?.language || 'en'), // Pass translated TOC title
+      tocDepth: exportOptions?.tocDepth || 2,
+      numberSections: exportOptions?.numberedHeadings || false
+    };
+
     const assembledMarkdown = assembleBookEpub(processedSections, { 
       ...exportOptions,
+      metadata: epubMetadata,
       generateTitlePage: false
     });
     
@@ -638,7 +649,7 @@ app.post('/export/epub', rateLimiting.export, authenticateJWT, async (req, res) 
     console.log(`[EPUB EXPORT] TOC title will be: "${getTocTitle(exportOptions?.language || 'en')}"`);
     // Yancy Dennis - Added debugging for TOC translation
     
-    args.push(`--variable=toc-title:${getTocTitle(exportOptions?.language || 'en')}`);
+    // Note: toc-title is now set in YAML metadata block, not as command line argument
     args.push('--toc-depth=2'); // Always use depth 2 for EPUB
 
     // Add number-sections flag based on numberedHeadings setting

@@ -970,7 +970,8 @@ function getPandocVariables(options) {
   vars.push('plainfoot=');
   vars.push('emptyfoot=');
   if (options.includeToc !== false) {
-    vars.push(`toc-title=${getTocTitle(language)}`);
+    // Note: toc-title is now set in YAML metadata block, not as command line variable
+    // vars.push(`toc-title=${getTocTitle(language)}`);
   }
   if (options.numberedHeadings !== true) {
     vars.push('numbersections=false');
