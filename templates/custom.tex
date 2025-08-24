@@ -27,9 +27,6 @@ $endfor$
 $if(euro)$
   \newcommand{\euro}{€}
 $endif$
-$if(mainfont)$
-    \setmainfont[$for(mainfontoptions)$$mainfontoptions$$sep$,$endfor$]{$mainfont$}
-$endif$
 
 % --- Additional font setup for RTL languages and Hindi ---
 $if(dir)$
@@ -46,8 +43,9 @@ $if(dir)$
 \fi
 $endif$
 
-% --- HINDI LANGUAGE SETUP WITH PROPER FONT FALLBACK ---
+% --- FONT SETUP ---
 $if(polyglossia)$
+% Hindi language setup with polyglossia
 \ifxetex
   \usepackage{polyglossia}
   \setdefaultlanguage{hindi}
@@ -61,22 +59,14 @@ $if(polyglossia)$
     Language=Hindi
   ]
   
-  % CRITICAL: Set up proper font fallback for Latin characters
-  % This prevents rectangles for English text
-  \setsansfont{$if(sansfont)$$sansfont$$else$Liberation Serif$endif$}[
+  % Set up fallback fonts for Latin script
+  \setsansfont{Liberation Serif}[
     Script=Latin,
     Ligatures=TeX,
     Scale=MatchLowercase
   ]
   
-  \setseriffont{$if(seriffont)$$seriffont$$else$Liberation Serif$endif$}[
-    Script=Latin,
-    Ligatures=TeX,
-    Scale=MatchLowercase
-  ]
-  
-  % Configure XeLaTeX to automatically fallback to sans/serif fonts for Latin text
-  \newfontfamily\englishfont{$if(sansfont)$$sansfont$$else$Liberation Serif$endif$}[
+  \setseriffont{Liberation Serif}[
     Script=Latin,
     Ligatures=TeX,
     Scale=MatchLowercase
@@ -91,7 +81,7 @@ $if(polyglossia)$
   }
 \fi
 $else$
-% --- STANDARD FONT SETUP FOR NON-HINDI LANGUAGES ---
+% Standard font setup for non-Hindi languages
 $if(mainfont)$
     \setmainfont[$for(mainfontoptions)$$mainfontoptions$$sep$,$endfor$]{$mainfont$}
 $endif$
