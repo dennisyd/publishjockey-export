@@ -8,6 +8,13 @@
 \usepackage{amssymb,amsmath}
 \usepackage{ifxetex,ifluatex}
 \usepackage{fixltx2e} % provides \textsubscript
+
+% --- CRITICAL: Include TOC fixes to define missing commands ---
+\input{toc-extra-fixes}
+
+% --- Load fancyhdr for page styling ---
+\usepackage{fancyhdr}
+
 \ifnum 0\ifxetex 1\fi\ifluatex 1\fi=0 % if pdftex
   \usepackage[$if(fontenc)$$fontenc$$else$T1$endif$]{fontenc}
   \usepackage[utf8]{inputenc}
@@ -59,8 +66,10 @@ $if(polyglossia)$
     Language=Hindi
   ]
   
-  % Set up fallback fonts for Latin script
-  \setsansfont{Liberation Serif}[
+  % CRITICAL: Set up proper font fallback for Latin characters
+  % This prevents rectangles for English text
+  \setsansfont{$if(sansfont)$$sansfont$$else$Liberation Serif$endif$}[
+    $if(sansfontoptions)$$sansfontoptions$,$endif$
     Script=Latin,
     Ligatures=TeX,
     Scale=MatchLowercase
@@ -68,6 +77,13 @@ $if(polyglossia)$
   
   % Note: fontspec doesn't have \setseriffont, we use \setmainfont for serif
   % The main font is already set to Noto Sans Devanagari above
+  
+  % Configure XeLaTeX to automatically fallback to sans/serif fonts for Latin text
+  \newfontfamily\englishfont{$if(sansfont)$$sansfont$$else$Liberation Serif$endif$}[
+    Script=Latin,
+    Ligatures=TeX,
+    Scale=MatchLowercase
+  ]
   
   % Unicode-aware PDF setup
   \usepackage[unicode]{hyperref}
@@ -88,6 +104,16 @@ $endif$
 $if(seriffont)$
     % Note: fontspec doesn't have \setseriffont, serif fonts are handled by \setmainfont
 $endif$
+
+% Load hyperref for all documents (not just Hindi)
+\ifxetex
+  \usepackage[unicode]{hyperref}
+  \hypersetup{
+    pdfencoding=auto,
+    bookmarksopen=true,
+    bookmarksopenlevel=1
+  }
+\fi
 $endif$
 
 
@@ -95,7 +121,8 @@ $if(monofont)$
     \setmonofont[Mapping=tex-ansi$if(monofontoptions)$,$for(monofontoptions)$$monofontoptions$$sep$,$endfor$$endif$]{$monofont$}
 $endif$
 $if(mathfont)$
-    \setmathfont(Digits,Latin,Greek)[$for(mathfontoptions)$$mathfontoptions$$sep$,$endfor$]{$mathfont$}
+    % Note: \setmathfont requires unicode-math package, which we're not using
+    % Math fonts are handled automatically by the main font setup
 $endif$
 
 \fi
@@ -145,7 +172,7 @@ $endif$
 \usepackage{sectsty}               % For section formatting
 \usepackage{titlesec}              % Advanced title formatting
 \usepackage{tocloft}               % TOC formatting
-% Removed fancyhdr to avoid conflicts with page numbering
+\usepackage{fancyhdr}              % Required for page numbering and styles
 \usepackage{tocbibind}
 \usepackage{etoolbox}              % Programming tools
 \usepackage{bookmark}              % PDF bookmarks
@@ -158,220 +185,91 @@ $endif$
 \RequirePackage{array}
 \RequirePackage{ragged2e}
 
-% CUSTOM STYLING FOR CHAPTERS AND SECTIONS
-% Make chapter titles centered
-\titleformat{\chapter}[display]
-  {\normalfont\huge\bfseries\centering}
-  {$if(no-chapter-labels)$$else$\chaptertitlename\ \thechapter$endif$}
-  {10pt}
-  {\Huge}
-  [\vspace{0.1cm}]  % Minimal spacing after chapter title
+% --- Additional packages ---
+\usepackage{geometry}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{setspace}
+\usepackage{enumitem}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{calc}
+\usepackage{array}
+\usepackage{ragged2e}
 
-% Make section titles (H2) centered, large and bold
-\titleformat{\section}
-  {\normalfont\Large\bfseries\centering}
-  {$if(numbersections)$\thesection$else$$endif$}
-  {0.5em}
-  {}
-  [\vspace{0.1cm}]  % Minimal spacing after section title
-
-% Make subsection titles (H3) bold and left-aligned
-\titleformat{\subsection}
-  {\normalfont\large\bfseries}
-  {$if(numbersections)$\thesubsection$else$$endif$}
-  {0.5em}
-  {}
-
-% Adjust spacing around headings
-\titlespacing*{\chapter}
-  {0pt}        % left margin
-  {20pt}       % space before
-  {10pt}       % space after - reduced further
-
-\titlespacing*{\section}
-  {0pt}        % left margin
-  {0.1em}      % minimal space before
-  {0.1em}      % minimal space after
-
-\titlespacing*{\subsection}
-  {0pt}        % left margin
-  {2.25ex plus 1ex minus .2ex}      % space before
-  {1ex plus .2ex}                   % space after
-
-% Enable proper hyphenation
-$if(dir)$
-% For RTL languages, use polyglossia instead of babel
-$elseif(polyglossia)$
-% Hindi uses polyglossia
-$else$
-% Note: babel-lang is no longer automatically set to avoid LaTeX package issues
-% TOC title translation is handled via YAML metadata instead
-\usepackage[english]{babel}
+% --- Page setup ---
+$if(geometry)$
+\geometry{$geometry$}
 $endif$
 
-% Improved list typesetting
-\usepackage{enumitem}
-\setlist{noitemsep}
+% --- Header/footer setup ---
+$if(pagestyle)$
+\pagestyle{$pagestyle$}
+$endif$
 
-% Prevent widow and orphan lines
+% --- Title formatting ---
+$if(secstyle)$
+\titleformat{\chapter}{\huge\bfseries\filcenter}{}{0em}{}
+$endif$
+
+% --- Spacing and formatting ---
+$if(setspace)$
+\setstretch{$setspace$}
+$endif$
+
+% --- List formatting ---
+\setlist{nolistsep}
+
+% --- Widow/orphan control ---
 \widowpenalty=10000
 \clubpenalty=10000
 
-% Set line spacing
-\setstretch{1.15}
+% --- Emergency stretch for better justification ---
+\emergencystretch=3em
 
-% The rest of the template remains unchanged
-$if(indent)$
-\setlength{\parindent}{$indent$}
-$else$
-\setlength{\parindent}{0pt}
-\setlength{\parskip}{6pt plus 2pt minus 1pt}
-$endif$
-\setlength{\emergencystretch}{3em}  % prevent overfull lines
+% --- Pandoc tightlist environment ---
 \providecommand{\tightlist}{%
   \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
 
-$if(numbersections)$
-\setcounter{secnumdepth}{$if(secnumdepth)$$secnumdepth$$else$5$endif$}
-$else$
-\setcounter{secnumdepth}{0}
+% --- Section numbering control ---
+$if(secnumdepth)$
+\setcounter{secnumdepth}{$secnumdepth$}
 $endif$
 
-$if(subparagraph)$
-$else$
-% Redefines (sub)paragraphs to behave more like sections
-\ifx\paragraph\undefined\else
-\let\oldparagraph\paragraph
-\renewcommand{\paragraph}[1]{\oldparagraph{#1}\mbox{}}
-\fi
-\ifx\subparagraph\undefined\else
-\let\oldsubparagraph\subparagraph
-\renewcommand{\subparagraph}[1]{\oldsubparagraph{#1}\mbox{}}
-\fi
+% --- TOC depth control ---
+$if(tocdepth)$
+\setcounter{tocdepth}{$tocdepth$}
 $endif$
 
-$if(dir)$
-\ifxetex
-  % load bidi as late as possible as it modifies e.g. graphicx
-  $if(latex-dir-rtl)$
-  \usepackage[RTLdocument]{bidi}
-  $else$
-  \usepackage{bidi}
-  $endif$
-\fi
-$endif$
+% --- Document begin ---
+\begin{document}
 
-% Additional RTL support for pdfTeX (simplified)
-\ifnum 0\ifxetex 1\fi\ifluatex 1\fi=0 % if pdftex
-  \TeXXeTstate=1
-\fi
-
-$for(header-includes)$
-$header-includes$
-$endfor$
-
+% --- Title page ---
 $if(title)$
-\title{$title$$if(subtitle)$\\\vspace{0.5em}{\large $subtitle$}$endif$}
+\title{$title$}
 $endif$
 $if(author)$
-\author{$for(author)$$author$$sep$ \and $endfor$}
+\author{$author$}
 $endif$
+$if(date)$
 \date{$date$}
-
-% Create a custom title page
-\usepackage{titling}
-\newcommand{\customtitlepage}{
-  \begin{titlepage}
-    % Apply empty page style directly without using \thispagestyle
-    \pagestyle{empty}
-    \begin{center}
-    \vspace*{2cm}
-    {\Huge\bfseries $title$\par}
-    $if(subtitle)$
-    \vspace{0.5cm}
-    {\Large $subtitle$\par}
-    $endif$
-    \vspace{2cm}
-    $if(author)$
-    {\large By $author$\par}
-    $endif$
-    $if(isbn)$
-    \vspace{0.5cm}
-    {\large ISBN: $isbn$\par}
-    $endif$
-    $if(date)$
-    \vspace{1cm}
-    {\large $date$\par}
-    $endif$
-    \end{center}
-  \end{titlepage}
-}
-
-
-
-\begin{document}
-% Start with front matter (roman numerals)
-\frontmatter
-\pagenumbering{roman}  % Explicitly set roman numerals
-\pagestyle{plain}      % Use plain page style
-
-$if(include-title-page)$
-\customtitlepage
 $endif$
 
-$if(abstract)$
-\begin{abstract}
-$abstract$
-\end{abstract}
+$if(title)$
+\maketitle
 $endif$
 
-$for(include-before)$
-$include-before$
-$endfor$
-
-% Table of Contents Configuration
-$if(toc-title)$
-\renewcommand{\contentsname}{$toc-title$}
-$endif$
-
-% Always include table of contents
+% --- Table of Contents ---
 $if(toc)$
-{
-\hypersetup{linkcolor=black}
-\setcounter{tocdepth}{$if(toc-depth)$$toc-depth$$else$2$endif$}
 \tableofcontents
-\clearpage
-}
 $endif$
 
-$if(lot)$
-\listoftables
-$endif$
-$if(lof)$
-\listoffigures
-$endif$
-
-% Main content
+% --- Main content ---
 $body$
 
-$if(natbib)$
+% --- Bibliography ---
 $if(bibliography)$
-$if(biblio-title)$
-$if(book-class)$
-\renewcommand\bibname{$biblio-title$}
-$else$
-\renewcommand\refname{$biblio-title$}
-$endif$
-$endif$
-\bibliography{$for(bibliography)$$bibliography$$sep$,$endfor$}
-$endif$
+\bibliography{$bibliography$}
 $endif$
 
-$if(biblatex)$
-\printbibliography$if(biblio-title)$[title=$biblio-title$]$endif$
-$endif$
-
-$for(include-after)$
-$include-after$
-$endfor$
 \end{document}
