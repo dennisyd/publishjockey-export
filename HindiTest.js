@@ -79,9 +79,7 @@ Follow these steps to install the software.
         --template="${templateFile}" \\
         --standalone \\
         --variable=polyglossia=true \\
-        --variable=mainfont="Noto Sans Devanagari" \\
         --variable=sansfont="Liberation Serif" \\
-        --variable=seriffont="Liberation Serif" \\
         --toc`;
 
       console.log('🔄 Running Pandoc command...');

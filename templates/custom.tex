@@ -54,25 +54,21 @@ $if(polyglossia)$
 % Hindi language setup with polyglossia
 \ifxetex
   \usepackage{polyglossia}
-  \setdefaultlanguage{hindi}
-  \setotherlanguage{english}
   
-  % Set Liberation Serif as the main font for Latin text
+  % Set Liberation Serif as the main font for Latin text (this is critical!)
   \setmainfont{$if(sansfont)$$sansfont$$else$Liberation Serif$endif$}[
-    Script=Latin,
     Ligatures=TeX,
     Scale=MatchLowercase
   ]
   
   % Set up sans font as well
   \setsansfont{$if(sansfont)$$sansfont$$else$Liberation Serif$endif$}[
-    Script=Latin,
     Ligatures=TeX,
     Scale=MatchLowercase$if(sansfontoptions)$,
     $sansfontoptions$$endif$
   ]
   
-  % Define Hindi font family for Devanagari script
+  % CRITICAL: Define the Devanagari font for Hindi (this is what polyglossia expects)
   \newfontfamily\devanagarifont{Noto Sans Devanagari}[
     Script=Devanagari,
     Ligatures=TeX,
@@ -80,12 +76,9 @@ $if(polyglossia)$
     Language=Hindi
   ]
   
-  % Configure polyglossia to use the Hindi font for Hindi text
-  \setotherlanguages{english}
-  \setdefaultlanguage[numerals=Devanagari]{hindi}
-  
-  % Tell polyglossia to use our custom font for Hindi
-  \newfontfamily\hindifont[Script=Devanagari]{Noto Sans Devanagari}
+  % Configure polyglossia languages AFTER fonts are defined
+  \setdefaultlanguage{hindi}
+  \setotherlanguage{english}
   
   % Unicode-aware PDF setup
   \usepackage[unicode]{hyperref}
