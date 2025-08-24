@@ -9,8 +9,7 @@
 \usepackage{ifxetex,ifluatex}
 \usepackage{fixltx2e} % provides \textsubscript
 
-% --- CRITICAL: Include TOC fixes to define missing commands ---
-\input{toc-extra-fixes}
+
 
 % --- Load fancyhdr for page styling ---
 \usepackage{fancyhdr}
@@ -196,6 +195,23 @@ $endif$
 \usepackage{calc}
 \usepackage{array}
 \usepackage{ragged2e}
+
+% --- Chapter and section command definitions ---
+% These need to be defined after the document class but before they're used
+\makeatletter
+% Define chapter and section commands to prevent undefined errors
+\providecommand{\thechapter}{}
+\providecommand{\@chapapp}{}
+\providecommand{\chaptertitlename}{Chapter}
+
+% Remove all section numbering to match the desired style
+\setcounter{secnumdepth}{-10}
+\renewcommand{\thechapter}{}
+\renewcommand{\thesection}{}
+\renewcommand{\thesubsection}{}
+\renewcommand{\thesubsubsection}{}
+\def\@chapapp{}
+\makeatother
 
 % --- Page setup ---
 $if(geometry)$
