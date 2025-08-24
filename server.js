@@ -3234,12 +3234,15 @@ app.get('/test/hindi-font', async (req, res) => {
     
     // Import and run the test
     const { testHindiFontFallback } = require('./HindiTest');
-    await testHindiFontFallback();
+    const result = await testHindiFontFallback();
     
     res.json({
       success: true,
       message: 'Hindi font fallback test completed successfully',
-      details: 'Check the server logs for detailed output. The test PDF should be generated in ./temp/hindi-test/hindi-test.pdf'
+      details: 'Check the server logs for detailed output.',
+      downloadUrl: result.downloadUrl,
+      fileId: result.fileId,
+      uploadsUrl: result.uploadsUrl
     });
     
   } catch (error) {
@@ -3249,5 +3252,45 @@ app.get('/test/hindi-font', async (req, res) => {
       error: 'Hindi font fallback test failed',
       details: error.message
     });
+  }
+});
+
+// Download route for test files
+app.get('/download/test/:filename', (req, res) => {
+  const { filename } = req.params;
+  const filePath = path.join(__dirname, 'temp', 'hindi-test', filename);
+  
+  console.log(`[TEST DOWNLOAD] Requested file: ${filename}, path: ${filePath}`);
+  
+  if (fs.existsSync(filePath)) {
+    const ext = path.extname(filePath).toLowerCase();
+    const mimeTypes = {
+      '.pdf': 'application/pdf',
+      '.epub': 'application/epub+zip',
+      '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      '.md': 'text/markdown'
+    };
+    
+    const contentType = mimeTypes[ext] || 'application/octet-stream';
+    
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    
+    console.log(`[TEST DOWNLOAD] Sending file: ${filePath} with content-type: ${contentType}`);
+    
+    res.sendFile(filePath, (err) => {
+      if (err) {
+        console.error(`[TEST DOWNLOAD] Error sending file: ${err}`);
+        if (!res.headersSent) {
+          res.status(500).json({ error: 'Error sending file', details: err.message });
+        }
+      } else {
+        console.log(`[TEST DOWNLOAD] File sent successfully: ${filename}`);
+      }
+    });
+  } else {
+    console.log(`[TEST DOWNLOAD] File not found: ${filePath}`);
+    res.status(404).json({ error: 'Test file not found', path: filePath });
   }
 });
