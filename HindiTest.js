@@ -67,9 +67,9 @@ Follow these steps to install the software.
       fs.writeFileSync(inputFile, testContent);
       console.log('📝 Test content written to:', inputFile);
 
-      // Use the main template instead of custom one
-      const templateFile = path.join(__dirname, 'templates', 'custom.tex');
-      console.log('📄 Using main LaTeX template:', templateFile);
+      // Use the minimal Hindi template to isolate the issue
+      const templateFile = path.join(__dirname, 'templates', 'hindi-minimal.tex');
+      console.log('📄 Using minimal Hindi template:', templateFile);
 
       // Simplified Pandoc command - let the template handle font logic
       const pandocCommand = `pandoc "${inputFile}" -o "${pdfFile}" \\

@@ -1,0 +1,46 @@
+% Minimal Hindi test template
+\documentclass{article}
+
+\usepackage{fontspec}
+\usepackage{polyglossia}
+
+% Set Liberation Serif as the main font for Latin text
+\setmainfont{Liberation Serif}[
+  Ligatures=TeX,
+  Scale=MatchLowercase
+]
+
+% Define the Devanagari font for Hindi (this is what polyglossia expects)
+\newfontfamily\devanagarifont{Noto Sans Devanagari}[
+  Script=Devanagari,
+  Ligatures=TeX,
+  Scale=MatchLowercase,
+  Language=Hindi
+]
+
+% Configure polyglossia languages AFTER fonts are defined
+\setdefaultlanguage{hindi}
+\setotherlanguage{english}
+
+% Unicode-aware PDF setup
+\usepackage[unicode]{hyperref}
+\hypersetup{
+  pdfencoding=auto,
+  bookmarksopen=true,
+  bookmarksopenlevel=1
+}
+
+\begin{document}
+
+$if(title)$
+\title{$title$}
+\maketitle
+$endif$
+
+$if(toc)$
+\tableofcontents
+$endif$
+
+$body$
+
+\end{document}
