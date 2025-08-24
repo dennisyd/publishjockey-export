@@ -905,18 +905,24 @@ function getPandocVariables(options) {
     defaultFont = 'Noto Sans'; // Portuguese, Icelandic, Croatian - use Noto Sans for better Latin script support
   } else if (isDevanagari) {
     defaultFont = 'Noto Sans Devanagari'; // Hindi font
-    // Comprehensive Hindi font setup using fontspec + polyglossia
-    vars.push('mainfontoptions=Script=Devanagari');
-    vars.push('mainfontoptions=Ligatures=TeX');
-    vars.push('mainfontoptions=Scale=MatchLowercase');
-    vars.push('mainfontoptions=Language=Hindi');
     
-    // Add polyglossia for proper Hindi language support
-    vars.push('lang=hi');
+    // Set up polyglossia and font fallback
     vars.push('polyglossia=true');
+    vars.push('lang=hi');
     
-    // Add Unicode-aware PDF bookmarks
+    // IMPORTANT: Don't override mainfont here - let the template handle it
+    // The template will use Noto Sans Devanagari for main content
+    
+    // Set fallback fonts for Latin script
+    vars.push('sansfont=Liberation Serif');
+    vars.push('sansfontoptions=Script=Latin,Ligatures=TeX,Scale=MatchLowercase');
+    vars.push('seriffont=Liberation Serif'); 
+    vars.push('seriffontoptions=Script=Latin,Ligatures=TeX,Scale=MatchLowercase');
+    
+    // Enable Unicode bookmarks
     vars.push('hyperref-unicode=true');
+    
+    console.log('[FONT] Hindi setup: Noto Sans Devanagari + Liberation Serif fallback');
   }
   
   // Ensure font names match exactly what's available on the system
@@ -954,25 +960,7 @@ function getPandocVariables(options) {
   
   vars.push(`mainfont=${options.fontFamily || defaultFont}`);
   
-  // Add fallback font for Hindi documents to handle mixed script content
-  if (isDevanagari) {
-    // Use Liberation Serif as fallback for English text in Hindi documents
-    // This prevents rectangles (missing character boxes) for English text
-    // Note: We don't use FontFallback option as it's not supported in this fontspec version
-    // Instead, we rely on the sansfont and seriffont variables to handle fallback
-    vars.push('sansfont=Liberation Serif');
-    vars.push('sansfontoptions=Script=Latin');
-    vars.push('sansfontoptions=Ligatures=TeX');
-    vars.push('sansfontoptions=Scale=MatchLowercase');
-    
-    // Also set a serif fallback for better mixed script handling
-    vars.push('seriffont=Liberation Serif');
-    vars.push('seriffontoptions=Script=Latin');
-    vars.push('seriffontoptions=Ligatures=TeX');
-    vars.push('seriffontoptions=Scale=MatchLowercase');
-    
-    console.log('[FONT] Added Liberation Serif fallback for Hindi mixed script content');
-  }
+
   
 
   

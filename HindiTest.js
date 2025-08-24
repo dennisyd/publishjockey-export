@@ -29,25 +29,26 @@ async function testHindiFontFallback() {
         fs.mkdirSync(uploadsDir, { recursive: true });
       }
 
-      // Test content with mixed Hindi and English
+      // Simplified test content
       const testContent = `---
 title: "विषय सूची"
-author: "Anonymous"
+author: "Test Author"
 lang: hi
 toc-title: "विषय सूची"
+polyglossia: true
 ---
 
-# परिचय (Introduction)
+# परिचय
 
-स्व-प्रकाशन के इस दौर में लेखन केवल अच्छे विचारों तक सीमित नहीं रहा, बल्कि प्रस्तुति और मानकीकरण भी उतने ही महत्वपूर्ण हो गए हैं। This is English text that should render properly with the fallback font.
+यह हिंदी टेक्स्ट है। This is English text that should not show rectangles.
 
-## मुख्य विषय (Main Topic)
+## मुख्य विषय
 
 तकनीकी औज़ार अब इस पूरी प्रक्रिया को सरल बनाते हैं। Technical tools now simplify this entire process.
 
-### उप-विषय (Sub-topic)
+Numbers: १२३ and 123 should both work.
 
-परिणामस्वरूप, लेखक अपने विचारों पर अधिक ध्यान दे पाते हैं। As a result, authors can focus more on their ideas.
+Punctuation: "English quotes" और 'हिंदी उद्धरण' both should work.
 
 ## Chapter 1: Getting Started
 
@@ -56,14 +57,6 @@ This chapter will cover the basics of the system.
 ### Section 1.1: Installation
 
 Follow these steps to install the software.
-
-## Chapter 2: Advanced Features
-
-Learn about advanced functionality.
-
-### Section 2.1: Configuration
-
-Configure the system according to your needs.
 `;
 
       const inputFile = path.join(tempDir, 'hindi-test.md');
@@ -74,109 +67,22 @@ Configure the system according to your needs.
       fs.writeFileSync(inputFile, testContent);
       console.log('📝 Test content written to:', inputFile);
 
-      // Create custom LaTeX template with improved font fallback
-      const customTex = `\\documentclass[12pt,oneside,openany]{book}
+      // Use the main template instead of custom one
+      const templateFile = path.join(__dirname, 'templates', 'custom.tex');
+      console.log('📄 Using main LaTeX template:', templateFile);
 
-\\usepackage{fontspec}
-\\usepackage{polyglossia}
-\\setdefaultlanguage{hindi}
-
-% Set up fonts with better fallback
-\\setmainfont{Noto Sans Devanagari}[
-  Script=Devanagari,
-  Ligatures=TeX,
-  Scale=MatchLowercase,
-  Language=Hindi
-]
-
-% Set up fallback fonts for Latin script
-\\newfontfamily\\latinfont{Liberation Serif}[
-  Script=Latin,
-  Ligatures=TeX,
-  Scale=MatchLowercase
-]
-
-% Define commands for mixed content
-\\newcommand{\\mixedtext}[1]{{\\latinfont #1}}
-\\newcommand{\\hinditext}[1]{{\\mainfont #1}}
-
-% Page geometry
-\\usepackage[top=1in,bottom=1in,left=1in,right=1in]{geometry}
-
-% Hyperref for bookmarks
-\\usepackage[unicode=true]{hyperref}
-
-% Customize TOC title
-$if(toc-title)$
-\\renewcommand{\\contentsname}{$toc-title$}
-$endif$
-
-% Remove page numbers from TOC
-\\usepackage{tocloft}
-\\renewcommand{\\cftdot}{}
-
-% Custom styling
-\\usepackage{titlesec}
-\\titleformat{\\chapter}[display]
-  {\\normalfont\\huge\\bfseries\\filcenter}
-  {\\chaptertitlename\\ \\thechapter}{20pt}{\\Huge}
-
-\\titleformat{\\section}
-  {\\normalfont\\Large\\bfseries}
-  {\\thesection}{1em}{}
-
-\\titleformat{\\subsection}
-  {\\normalfont\\large\\bfseries}
-  {\\thesubsection}{1em}{}
-
-\\begin{document}
-
-$if(toc)$
-\\tableofcontents
-\\newpage
-$endif$
-
-$body$
-
-\\end{document}`;
-
-      const templateFile = path.join(tempDir, 'custom-test.tex');
-      fs.writeFileSync(templateFile, customTex);
-      console.log('📄 Custom LaTeX template created');
-
-      // Pandoc command with improved font handling
+      // Simplified Pandoc command - let the template handle font logic
       const pandocCommand = `pandoc "${inputFile}" -o "${pdfFile}" \\
-        --from=markdown+fenced_divs+header_attributes+raw_tex+latex_macros+raw_html \\
+        --from=markdown \\
         --to=latex \\
         --pdf-engine=xelatex \\
         --template="${templateFile}" \\
         --standalone \\
-        --variable=documentclass=book \\
-        --variable=fontsize=12pt \\
-        --variable=lang=hi \\
         --variable=polyglossia=true \\
-        --variable=hyperref-unicode=true \\
         --variable=mainfont="Noto Sans Devanagari" \\
-        --variable=mainfontoptions="Script=Devanagari,Ligatures=TeX,Scale=MatchLowercase,Language=Hindi" \\
         --variable=sansfont="Liberation Serif" \\
-        --variable=sansfontoptions="Script=Latin,Ligatures=TeX,Scale=MatchLowercase" \\
         --variable=seriffont="Liberation Serif" \\
-        --variable=seriffontoptions="Script=Latin,Ligatures=TeX,Scale=MatchLowercase" \\
-        --variable=secstyle="\\\\Large\\\\bfseries\\\\filcenter" \\
-        --variable=pagestyle=empty \\
-        --variable=disable-headers=true \\
-        --variable=numbersections=false \\
-        --variable=secnumdepth=-10 \\
-        --variable=disable-all-numbering=true \\
-        --variable=no-chapter-labels=true \\
-        --variable=no-blank-pages=true \\
-        --variable=no-separator-pages=true \\
-        --variable=frontmatter-continuous=true \\
-        --variable=continuous-front-matter=true \\
-        --variable=classoption=oneside \\
-        --variable=classoption=openany \\
-        --metadata title="Hindi Test" \\
-        --metadata author="Anonymous"`;
+        --toc`;
 
       console.log('🔄 Running Pandoc command...');
       console.log('Command:', pandocCommand);

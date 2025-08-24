@@ -46,46 +46,63 @@ $if(dir)$
 \fi
 $endif$
 
-% --- Hindi language setup with polyglossia ---
+% --- HINDI LANGUAGE SETUP WITH PROPER FONT FALLBACK ---
 $if(polyglossia)$
 \ifxetex
-  % Load polyglossia for Hindi language support
   \usepackage{polyglossia}
-  \setdefaultlanguage{english}
-  \setotherlanguage{hindi}
+  \setdefaultlanguage{hindi}
+  \setotherlanguage{english}
   
-  % Set up Hindi font with proper script support
-  \newfontfamily\hindifont{Noto Sans Devanagari}[
+  % Set up main Hindi font
+  \setmainfont{Noto Sans Devanagari}[
     Script=Devanagari,
     Ligatures=TeX,
     Scale=MatchLowercase,
     Language=Hindi
   ]
   
-  % Set up fallback font for English text in Hindi documents
-  % This prevents rectangles (missing character boxes) for English text
-  \newfontfamily\englishfallbackfont{Liberation Serif}[
+  % CRITICAL: Set up proper font fallback for Latin characters
+  % This prevents rectangles for English text
+  \setsansfont{$if(sansfont)$$sansfont$$else$Liberation Serif$endif$}[
+    $if(sansfontoptions)$$sansfontoptions$,$endif$
     Script=Latin,
     Ligatures=TeX,
-    Scale=MatchLowercase,
-    Language=English
+    Scale=MatchLowercase
   ]
   
-  % Set Hindi as the main language for the document
-  \setmainlanguage{hindi}
+  \setseriffont{$if(seriffont)$$seriffont$$else$Liberation Serif$endif$}[
+    $if(seriffontoptions)$$seriffontoptions$,$endif$
+    Script=Latin,
+    Ligatures=TeX,
+    Scale=MatchLowercase
+  ]
   
-  % Configure Unicode-aware PDF bookmarks
+  % Configure XeLaTeX to automatically fallback to sans/serif fonts for Latin text
+  \newfontfamily\englishfont{$if(sansfont)$$sansfont$$else$Liberation Serif$endif$}[
+    Script=Latin,
+    Ligatures=TeX,
+    Scale=MatchLowercase
+  ]
+  
+  % Unicode-aware PDF setup
   \usepackage[unicode]{hyperref}
   \hypersetup{
     pdfencoding=auto,
     bookmarksopen=true,
     bookmarksopenlevel=1
   }
-  
-  % Use Hindi font for the main document
-  % The sansfont and seriffont variables will handle fallback automatically
-  \setmainfont{Noto Sans Devanagari}
 \fi
+$else$
+% --- STANDARD FONT SETUP FOR NON-HINDI LANGUAGES ---
+$if(mainfont)$
+    \setmainfont[$for(mainfontoptions)$$mainfontoptions$$sep$,$endfor$]{$mainfont$}
+$endif$
+$if(sansfont)$
+    \setsansfont[$for(sansfontoptions)$$sansfontoptions$$sep$,$endfor$]{$sansfont$}
+$endif$
+$if(seriffont)$
+    \setseriffont[$for(seriffontoptions)$$seriffontoptions$$sep$,$endfor$]{$seriffont$}
+$endif$
 $endif$
 
 
