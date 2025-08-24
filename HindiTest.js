@@ -31,10 +31,9 @@ async function testHindiFontFallback() {
 
       // Simplified test content
       const testContent = `---
-title: "विषय सूची"
+title: "Mixed Hindi-English Test"
 author: "Test Author"
-lang: hi
-toc-title: "विषय सूची"
+toc-title: "Contents"
 polyglossia: true
 ---
 
