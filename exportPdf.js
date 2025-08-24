@@ -958,7 +958,12 @@ function getPandocVariables(options) {
   console.log(`[FONT] Font family from options: ${options.fontFamily}`);
   console.log(`[FONT] Default font: ${defaultFont}`);
   
-  vars.push(`mainfont=${options.fontFamily || defaultFont}`);
+  // For Hindi with polyglossia, don't set mainfont - let the template handle it
+  if (!isDevanagari) {
+    vars.push(`mainfont=${options.fontFamily || defaultFont}`);
+  } else {
+    console.log('[FONT] Skipping mainfont for Hindi - template will set Liberation Serif as main font');
+  }
   
 
   
