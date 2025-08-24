@@ -66,11 +66,8 @@ $if(polyglossia)$
     Scale=MatchLowercase
   ]
   
-  \setseriffont{Liberation Serif}[
-    Script=Latin,
-    Ligatures=TeX,
-    Scale=MatchLowercase
-  ]
+  % Note: fontspec doesn't have \setseriffont, we use \setmainfont for serif
+  % The main font is already set to Noto Sans Devanagari above
   
   % Unicode-aware PDF setup
   \usepackage[unicode]{hyperref}
@@ -89,7 +86,7 @@ $if(sansfont)$
     \setsansfont[$for(sansfontoptions)$$sansfontoptions$$sep$,$endfor$]{$sansfont$}
 $endif$
 $if(seriffont)$
-    \setseriffont[$for(seriffontoptions)$$seriffontoptions$$sep$,$endfor$]{$seriffont$}
+    % Note: fontspec doesn't have \setseriffont, serif fonts are handled by \setmainfont
 $endif$
 $endif$
 
