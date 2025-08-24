@@ -74,16 +74,6 @@ $if(polyglossia)$
   % Set Hindi as the main language for the document
   \setmainlanguage{hindi}
   
-  % Configure font fallback for mixed script content
-  % When Noto Sans Devanagari can't render a character, fall back to Liberation Serif
-  \newfontfamily\mixedscriptfont{Noto Sans Devanagari}[
-    Script=Devanagari,
-    Ligatures=TeX,
-    Scale=MatchLowercase,
-    Language=Hindi,
-    FontFallback={Liberation Serif}
-  ]
-  
   % Configure Unicode-aware PDF bookmarks
   \usepackage[unicode]{hyperref}
   \hypersetup{
@@ -92,8 +82,9 @@ $if(polyglossia)$
     bookmarksopenlevel=1
   }
   
-  % Use the mixed script font for the main document
-  \setmainfont{\mixedscriptfont}
+  % Use Hindi font for the main document
+  % The sansfont and seriffont variables will handle fallback automatically
+  \setmainfont{Noto Sans Devanagari}
 \fi
 $endif$
 

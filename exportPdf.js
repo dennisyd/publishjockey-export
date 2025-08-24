@@ -958,6 +958,8 @@ function getPandocVariables(options) {
   if (isDevanagari) {
     // Use Liberation Serif as fallback for English text in Hindi documents
     // This prevents rectangles (missing character boxes) for English text
+    // Note: We don't use FontFallback option as it's not supported in this fontspec version
+    // Instead, we rely on the sansfont and seriffont variables to handle fallback
     vars.push('sansfont=Liberation Serif');
     vars.push('sansfontoptions=Script=Latin');
     vars.push('sansfontoptions=Ligatures=TeX');
