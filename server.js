@@ -3294,3 +3294,6 @@ app.get('/download/test/:filename', (req, res) => {
     res.status(404).json({ error: 'Test file not found', path: filePath });
   }
 });
+
+// Export tempExportFiles for use in other modules
+module.exports = { tempExportFiles };

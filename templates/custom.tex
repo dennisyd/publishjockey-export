@@ -57,16 +57,14 @@ $if(polyglossia)$
   \setdefaultlanguage{hindi}
   \setotherlanguage{english}
   
-  % Set up main Hindi font
-  \setmainfont{Noto Sans Devanagari}[
-    Script=Devanagari,
+  % Set Liberation Serif as the main font for Latin text
+  \setmainfont{$if(sansfont)$$sansfont$$else$Liberation Serif$endif$}[
+    Script=Latin,
     Ligatures=TeX,
-    Scale=MatchLowercase,
-    Language=Hindi
+    Scale=MatchLowercase
   ]
   
-  % CRITICAL: Set up proper font fallback for Latin characters
-  % This prevents rectangles for English text
+  % Set up sans font as well
   \setsansfont{$if(sansfont)$$sansfont$$else$Liberation Serif$endif$}[
     Script=Latin,
     Ligatures=TeX,
@@ -74,15 +72,20 @@ $if(polyglossia)$
     $sansfontoptions$$endif$
   ]
   
-  % Note: fontspec doesn't have \setseriffont, we use \setmainfont for serif
-  % The main font is already set to Noto Sans Devanagari above
-  
-  % Configure XeLaTeX to automatically fallback to sans/serif fonts for Latin text
-  \newfontfamily\englishfont{$if(sansfont)$$sansfont$$else$Liberation Serif$endif$}[
-    Script=Latin,
+  % Define Hindi font family for Devanagari script
+  \newfontfamily\devanagarifont{Noto Sans Devanagari}[
+    Script=Devanagari,
     Ligatures=TeX,
-    Scale=MatchLowercase
+    Scale=MatchLowercase,
+    Language=Hindi
   ]
+  
+  % Configure polyglossia to use the Hindi font for Hindi text
+  \setotherlanguages{english}
+  \setdefaultlanguage[numerals=Devanagari]{hindi}
+  
+  % Tell polyglossia to use our custom font for Hindi
+  \newfontfamily\hindifont[Script=Devanagari]{Noto Sans Devanagari}
   
   % Unicode-aware PDF setup
   \usepackage[unicode]{hyperref}

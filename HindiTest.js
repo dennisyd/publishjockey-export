@@ -113,12 +113,18 @@ Follow these steps to install the software.
         console.log('3. Check that English text renders properly (no rectangles)');
         console.log('4. Check that the TOC title is in Hindi');
         
-        // Register file with the tracking system for download
+        // Register file with the tracking system for download (if available)
         const fileId = 'hindi-test-' + Date.now();
-        const { tempExportFiles } = require('./server'); // Dynamically import tempExportFiles
-        tempExportFiles.set(fileId, pdfFile);
-        console.log('🔗 File registered for download with ID:', fileId);
-        console.log('📥 Download URL:', `${process.env.EXPORT_BACKEND_URL || 'http://localhost:3001'}/api/files/${fileId}?filename=hindi-test.pdf`);
+        try {
+          const server = require('./server');
+          if (server && server.tempExportFiles) {
+            server.tempExportFiles.set(fileId, pdfFile);
+            console.log('🔗 File registered for download with ID:', fileId);
+            console.log('📥 Download URL:', `${process.env.EXPORT_BACKEND_URL || 'http://localhost:3001'}/api/files/${fileId}?filename=hindi-test.pdf`);
+          }
+        } catch (error) {
+          console.log('⚠️ Could not register file with tracking system:', error.message);
+        }
         console.log('🌐 Direct uploads URL:', `${process.env.EXPORT_BACKEND_URL || 'http://localhost:3001'}/uploads/hindi-test.pdf`);
         
         resolve({ 
