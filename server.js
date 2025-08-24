@@ -3226,3 +3226,28 @@ app.get('/test/cloudinary', async (req, res) => {
     });
   }
 });
+
+// Test endpoint for Hindi font fallback
+app.get('/test/hindi-font', async (req, res) => {
+  try {
+    console.log('[HINDI FONT TEST] Testing Hindi font fallback solution...');
+    
+    // Import and run the test
+    const { testHindiFontFallback } = require('./HindiTest');
+    await testHindiFontFallback();
+    
+    res.json({
+      success: true,
+      message: 'Hindi font fallback test completed successfully',
+      details: 'Check the server logs for detailed output. The test PDF should be generated in ./temp/hindi-test/hindi-test.pdf'
+    });
+    
+  } catch (error) {
+    console.error('[HINDI FONT TEST] Test failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Hindi font fallback test failed',
+      details: error.message
+    });
+  }
+});
