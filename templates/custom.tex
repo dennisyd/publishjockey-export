@@ -68,10 +68,10 @@ $if(polyglossia)$
   % CRITICAL: Set up proper font fallback for Latin characters
   % This prevents rectangles for English text
   \setsansfont{$if(sansfont)$$sansfont$$else$Liberation Serif$endif$}[
-    $if(sansfontoptions)$$sansfontoptions$,$endif$
     Script=Latin,
     Ligatures=TeX,
-    Scale=MatchLowercase
+    Scale=MatchLowercase$if(sansfontoptions)$,
+    $sansfontoptions$$endif$
   ]
   
   % Note: fontspec doesn't have \setseriffont, we use \setmainfont for serif
@@ -95,10 +95,18 @@ $if(polyglossia)$
 $else$
 % Standard font setup for non-Hindi languages
 $if(mainfont)$
+    $if(mainfontoptions)$
     \setmainfont[$for(mainfontoptions)$$mainfontoptions$$sep$,$endfor$]{$mainfont$}
+    $else$
+    \setmainfont{$mainfont$}
+    $endif$
 $endif$
 $if(sansfont)$
+    $if(sansfontoptions)$
     \setsansfont[$for(sansfontoptions)$$sansfontoptions$$sep$,$endfor$]{$sansfont$}
+    $else$
+    \setsansfont{$sansfont$}
+    $endif$
 $endif$
 $if(seriffont)$
     % Note: fontspec doesn't have \setseriffont, serif fonts are handled by \setmainfont
@@ -117,7 +125,11 @@ $endif$
 
 
 $if(monofont)$
-    \setmonofont[Mapping=tex-ansi$if(monofontoptions)$,$for(monofontoptions)$$monofontoptions$$sep$,$endfor$$endif$]{$monofont$}
+    $if(monofontoptions)$
+    \setmonofont[Mapping=tex-ansi,$for(monofontoptions)$$monofontoptions$$sep$,$endfor$]{$monofont$}
+    $else$
+    \setmonofont[Mapping=tex-ansi]{$monofont$}
+    $endif$
 $endif$
 $if(mathfont)$
     % Note: \setmathfont requires unicode-math package, which we're not using
