@@ -956,10 +956,20 @@ function getPandocVariables(options) {
   
   // Add fallback font for Hindi documents to handle mixed script content
   if (isDevanagari) {
-    vars.push('sansfont=Noto Sans');
+    // Use Liberation Serif as fallback for English text in Hindi documents
+    // This prevents rectangles (missing character boxes) for English text
+    vars.push('sansfont=Liberation Serif');
     vars.push('sansfontoptions=Script=Latin');
     vars.push('sansfontoptions=Ligatures=TeX');
     vars.push('sansfontoptions=Scale=MatchLowercase');
+    
+    // Also set a serif fallback for better mixed script handling
+    vars.push('seriffont=Liberation Serif');
+    vars.push('seriffontoptions=Script=Latin');
+    vars.push('seriffontoptions=Ligatures=TeX');
+    vars.push('seriffontoptions=Scale=MatchLowercase');
+    
+    console.log('[FONT] Added Liberation Serif fallback for Hindi mixed script content');
   }
   
 

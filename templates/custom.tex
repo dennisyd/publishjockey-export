@@ -62,8 +62,27 @@ $if(polyglossia)$
     Language=Hindi
   ]
   
+  % Set up fallback font for English text in Hindi documents
+  % This prevents rectangles (missing character boxes) for English text
+  \newfontfamily\englishfallbackfont{Liberation Serif}[
+    Script=Latin,
+    Ligatures=TeX,
+    Scale=MatchLowercase,
+    Language=English
+  ]
+  
   % Set Hindi as the main language for the document
   \setmainlanguage{hindi}
+  
+  % Configure font fallback for mixed script content
+  % When Noto Sans Devanagari can't render a character, fall back to Liberation Serif
+  \newfontfamily\mixedscriptfont{Noto Sans Devanagari}[
+    Script=Devanagari,
+    Ligatures=TeX,
+    Scale=MatchLowercase,
+    Language=Hindi,
+    FontFallback={Liberation Serif}
+  ]
   
   % Configure Unicode-aware PDF bookmarks
   \usepackage[unicode]{hyperref}
@@ -72,6 +91,9 @@ $if(polyglossia)$
     bookmarksopen=true,
     bookmarksopenlevel=1
   }
+  
+  % Use the mixed script font for the main document
+  \setmainfont{\mixedscriptfont}
 \fi
 $endif$
 
