@@ -64,14 +64,12 @@ $if(polyglossia)$
   % CRITICAL: Set up proper font fallback for Latin characters
   % This prevents rectangles for English text
   \setsansfont{$if(sansfont)$$sansfont$$else$Liberation Serif$endif$}[
-    $if(sansfontoptions)$$sansfontoptions$,$endif$
     Script=Latin,
     Ligatures=TeX,
     Scale=MatchLowercase
   ]
   
   \setseriffont{$if(seriffont)$$seriffont$$else$Liberation Serif$endif$}[
-    $if(seriffontoptions)$$seriffontoptions$,$endif$
     Script=Latin,
     Ligatures=TeX,
     Scale=MatchLowercase
@@ -106,9 +104,6 @@ $endif$
 $endif$
 
 
-$if(sansfont)$
-    \setsansfont[$for(sansfontoptions)$$sansfontoptions$$sep$,$endfor$]{$sansfont$}
-$endif$
 $if(monofont)$
     \setmonofont[Mapping=tex-ansi$if(monofontoptions)$,$for(monofontoptions)$$monofontoptions$$sep$,$endfor$$endif$]{$monofont$}
 $endif$
