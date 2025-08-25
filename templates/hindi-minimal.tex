@@ -1,39 +1,34 @@
-% Minimal Hindi test template
+% Minimal Hindi test template with automatic script-based font switching
 \documentclass{article}
 
 \usepackage{fontspec}
-\usepackage{polyglossia}
+\usepackage{ucharclasses}
 
-% Set Liberation Serif as the main font for Latin text
-\setmainfont{Liberation Serif}[
+% Set Hindi/Devanagari as the main font (default for all text)
+\setmainfont{Noto Sans Devanagari}[
+  Script=Devanagari,
+  Renderer=HarfBuzz,
+  Ligatures=TeX,
+  Scale=MatchLowercase,
+  Language=Hindi
+]
+
+% Define English/Latin font for automatic switching
+\newfontfamily\englishfont{Liberation Serif}[
   Ligatures=TeX,
   Scale=MatchLowercase
 ]
 
-% Define the Devanagari font for Hindi (this is what polyglossia expects)
-\newfontfamily\devanagarifont{Noto Sans Devanagari}[
-  Script=Devanagari,
-  Ligatures=TeX,
-  Scale=MatchLowercase,
-  Language=Hindi
-]
+% CRITICAL: Automatic font switching based on Unicode script
+% Default: Use Hindi font for all text
+\setDefaultTransitions{\begingroup\selectfont}{\endgroup}
 
-% Configure polyglossia languages AFTER fonts are defined
-% Set English as default for mixed content, Hindi as other language
-\setdefaultlanguage{english}
-\setotherlanguage{hindi}
-
-% CRITICAL: Tell polyglossia to use our Hindi font for Hindi text
-% Polyglossia expects \hindifont for Hindi language
-\newfontfamily\hindifont{Noto Sans Devanagari}[
-  Script=Devanagari,
-  Ligatures=TeX,
-  Scale=MatchLowercase,
-  Language=Hindi
-]
-
-% Enable automatic script detection
-\XeTeXinterchartokenstate=1
+% When Latin characters appear: Switch to English font
+\setTransitionsForLatin{
+  \begingroup\englishfont
+}{
+  \endgroup
+}
 
 % Unicode-aware PDF setup
 \usepackage[unicode]{hyperref}

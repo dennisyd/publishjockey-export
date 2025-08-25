@@ -34,7 +34,6 @@ async function testHindiFontFallback() {
 title: "Mixed Hindi-English Test"
 author: "Test Author"
 toc-title: "Contents"
-polyglossia: true
 ---
 
 # परिचय
@@ -77,8 +76,6 @@ Follow these steps to install the software.
         --pdf-engine=xelatex \\
         --template="${templateFile}" \\
         --standalone \\
-        --variable=polyglossia=true \\
-        --variable=sansfont="Liberation Serif" \\
         --toc`;
 
       console.log('🔄 Running Pandoc command...');
