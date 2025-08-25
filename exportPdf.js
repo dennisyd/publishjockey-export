@@ -1375,7 +1375,7 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
         '--from=markdown+fenced_divs+header_attributes+raw_tex+latex_macros+raw_html',
         '--to=latex',
         '--pdf-engine=xelatex',
-        '--template=templates/custom-new.tex',
+        '--template=templates/custom.tex',
         '--standalone',
         '--variable=links-as-notes',
         '--include-in-header', tmpHeaderPath,
@@ -1428,7 +1428,7 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
         defaultFont = 'Noto Sans Tamil';
       }
       
-      console.log(`[PDF EXPORT] Template being used: templates/custom-new.tex`);
+      console.log(`[PDF EXPORT] Template being used: templates/custom.tex`);
       console.log(`[PDF EXPORT] Font being used: ${options.fontFamily || defaultFont}`);
       console.log(`[PDF EXPORT] Language: ${language}, RTL: ${isRTL}`);
   
