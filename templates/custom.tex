@@ -314,36 +314,9 @@ $endif$
 % \maketitle
 % $endif$
 
-% --- Table of Contents with Language-Specific Titles ---
+% --- Table of Contents ---
 $if(toc)$
-% Set TOC title based on document language
-\makeatletter
-\def\@tmplang{$lang$}
-\ifx\@tmplang\@empty
-  % Default to English if no language specified
-\else
-  \ifstrequal{\@tmplang}{es}{\renewcommand{\contentsname}{Índice}}{}
-  \ifstrequal{\@tmplang}{fr}{\renewcommand{\contentsname}{Table des matières}}{}
-  \ifstrequal{\@tmplang}{de}{\renewcommand{\contentsname}{Inhaltsverzeichnis}}{}
-  \ifstrequal{\@tmplang}{it}{\renewcommand{\contentsname}{Indice}}{}
-  \ifstrequal{\@tmplang}{pt}{\renewcommand{\contentsname}{Índice}}{}
-  \ifstrequal{\@tmplang}{ru}{\renewcommand{\contentsname}{Содержание}}{}
-  \ifstrequal{\@tmplang}{ar}{\renewcommand{\contentsname}{المحتويات}}{}
-  \ifstrequal{\@tmplang}{hi}{\renewcommand{\contentsname}{अनुक्रमणिका}}{}
-  \ifstrequal{\@tmplang}{ta}{\renewcommand{\contentsname}{பொருளடக்கம்}}{}
-  \ifstrequal{\@tmplang}{bn}{\renewcommand{\contentsname}{সূচিপত্র}}{}
-  \ifstrequal{\@tmplang}{gu}{\renewcommand{\contentsname}{અનુક્રમણિકા}}{}
-  \ifstrequal{\@tmplang}{te}{\renewcommand{\contentsname}{విషయసూచిక}}{}
-  \ifstrequal{\@tmplang}{kn}{\renewcommand{\contentsname}{ವಿಷಯಸೂಚಿ}}{}
-  \ifstrequal{\@tmplang}{ml}{\renewcommand{\contentsname}{ഉള്ളടക്കം}}{}
-  \ifstrequal{\@tmplang}{pa}{\renewcommand{\contentsname}{ਸਮੱਗਰੀ}}{}
-  \ifstrequal{\@tmplang}{or}{\renewcommand{\contentsname}{ସୂଚୀପତ୍ର}}{}
-  \ifstrequal{\@tmplang}{he}{\renewcommand{\contentsname}{תוכן עניינים}}{}
-  \ifstrequal{\@tmplang}{is}{\renewcommand{\contentsname}{Efnisyfirlit}}{}
-  \ifstrequal{\@tmplang}{hr}{\renewcommand{\contentsname}{Sadržaj}}{}
-  \ifstrequal{\@tmplang}{ro}{\renewcommand{\contentsname}{Cuprins}}{}
-\fi
-\makeatother
+$if(toc-title)$\renewcommand{\contentsname}{$toc-title$}$endif$
 \tableofcontents
 $endif$
 
