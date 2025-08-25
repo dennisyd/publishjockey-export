@@ -886,16 +886,15 @@ function getPandocVariables(options) {
   
   // Script-based languages that need ucharclasses font switching
   const scriptSwitchingLanguages = {
-    'hi': { font: 'Noto Sans Devanagari', script: 'Devanagari', language: 'Hindi' }
-    // Other languages will be added after Hindi testing
-    // 'ta': { font: 'Noto Sans Tamil', script: 'Tamil', language: 'Tamil' },
-    // 'bn': { font: 'Noto Sans Bengali', script: 'Bengali', language: 'Bengali' },
-    // 'gu': { font: 'Noto Sans Gujarati', script: 'Gujarati', language: 'Gujarati' },
-    // 'te': { font: 'Noto Sans Telugu', script: 'Telugu', language: 'Telugu' },
-    // 'kn': { font: 'Noto Sans Kannada', script: 'Kannada', language: 'Kannada' },
-    // 'ml': { font: 'Noto Sans Malayalam', script: 'Malayalam', language: 'Malayalam' },
-    // 'pa': { font: 'Noto Sans Gurmukhi', script: 'Gurmukhi', language: 'Punjabi' },
-    // 'or': { font: 'Noto Sans Oriya', script: 'Oriya', language: 'Oriya' }
+    'hi': { font: 'Noto Sans Devanagari', script: 'Devanagari', language: 'Hindi' },
+    'ta': { font: 'Noto Sans Tamil', script: 'Tamil', language: 'Tamil' },
+    'bn': { font: 'Noto Sans Bengali', script: 'Bengali', language: 'Bengali' },
+    'gu': { font: 'Noto Sans Gujarati', script: 'Gujarati', language: 'Gujarati' },
+    'te': { font: 'Noto Sans Telugu', script: 'Telugu', language: 'Telugu' },
+    'kn': { font: 'Noto Sans Kannada', script: 'Kannada', language: 'Kannada' },
+    'ml': { font: 'Noto Sans Malayalam', script: 'Malayalam', language: 'Malayalam' },
+    'pa': { font: 'Noto Sans Gurmukhi', script: 'Gurmukhi', language: 'Punjabi' },
+    'or': { font: 'Noto Sans Oriya', script: 'Oriya', language: 'Oriya' }
   };
   
   const requiresScriptSwitching = scriptSwitchingLanguages[language];
