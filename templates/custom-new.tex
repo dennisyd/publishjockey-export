@@ -121,7 +121,11 @@ $endif$
 
 % Additional packages
 \usepackage{geometry}
+$if(script-switching)$
+% For script-switching languages, skip titlesec to avoid conflicts
+$else$
 \usepackage{titlesec}
+$endif$
 \usepackage{setspace}
 \usepackage{enumitem}
 \usepackage{microtype}
@@ -144,9 +148,13 @@ $if(pagestyle)$
 \pagestyle{$pagestyle$}
 $endif$
 
-% Title formatting
+% Title formatting (only for non-script-switching languages)
 $if(secstyle)$
+$if(script-switching)$
+% Skip title formatting for script-switching languages (no titlesec package)
+$else$
 \titleformat{\chapter}{\huge\bfseries\filcenter}{}{0em}{}
+$endif$
 $endif$
 
 % Spacing and formatting

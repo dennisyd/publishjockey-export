@@ -898,6 +898,10 @@ function getPandocVariables(options) {
   };
   
   const requiresScriptSwitching = scriptSwitchingLanguages[language];
+  
+  console.log(`[DEBUG] Language: ${language}`);
+  console.log(`[DEBUG] Script switching languages:`, Object.keys(scriptSwitchingLanguages));
+  console.log(`[DEBUG] requiresScriptSwitching:`, requiresScriptSwitching);
   const isHebrew = language === 'he' || language === 'yi'; // Hebrew and Yiddish use Hebrew script
   
   // Debug language detection
@@ -1371,7 +1375,7 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
         '--from=markdown+fenced_divs+header_attributes+raw_tex+latex_macros+raw_html',
         '--to=latex',
         '--pdf-engine=xelatex',
-        '--template=templates/custom.tex',
+        '--template=templates/custom-new.tex',
         '--standalone',
         '--variable=links-as-notes',
         '--include-in-header', tmpHeaderPath,
@@ -1424,7 +1428,7 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
         defaultFont = 'Noto Sans Tamil';
       }
       
-      console.log(`[PDF EXPORT] Template being used: templates/custom.tex`);
+      console.log(`[PDF EXPORT] Template being used: templates/custom-new.tex`);
       console.log(`[PDF EXPORT] Font being used: ${options.fontFamily || defaultFont}`);
       console.log(`[PDF EXPORT] Language: ${language}, RTL: ${isRTL}`);
   
