@@ -314,8 +314,31 @@ $endif$
 % \maketitle
 % $endif$
 
-% --- Table of Contents ---
+% --- Table of Contents with Language-Specific Titles ---
 $if(toc)$
+% Set TOC title based on document language
+$if(lang)$
+\ifstrequal{$lang$}{es}{\renewcommand{\contentsname}{Índice}}{}
+\ifstrequal{$lang$}{fr}{\renewcommand{\contentsname}{Table des matières}}{}
+\ifstrequal{$lang$}{de}{\renewcommand{\contentsname}{Inhaltsverzeichnis}}{}
+\ifstrequal{$lang$}{it}{\renewcommand{\contentsname}{Indice}}{}
+\ifstrequal{$lang$}{pt}{\renewcommand{\contentsname}{Índice}}{}
+\ifstrequal{$lang$}{ru}{\renewcommand{\contentsname}{Содержание}}{}
+\ifstrequal{$lang$}{ar}{\renewcommand{\contentsname}{المحتويات}}{}
+\ifstrequal{$lang$}{hi}{\renewcommand{\contentsname}{अनुक्रमणिका}}{}
+\ifstrequal{$lang$}{ta}{\renewcommand{\contentsname}{பொருளடக்கம்}}{}
+\ifstrequal{$lang$}{bn}{\renewcommand{\contentsname}{সূচিপত্র}}{}
+\ifstrequal{$lang$}{gu}{\renewcommand{\contentsname}{અનુક્રમણિકા}}{}
+\ifstrequal{$lang$}{te}{\renewcommand{\contentsname}{విషయసూచిక}}{}
+\ifstrequal{$lang$}{kn}{\renewcommand{\contentsname}{ವಿಷಯಸೂಚಿ}}{}
+\ifstrequal{$lang$}{ml}{\renewcommand{\contentsname}{ഉള്ളടക്കം}}{}
+\ifstrequal{$lang$}{pa}{\renewcommand{\contentsname}{ਸਮੱਗਰੀ}}{}
+\ifstrequal{$lang$}{or}{\renewcommand{\contentsname}{ସୂଚୀପତ୍ର}}{}
+\ifstrequal{$lang$}{he}{\renewcommand{\contentsname}{תוכן עניינים}}{}
+\ifstrequal{$lang$}{is}{\renewcommand{\contentsname}{Efnisyfirlit}}{}
+\ifstrequal{$lang$}{hr}{\renewcommand{\contentsname}{Sadržaj}}{}
+\ifstrequal{$lang$}{ro}{\renewcommand{\contentsname}{Cuprins}}{}
+$endif$
 \tableofcontents
 $endif$
 
