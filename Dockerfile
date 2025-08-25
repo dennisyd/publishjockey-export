@@ -1,6 +1,6 @@
 FROM ubuntu:22.04
 
-# Install Node.js and LaTeX with proper fonts
+# Install Node.js and LaTeX with proper fonts and language support
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     curl \
     gnupg \
@@ -10,6 +10,7 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     texlive-fonts-recommended \
     texlive-fonts-extra \
     texlive-xetex \
+    texlive-lang-arabic \
     pandoc \
     fontconfig \
     lmodern \
@@ -64,6 +65,8 @@ RUN echo "=== INSTALLATION VERIFICATION ===" && \
     which xelatex && \
     echo "=== FONT VERIFICATION ===" && \
     fc-list | wc -l && echo "total fonts installed" && \
+    echo "=== ARABIC/RTL PACKAGE VERIFICATION ===" && \
+    kpsewhich bidi.sty && echo "✅ bidi.sty found" || echo "❌ bidi.sty NOT found" && \
     echo "=== VERIFICATION COMPLETE ==="
 
 WORKDIR /app
