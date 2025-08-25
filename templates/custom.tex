@@ -199,9 +199,7 @@ $else$
 $if(geometry)$
 \usepackage[$for(geometry)$$geometry$$sep$,$endfor$]{geometry}
 $endif$
-$if(logo)$
-\usepackage{graphicx}
-$endif$
+% Note: graphicx is loaded later with other required packages
 \makeatletter
 \def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
 \def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}
@@ -244,7 +242,6 @@ $endif$
 % Add packages for advanced table support
 \RequirePackage{longtable,booktabs}      % Required for \toprule, \midrule, \bottomrule in tables
 \RequirePackage{graphicx}              % Required for \includegraphics
-% Add packages for advanced table support
 \RequirePackage{calc}
 \RequirePackage{array}
 \RequirePackage{ragged2e}
