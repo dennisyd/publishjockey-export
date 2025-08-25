@@ -177,22 +177,10 @@ $endif$
 \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
 }{}
 
-% Language-specific packages for RTL support
+% RTL language setup (without bidi yet - load bidi later)
 $if(dir)$
 \ifxetex
-  % load bidi as late as possible as it modifies e.g. graphicx
-  $if(latex-dir-rtl)$
-  \usepackage[RTLdocument]{bidi}
-  $else$
-  \usepackage{bidi}
-  $endif$
-  % Additional bidirectional text support for XeLaTeX
-  \usepackage{fontspec}
-  \usepackage{xunicode}
-  \usepackage{xltxtra}
-  % Additional packages for better RTL text rendering
-  \usepackage{polyglossia}
-  % Set up languages with specific fonts
+  % RTL language configuration
   \setdefaultlanguage{english}
   $if(lang.arabic)$
   \setotherlanguage{arabic}
@@ -229,8 +217,7 @@ $endif$
 
 % --- Additional packages ---
 \usepackage{geometry}
-\usepackage{fancyhdr}
-\usepackage{titlesec}
+% Removed duplicate fancyhdr and titlesec - already loaded above
 \usepackage{setspace}
 \usepackage{enumitem}
 \usepackage{microtype}
@@ -298,6 +285,18 @@ $endif$
 % --- TOC depth control ---
 $if(tocdepth)$
 \setcounter{tocdepth}{$tocdepth$}
+$endif$
+
+% --- Load bidi package for RTL support (must be loaded last) ---
+$if(dir)$
+\ifxetex
+  % load bidi as late as possible as it modifies e.g. graphicx
+  $if(latex-dir-rtl)$
+  \usepackage[RTLdocument]{bidi}
+  $else$
+  \usepackage{bidi}
+  $endif$
+\fi
 $endif$
 
 % --- Document begin ---
