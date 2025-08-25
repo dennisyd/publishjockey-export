@@ -1,0 +1,195 @@
+% Enhanced Arabic Template with Mixed Content Support
+% Based on custom.tex but with specific Arabic/English font switching
+
+\documentclass[12pt,oneside,openany]{book}
+
+% Essential packages
+\usepackage{amssymb,amsmath}
+\usepackage{ifxetex,ifluatex}
+\usepackage{fixltx2e}
+
+\ifnum 0\ifxetex 1\fi\ifluatex 1\fi=0
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+\else
+  \ifxetex
+    \usepackage{mathspec}
+  \else
+    \usepackage{fontspec}
+  \fi
+  \defaultfontfeatures{Ligatures=TeX,Scale=MatchLowercase}
+\fi
+
+% Enhanced Arabic with English support using ucharclasses
+\ifxetex
+  \usepackage{fontspec}
+  \usepackage{ucharclasses}
+  
+  % Set main Arabic font
+  \setmainfont{Noto Sans Arabic}[
+    Script=Arabic,
+    Ligatures=TeX,
+    Scale=MatchLowercase
+  ]
+  
+  % Define English font for Latin characters
+  \newfontfamily\englishfont{Liberation Serif}[
+    Script=Latin,
+    Ligatures=TeX,
+    Scale=MatchLowercase
+  ]
+  
+  % Automatic script switching
+  \setTransitionsForLatin{\begingroup\englishfont}{\endgroup}
+  
+  % Enable Unicode character transitions
+  \XeTeXinterchartokenstate=1
+\fi
+
+% RTL support with bidi (must be loaded late)
+\usepackage[RTLdocument]{bidi}
+
+% Enhanced page numbering for RTL
+\makeatletter
+% Arabic-Indic numerals for page numbers
+\def\@arabic#1{\ifcase#1\or ١\or ٢\or ٣\or ٤\or ٥\or ٦\or ٧\or ٨\or ٩\or ١٠\else\number#1\fi}
+
+% RTL page layout
+\if@twoside
+  \def\ps@headings{%
+    \let\@oddfoot\@empty\let\@evenfoot\@empty
+    \def\@evenhead{\thepage\hfil\slshape\leftmark}%
+    \def\@oddhead{{\slshape\rightmark}\hfil\thepage}%
+    \let\@mkboth\markboth
+    \def\chaptermark##1{%
+      \markboth {\MakeUppercase{%
+        \ifnum \c@secnumdepth >\m@ne
+          \if@mainmatter
+            \@chapapp\ \thechapter. \ %
+          \fi
+        \fi
+        ##1}}{}}%
+    \def\sectionmark##1{%
+      \markright {\MakeUppercase{%
+        \ifnum \c@secnumdepth >\z@
+          \thesection. \ %
+        \fi
+        ##1}}}}
+\else
+  \def\ps@headings{%
+    \let\@oddfoot\@empty
+    \def\@oddhead{{\slshape\rightmark}\hfil\thepage}%
+    \let\@mkboth\markboth
+    \def\chaptermark##1{%
+      \markright {\MakeUppercase{%
+        \ifnum \c@secnumdepth >\m@ne
+          \if@mainmatter
+            \@chapapp\ \thechapter. \ %
+          \fi
+        \fi
+        ##1}}}}
+\fi
+\makeatother
+
+% Basic document setup
+\usepackage{geometry}
+\geometry{paperwidth=6in, paperheight=9in, margin=0.75in}
+
+% Typography and spacing
+\usepackage{setspace}
+\setstretch{1.2}
+\usepackage{parskip}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt plus 2pt minus 1pt}
+
+% Enhanced graphics support
+\usepackage{graphicx}
+\makeatletter
+\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+\def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}
+\makeatother
+\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+
+% Code highlighting
+\usepackage{fancyvrb}
+\usepackage{color}
+\usepackage{fancyhdr}
+
+% Table support
+\usepackage{longtable,booktabs}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{wrapfig}
+\usepackage{float}
+\usepackage{colortbl}
+\usepackage{pdflscape}
+\usepackage{tabu}
+\usepackage{threeparttable}
+\usepackage{threeparttablex}
+\usepackage[normalem]{ulem}
+
+% Arabic TOC setup
+\renewcommand{\contentsname}{المحتويات}
+
+% Chapter and section formatting for RTL
+\usepackage{titlesec}
+\titleformat{\chapter}[display]
+  {\normalfont\huge\bfseries\fillright}{الفصل \thechapter}{20pt}{\Huge}
+\titleformat{\section}
+  {\normalfont\Large\bfseries\fillright}{\thesection}{1em}{}
+\titleformat{\subsection}
+  {\normalfont\large\bfseries\fillright}{\thesubsection}{1em}{}
+
+% Hyperlinks (must be loaded late)
+\usepackage{hyperref}
+\hypersetup{
+  unicode=true,
+  pdfborder={0 0 0},
+  breaklinks=true,
+  colorlinks=true,
+  linkcolor=blue,
+  citecolor=blue,
+  urlcolor=blue
+}
+
+% Fix for Arabic text in URLs
+\makeatletter
+\g@addto@macro{\UrlBreaks}{\UrlOrds}
+\makeatother
+
+\begin{document}
+
+% Arabic document direction
+\setRTL
+
+% Title page (if needed)
+$if(title)$
+\begin{titlepage}
+\begin{center}
+\vspace*{2cm}
+{\Huge\bfseries $title$}
+\vspace{1cm}
+
+$if(author)$
+{\Large بقلم: $author$}
+\vspace{0.5cm}
+$endif$
+
+$if(date)$
+{\large $date$}
+$endif$
+\end{center}
+\end{titlepage}
+\clearpage
+$endif$
+
+% Table of Contents
+$if(toc)$
+\tableofcontents
+\clearpage
+$endif$
+
+% Main content
+$body$
+
+\end{document}

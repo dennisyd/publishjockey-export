@@ -3282,6 +3282,33 @@ app.get('/test/tamil-font', async (req, res) => {
   }
 });
 
+// Arabic Mixed Content Test endpoint
+app.get('/test/arabic-mixed', async (req, res) => {
+  try {
+    console.log('[ARABIC MIXED TEST] Testing Arabic mixed content with English...');
+    
+    // Import and run the test
+    const { testArabicMixedContent } = require('./ArabicTest');
+    const result = await testArabicMixedContent();
+    
+    res.json({
+      success: true,
+      message: 'Arabic mixed content test completed successfully',
+      filePath: result.filePath,
+      fileSize: result.fileSize,
+      duration: result.duration
+    });
+    
+  } catch (error) {
+    console.error('[ARABIC MIXED TEST] Test failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Arabic mixed content test failed',
+      details: error.message
+    });
+  }
+});
+
 // Download route for test files
 app.get('/download/test/:filename', (req, res) => {
   const { filename } = req.params;
