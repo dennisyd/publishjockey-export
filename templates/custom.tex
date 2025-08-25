@@ -177,17 +177,14 @@ $endif$
 \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
 }{}
 
-% RTL language setup (without bidi yet - load bidi later)
+% RTL language setup (simplified - no polyglossia for now)
 $if(dir)$
 \ifxetex
-  % RTL language configuration
-  \setdefaultlanguage{english}
+  % Simple RTL font setup without polyglossia
   $if(lang.arabic)$
-  \setotherlanguage{arabic}
   \newfontfamily\arabicfont[Script=Arabic]{Noto Sans Arabic}
   $endif$
   $if(lang.hebrew)$
-  \setotherlanguage{hebrew}
   \newfontfamily\hebrewfont[Script=Hebrew]{Noto Sans Hebrew}
   $endif$
 \fi
