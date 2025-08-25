@@ -129,14 +129,29 @@
 % Arabic TOC setup
 \renewcommand{\contentsname}{المحتويات}
 
-% Chapter and section formatting for RTL
-\usepackage{titlesec}
-\titleformat{\chapter}[display]
-  {\normalfont\huge\bfseries\fillright}{الفصل \thechapter}{20pt}{\Huge}
-\titleformat{\section}
-  {\normalfont\Large\bfseries\fillright}{\thesection}{1em}{}
-\titleformat{\subsection}
-  {\normalfont\large\bfseries\fillright}{\thesubsection}{1em}{}
+% Simple RTL formatting without titlesec (to avoid conflicts)
+\makeatletter
+\renewcommand{\@makechapterhead}[1]{%
+  \vspace*{50\p@}%
+  {\parindent \z@ \raggedleft \normalfont
+    \ifnum \c@secnumdepth >\m@ne
+        \huge\bfseries الفصل \thechapter
+        \par\nobreak
+        \vskip 20\p@
+    \fi
+    \interlinepenalty\@M
+    \Huge \bfseries #1\par\nobreak
+    \vskip 40\p@
+  }}
+\renewcommand{\@makeschapterhead}[1]{%
+  \vspace*{50\p@}%
+  {\parindent \z@ \raggedleft
+    \normalfont
+    \interlinepenalty\@M
+    \Huge \bfseries  #1\par\nobreak
+    \vskip 40\p@
+  }}
+\makeatother
 
 % Hyperlinks (must be loaded late)
 \usepackage{hyperref}
