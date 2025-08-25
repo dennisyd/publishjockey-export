@@ -1378,7 +1378,7 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
         '--from=markdown+fenced_divs+header_attributes+raw_tex+latex_macros+raw_html',
         '--to=latex',
         '--pdf-engine=xelatex',
-        `--template=${options.template || 'templates/custom.tex'}`,
+        `--template=${options.template || 'templates/custom.tex'}`, // Dennis: Added custom template support for Arabic test
         '--standalone',
         '--variable=links-as-notes',
         '--include-in-header', tmpHeaderPath,
