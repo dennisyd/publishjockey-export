@@ -121,8 +121,26 @@ These English terms should display correctly within the Arabic text flow.
       console.log(`⏱️  Generation time: ${duration}ms`);
       
       // Copy to uploads directory for easy download
-      fs.copyFileSync(pdfFile, uploadsFile);
-      console.log(`📁 File copied to uploads directory: ${uploadsFile}`);
+      try {
+        // Ensure uploads directory exists
+        const uploadsDir = path.dirname(uploadsFile);
+        if (!fs.existsSync(uploadsDir)) {
+          fs.mkdirSync(uploadsDir, { recursive: true });
+        }
+        
+        fs.copyFileSync(pdfFile, uploadsFile);
+        console.log(`📁 File copied to uploads directory: ${uploadsFile}`);
+        
+        // Verify the file was copied successfully
+        if (fs.existsSync(uploadsFile)) {
+          const uploadStats = fs.statSync(uploadsFile);
+          console.log(`✅ File verified in uploads: ${uploadStats.size} bytes`);
+        } else {
+          console.log(`❌ File not found in uploads directory`);
+        }
+      } catch (copyError) {
+        console.error(`⚠️ Error copying to uploads: ${copyError.message}`);
+      }
       
       // Register file for download if possible
       try {
@@ -143,6 +161,7 @@ These English terms should display correctly within the Arabic text flow.
       }
       
       console.log(`🌐 Direct uploads URL: http://localhost:3001/uploads/arabic-test.pdf`);
+      console.log(`🔗 Production URL: ${process.env.NODE_ENV === 'production' ? 'https://export-backend.publishjockey.com' : 'http://localhost:3001'}/uploads/arabic-test.pdf`);
       
       console.log(`\n📋 Test Results:`);
       console.log(`1. Check that Arabic text renders properly (RTL)`);
