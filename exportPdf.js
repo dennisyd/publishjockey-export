@@ -885,6 +885,9 @@ function getPandocVariables(options) {
   const isDevanagari = language === 'hi'; // Hindi uses Devanagari script
   
   // Script-based languages that need ucharclasses font switching
+  // TEMPORARILY DISABLED FOR DEBUGGING
+  const scriptSwitchingLanguages = {};
+  /*
   const scriptSwitchingLanguages = {
     'hi': { font: 'Noto Sans Devanagari', script: 'Devanagari', language: 'Hindi' },
     'ta': { font: 'Noto Sans Tamil', script: 'Tamil', language: 'Tamil' },
@@ -896,6 +899,7 @@ function getPandocVariables(options) {
     'pa': { font: 'Noto Sans Gurmukhi', script: 'Gurmukhi', language: 'Punjabi' },
     'or': { font: 'Noto Sans Oriya', script: 'Oriya', language: 'Oriya' }
   };
+  */
   
   const requiresScriptSwitching = scriptSwitchingLanguages[language];
   
