@@ -65,31 +65,30 @@ Follow these steps to install the software.
       fs.writeFileSync(inputFile, testContent);
       console.log('📝 Test content written to:', inputFile);
 
-      // Use the minimal Hindi template to isolate the issue
-      const templateFile = path.join(__dirname, 'templates', 'hindi-minimal.tex');
-      console.log('📄 Using minimal Hindi template:', templateFile);
+      // Use the new integrated template
+      const templateFile = path.join(__dirname, 'templates', 'custom-new.tex');
+      console.log('📄 Using new integrated template:', templateFile);
 
-      // Simplified Pandoc command - let the template handle font logic
-      const pandocCommand = `pandoc "${inputFile}" -o "${pdfFile}" \\
-        --from=markdown \\
-        --to=latex \\
-        --pdf-engine=xelatex \\
-        --template="${templateFile}" \\
-        --standalone \\
-        --toc`;
-
-      console.log('🔄 Running Pandoc command...');
-      console.log('Command:', pandocCommand);
-
-      const { stdout, stderr } = await execAsync(pandocCommand);
+      // Test the full integration by calling exportPdf function
+      console.log('🔄 Testing full integration with exportPdf function...');
       
-      if (stderr) {
-        console.log('⚠️ Pandoc stderr:', stderr);
-      }
+      const exportPdf = require('./exportPdf');
       
-      if (stdout) {
-        console.log('📤 Pandoc stdout:', stdout);
-      }
+      // Simulate the options that would come from the frontend
+      const testOptions = {
+        language: 'hi',
+        inputFile,
+        outputFile: pdfFile,
+        includeTableOfContents: true,
+        fontFamily: null // Let the system choose
+      };
+      
+      console.log('📋 Test options:', testOptions);
+      
+      // This will test the full integration including the new script-switching logic
+      await exportPdf(testOptions);
+      
+      console.log('✅ Export PDF function completed successfully');
 
       // Check if PDF was generated
       if (fs.existsSync(pdfFile)) {

@@ -883,6 +883,21 @@ function getPandocVariables(options) {
   const isRTL = language === 'ar' || language === 'he' || language === 'yi';
   const isCyrillic = language === 'ru';
   const isDevanagari = language === 'hi'; // Hindi uses Devanagari script
+  
+  // Script-based languages that need ucharclasses font switching
+  const scriptSwitchingLanguages = {
+    'hi': { font: 'Noto Sans Devanagari', script: 'Devanagari', language: 'Hindi' },
+    'ta': { font: 'Noto Sans Tamil', script: 'Tamil', language: 'Tamil' },
+    'bn': { font: 'Noto Sans Bengali', script: 'Bengali', language: 'Bengali' },
+    'gu': { font: 'Noto Sans Gujarati', script: 'Gujarati', language: 'Gujarati' },
+    'te': { font: 'Noto Sans Telugu', script: 'Telugu', language: 'Telugu' },
+    'kn': { font: 'Noto Sans Kannada', script: 'Kannada', language: 'Kannada' },
+    'ml': { font: 'Noto Sans Malayalam', script: 'Malayalam', language: 'Malayalam' },
+    'pa': { font: 'Noto Sans Gurmukhi', script: 'Gurmukhi', language: 'Punjabi' },
+    'or': { font: 'Noto Sans Oriya', script: 'Oriya', language: 'Oriya' }
+  };
+  
+  const requiresScriptSwitching = scriptSwitchingLanguages[language];
   const isHebrew = language === 'he' || language === 'yi'; // Hebrew and Yiddish use Hebrew script
   
   // Debug language detection
@@ -903,26 +918,27 @@ function getPandocVariables(options) {
   } else if (language === 'pt' || language === 'pt-BR' || language === 'pt-PT' || 
              language === 'is' || language === 'hr') {
     defaultFont = 'Noto Sans'; // Portuguese, Icelandic, Croatian - use Noto Sans for better Latin script support
-  } else if (isDevanagari) {
-    defaultFont = 'Noto Sans Devanagari'; // Hindi font
+  } else if (requiresScriptSwitching) {
+    // Script-based language that needs ucharclasses font switching
+    const scriptInfo = scriptSwitchingLanguages[language];
+    defaultFont = scriptInfo.font;
     
-    // Set up polyglossia and font fallback
+    // Set up script-switching template variables
+    vars.push('script-switching=true');
+    vars.push(`script-font=${scriptInfo.font}`);
+    vars.push(`script-name=${scriptInfo.script}`);
+    vars.push(`script-language=${scriptInfo.language}`);
+    vars.push('sansfont=Liberation Serif');
+    
+    console.log(`[FONT] Script-switching setup for ${language}: ${scriptInfo.font} + Liberation Serif fallback`);
+  } else if (isDevanagari) {
+    // Legacy Hindi support - keeping for backward compatibility
+    defaultFont = 'Noto Sans Devanagari';
     vars.push('polyglossia=true');
     vars.push('lang=hi');
-    
-    // IMPORTANT: Don't override mainfont here - let the template handle it
-    // The template will use Noto Sans Devanagari for main content
-    
-    // Set fallback fonts for Latin script
     vars.push('sansfont=Liberation Serif');
-    vars.push('sansfontoptions=Script=Latin,Ligatures=TeX,Scale=MatchLowercase');
-    vars.push('seriffont=Liberation Serif'); 
-    vars.push('seriffontoptions=Script=Latin,Ligatures=TeX,Scale=MatchLowercase');
-    
-    // Enable Unicode bookmarks
     vars.push('hyperref-unicode=true');
-    
-    console.log('[FONT] Hindi setup: Noto Sans Devanagari + Liberation Serif fallback');
+    console.log('[FONT] Legacy Hindi setup: Noto Sans Devanagari + Liberation Serif fallback');
   }
   
   // Ensure font names match exactly what's available on the system
@@ -958,11 +974,11 @@ function getPandocVariables(options) {
   console.log(`[FONT] Font family from options: ${options.fontFamily}`);
   console.log(`[FONT] Default font: ${defaultFont}`);
   
-  // For Hindi with polyglossia, don't set mainfont - let the template handle it
-  if (!isDevanagari) {
+  // For script-switching languages, don't set mainfont - let the template handle it
+  if (!requiresScriptSwitching && !isDevanagari) {
     vars.push(`mainfont=${options.fontFamily || defaultFont}`);
   } else {
-    console.log('[FONT] Skipping mainfont for Hindi - template will set Liberation Serif as main font');
+    console.log(`[FONT] Skipping mainfont for ${language} - template will handle script-based font switching`);
   }
   
 
