@@ -1398,7 +1398,9 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
         args.push('--top-level-division=chapter');
       }
       
+      console.log(`[PDF EXPORT] Page size received from frontend: "${options.bookSize}"`);
       console.log(`[PDF EXPORT] Using page size: ${pageSizeKey} (${geometry.width}in x ${geometry.height}in)`);
+      console.log(`[PDF EXPORT] Size object:`, geometry.size);
       console.log(`[PDF EXPORT] Estimated pages: ${estimatedPages} for margin calculation`);
       
       // STEP 7: Run Pandoc
