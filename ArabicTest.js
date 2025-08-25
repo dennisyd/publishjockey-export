@@ -18,6 +18,12 @@ async function testArabicMixedContent() {
     const pdfFile = path.join(tempDir, `arabic-test-${timestamp}.pdf`);
     const uploadsFile = '/app/uploads/arabic-test.pdf';
     
+    // Ensure temp directory exists
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+      console.log(`📁 Created temp directory: ${tempDir}`);
+    }
+    
     // Create test content with mixed Arabic/English text
     const testContent = `---
 title: "اختبار المحتوى المختلط"
@@ -108,11 +114,18 @@ These English terms should display correctly within the Arabic text flow.
     console.log(`🚀 Running Arabic export test...`);
     const startTime = Date.now();
     
+    let exportResult;
     try {
-      await exportPdf(inputFile, pdfFile, testOptions);
+      console.log(`📝 Input file: ${inputFile}`);
+      console.log(`📄 Output file: ${pdfFile}`);
+      console.log(`📁 Temp directory exists: ${fs.existsSync(tempDir)}`);
+      
+      exportResult = await exportPdf(inputFile, pdfFile, testOptions);
       console.log(`✅ exportPdf completed without throwing error`);
+      console.log(`📊 Export result:`, exportResult);
     } catch (exportError) {
       console.error(`❌ exportPdf failed: ${exportError.message}`);
+      console.error(`📝 Error details:`, exportError);
       throw new Error(`PDF export failed: ${exportError.message}`);
     }
     
@@ -136,6 +149,10 @@ These English terms should display correctly within the Arabic text flow.
     }
     
     // Check if PDF was created
+    console.log(`🔍 Checking for PDF file existence...`);
+    console.log(`📄 Expected PDF path: ${pdfFile}`);
+    console.log(`📁 PDF file exists: ${fs.existsSync(pdfFile)}`);
+    
     if (fs.existsSync(pdfFile)) {
       const stats = fs.statSync(pdfFile);
       console.log(`✅ PDF generated successfully!`);
@@ -202,7 +219,20 @@ These English terms should display correctly within the Arabic text flow.
       };
       
     } else {
-      throw new Error('PDF file was not created');
+      console.error(`❌ PDF file was not created at: ${pdfFile}`);
+      console.log(`📁 Available files in temp directory:`);
+      try {
+        const allTempFiles = fs.readdirSync(tempDir);
+        allTempFiles.forEach(file => {
+          const filePath = path.join(tempDir, file);
+          const stats = fs.statSync(filePath);
+          console.log(`  - ${file} (${stats.size} bytes)`);
+        });
+      } catch (e) {
+        console.log(`Error reading temp directory: ${e.message}`);
+      }
+      
+      throw new Error(`PDF file was not created. Expected at: ${pdfFile}`);
     }
     
   } catch (error) {
