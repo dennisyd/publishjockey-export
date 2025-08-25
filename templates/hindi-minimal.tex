@@ -23,6 +23,18 @@
 \setdefaultlanguage{english}
 \setotherlanguage{hindi}
 
+% CRITICAL: Tell polyglossia to use our Hindi font for Hindi text
+% Polyglossia expects \hindifont for Hindi language
+\newfontfamily\hindifont{Noto Sans Devanagari}[
+  Script=Devanagari,
+  Ligatures=TeX,
+  Scale=MatchLowercase,
+  Language=Hindi
+]
+
+% Enable automatic script detection
+\XeTeXinterchartokenstate=1
+
 % Unicode-aware PDF setup
 \usepackage[unicode]{hyperref}
 \hypersetup{
