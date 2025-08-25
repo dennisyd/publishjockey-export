@@ -61,27 +61,31 @@ Mixed content test: Here we have English text followed by தமிழ் உர
       fs.writeFileSync(inputFile, testContent);
       console.log('📝 Test content written to:', inputFile);
 
-      // Use the minimal Tamil template
-      const templateFile = path.join(__dirname, 'templates', 'tamil-minimal.tex');
-      console.log('📄 Using minimal Tamil template:', templateFile);
+      // Use the new integrated template
+      const templateFile = path.join(__dirname, 'templates', 'custom-new.tex');
+      console.log('📄 Using new integrated template:', templateFile);
 
-      // Simplified Pandoc command - let the template handle font logic
-      const pandocCommand = `pandoc "${inputFile}" -o "${pdfFile}" \\
-        --from=markdown \\
-        --to=latex \\
-        --pdf-engine=xelatex \\
-        --template="${templateFile}" \\
-        --standalone \\
-        --toc`;
-
-      console.log('🔄 Running Pandoc command...');
-      console.log('Command:', pandocCommand);
-
-      const { stdout, stderr } = await execAsync(pandocCommand);
+      // Test the full integration by calling exportPdf function
+      console.log('🔄 Testing full integration with exportPdf function...');
       
-      if (stderr) {
-        console.log('⚠️ Pandoc warnings:', stderr);
-      }
+      const { exportPdf } = require('./exportPdf');
+      
+      // Simulate the options that would come from the frontend
+      const testOptions = {
+        language: 'ta',
+        includeTableOfContents: true,
+        fontFamily: null // Let the system choose
+      };
+      
+      console.log('📋 Test options:', testOptions);
+      console.log('📄 Input file:', inputFile);
+      console.log('📄 Output file:', pdfFile);
+      
+      // This will test the full integration including the new script-switching logic
+      // exportPdf expects (assembledPath, outputPath, options)
+      await exportPdf(inputFile, pdfFile, testOptions);
+      
+      console.log('✅ Export PDF function completed successfully');
       
       // Check if PDF was created successfully
       if (fs.existsSync(pdfFile)) {
@@ -93,6 +97,7 @@ Mixed content test: Here we have English text followed by தமிழ் உர
         const uploadsFile = path.join(uploadsDir, 'tamil-test.pdf');
         fs.copyFileSync(pdfFile, uploadsFile);
         console.log('📁 File copied to uploads directory:', uploadsFile);
+        console.log('🌐 Should be accessible at:', `${process.env.EXPORT_BACKEND_URL || 'https://publishjockey-export.onrender.com'}/uploads/tamil-test.pdf`);
         
         console.log('\\n📋 Test Results:');
         console.log('1. Check that Tamil text renders properly');

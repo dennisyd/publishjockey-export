@@ -72,21 +72,22 @@ Follow these steps to install the software.
       // Test the full integration by calling exportPdf function
       console.log('🔄 Testing full integration with exportPdf function...');
       
-      const exportPdf = require('./exportPdf');
+      const { exportPdf } = require('./exportPdf');
       
       // Simulate the options that would come from the frontend
       const testOptions = {
         language: 'hi',
-        inputFile,
-        outputFile: pdfFile,
         includeTableOfContents: true,
         fontFamily: null // Let the system choose
       };
       
       console.log('📋 Test options:', testOptions);
+      console.log('📄 Input file:', inputFile);
+      console.log('📄 Output file:', pdfFile);
       
       // This will test the full integration including the new script-switching logic
-      await exportPdf(testOptions);
+      // exportPdf expects (assembledPath, outputPath, options)
+      await exportPdf(inputFile, pdfFile, testOptions);
       
       console.log('✅ Export PDF function completed successfully');
 
@@ -96,9 +97,11 @@ Follow these steps to install the software.
         console.log('✅ PDF generated successfully!');
         console.log('📊 File size:', stats.size, 'bytes');
         
-        // Copy to uploads directory
+        // Copy to uploads directory for easy access
+        const uploadsFile = path.join(uploadsDir, 'hindi-test.pdf');
         fs.copyFileSync(pdfFile, uploadsFile);
         console.log('📁 File copied to uploads directory:', uploadsFile);
+        console.log('🌐 Should be accessible at:', `${process.env.EXPORT_BACKEND_URL || 'https://publishjockey-export.onrender.com'}/uploads/hindi-test.pdf`);
         
         console.log('\\n📋 Test Results:');
         console.log('1. Check that Hindi text renders properly');
