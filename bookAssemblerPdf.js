@@ -184,6 +184,9 @@ function assembleBookPdf(sections, options = {}) {
   if (options.includeToc !== false) {
     output += '```{=latex}\n';
     output += '\\clearpage\n';
+    // Set the translated TOC title
+    const tocTitle = getTocTitle(language);
+    output += `\\renewcommand{\\contentsname}{${tocTitle}}\n`;
     output += '\\tableofcontents\n';
     output += '\\clearpage\n';
     output += '```\n\n';

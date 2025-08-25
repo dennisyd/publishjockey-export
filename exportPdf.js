@@ -884,10 +884,8 @@ function getPandocVariables(options) {
   const isCyrillic = language === 'ru';
   const isDevanagari = language === 'hi'; // Hindi uses Devanagari script
   
-  // Add TOC title translation
-  const tocTitle = getTocTitle(language);
-  console.log(`[TOC TRANSLATION] Setting TOC title for language "${language}": "${tocTitle}"`);
-  vars.push(`toc-title=${tocTitle}`);
+  // TOC title translation is now handled in bookAssemblerPdf.js
+  console.log(`[TOC TRANSLATION] TOC title translation handled in bookAssemblerPdf.js for language "${language}"`);
   
   // Script-based languages that need ucharclasses font switching
   const scriptSwitchingLanguages = {
