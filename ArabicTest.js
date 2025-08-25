@@ -98,7 +98,7 @@ These English terms should display correctly within the Arabic text flow.
       'latex-dir-rtl': true,
       // Enhanced Arabic font handling
       mainfont: 'Noto Sans Arabic',
-      // Use enhanced Arabic template
+      // Use enhanced Arabic template (fixed bidi package order)
       template: 'templates/arabic-enhanced.tex'
     };
     
@@ -108,10 +108,32 @@ These English terms should display correctly within the Arabic text flow.
     console.log(`🚀 Running Arabic export test...`);
     const startTime = Date.now();
     
-    await exportPdf(inputFile, pdfFile, testOptions);
+    try {
+      await exportPdf(inputFile, pdfFile, testOptions);
+      console.log(`✅ exportPdf completed without throwing error`);
+    } catch (exportError) {
+      console.error(`❌ exportPdf failed: ${exportError.message}`);
+      throw new Error(`PDF export failed: ${exportError.message}`);
+    }
     
     const endTime = Date.now();
     const duration = endTime - startTime;
+    
+    // Debug: Check what files were actually created
+    console.log(`🔍 Checking for PDF at: ${pdfFile}`);
+    console.log(`📁 Files in temp directory:`);
+    try {
+      const tempFiles = fs.readdirSync(tempDir);
+      tempFiles.forEach(file => {
+        if (file.includes('arabic-test')) {
+          const filePath = path.join(tempDir, file);
+          const stats = fs.statSync(filePath);
+          console.log(`  - ${file} (${stats.size} bytes)`);
+        }
+      });
+    } catch (e) {
+      console.log(`Error reading temp directory: ${e.message}`);
+    }
     
     // Check if PDF was created
     if (fs.existsSync(pdfFile)) {

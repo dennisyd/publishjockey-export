@@ -47,9 +47,6 @@
   \XeTeXinterchartokenstate=1
 \fi
 
-% RTL support with bidi (must be loaded late)
-\usepackage[RTLdocument]{bidi}
-
 % Enhanced page numbering for RTL
 \makeatletter
 % Arabic-Indic numerals for page numbers
@@ -157,6 +154,9 @@
 \makeatletter
 \g@addto@macro{\UrlBreaks}{\UrlOrds}
 \makeatother
+
+% RTL support with bidi (MUST be loaded LAST to avoid conflicts)
+\usepackage[RTLdocument]{bidi}
 
 \begin{document}
 
