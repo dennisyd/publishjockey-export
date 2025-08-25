@@ -1,0 +1,51 @@
+% Minimal Tamil test template with automatic script-based font switching
+\documentclass{article}
+
+\usepackage{fontspec}
+\usepackage{ucharclasses}
+
+% Set Tamil script as the main font (default for all text)
+\setmainfont{Noto Sans Tamil}[
+  Script=Tamil,
+  Renderer=HarfBuzz,
+  Ligatures=TeX,
+  Scale=MatchLowercase,
+  Language=Tamil
+]
+
+% Define English/Latin font for automatic switching
+\newfontfamily\englishfont{Liberation Serif}[
+  Ligatures=TeX,
+  Scale=MatchLowercase
+]
+
+% CRITICAL: Automatic font switching based on Unicode script
+% When Latin characters appear: Switch to English font
+\setTransitionsForLatin{
+  \begingroup\englishfont
+}{
+  \endgroup
+}
+
+% Unicode-aware PDF setup
+\usepackage[unicode]{hyperref}
+\hypersetup{
+  pdfencoding=auto,
+  bookmarksopen=true,
+  bookmarksopenlevel=1
+}
+
+\begin{document}
+
+$if(title)$
+\title{$title$}
+\maketitle
+$endif$
+
+$if(toc)$
+\tableofcontents
+$endif$
+
+$body$
+
+\end{document}

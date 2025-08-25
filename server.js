@@ -3255,6 +3255,33 @@ app.get('/test/hindi-font', async (req, res) => {
   }
 });
 
+// Test endpoint for Tamil font fallback
+app.get('/test/tamil-font', async (req, res) => {
+  try {
+    console.log('[TAMIL FONT TEST] Testing Tamil font fallback solution...');
+    
+    // Import and run the test
+    const { testTamilFontFallback } = require('./TamilTest');
+    const result = await testTamilFontFallback();
+    
+    res.json({
+      success: true,
+      message: 'Tamil font fallback test completed successfully',
+      fileId: result.fileId,
+      downloadUrl: result.downloadUrl,
+      uploadsUrl: result.uploadsUrl
+    });
+    
+  } catch (error) {
+    console.error('[TAMIL FONT TEST] Test failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Tamil font fallback test failed',
+      details: error.message
+    });
+  }
+});
+
 // Download route for test files
 app.get('/download/test/:filename', (req, res) => {
   const { filename } = req.params;
