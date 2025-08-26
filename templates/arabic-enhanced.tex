@@ -215,15 +215,21 @@
 \makeatother
 
 % --- Load bidi package for RTL support (must be loaded last) ---
+% DEBUG: Testing if dir variable is passed
 $if(dir)$
+\typeout{ARABIC-TEMPLATE-DEBUG: dir variable detected: $dir$}
 \ifxetex
   % load bidi as late as possible as it modifies e.g. graphicx
   $if(latex-dir-rtl)$
+  \typeout{ARABIC-TEMPLATE-DEBUG: Loading bidi with RTLdocument option}
   \usepackage[RTLdocument]{bidi}
   $else$
+  \typeout{ARABIC-TEMPLATE-DEBUG: Loading bidi without RTLdocument option}
   \usepackage{bidi}
   $endif$
 \fi
+$else$
+\typeout{ARABIC-TEMPLATE-DEBUG: dir variable NOT detected - bidi will not load}
 $endif$
 
 \begin{document}
