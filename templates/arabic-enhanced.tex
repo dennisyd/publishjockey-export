@@ -40,8 +40,8 @@
     Scale=MatchLowercase
   ]
   
-  % Automatic script switching
-  \setTransitionsForLatin{\begingroup\englishfont}{\endgroup}
+  % Automatic script switching - simplified to avoid group conflicts
+  \setTransitionsForLatin{\englishfont}{}
   
   % Enable Unicode character transitions
   \XeTeXinterchartokenstate=1
