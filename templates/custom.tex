@@ -243,9 +243,7 @@ $endif$
 \makeatother
 
 % --- Page setup ---
-$if(geometry)$
-\geometry{$geometry$}
-$endif$
+% Geometry is handled via --include-in-header files for better control
 
 % --- Header/footer setup ---
 $if(pagestyle)$

@@ -789,7 +789,7 @@ function generatePageGeometryCode(pageSizeKey, pageCount, hasPageNumbers = true)
     textHeight,
     latexCode: `
 % --- AMAZON KDP COMPLIANT PAGE SIZE AND MARGINS ---
-\\usepackage[
+\\geometry{
   paperwidth=${width}in,
   paperheight=${height}in,
   left=${margins.outside}in,
@@ -798,7 +798,7 @@ function generatePageGeometryCode(pageSizeKey, pageCount, hasPageNumbers = true)
   bottom=${margins.bottom}in,
   footskip=${footskip},
   bindingoffset=0pt
-]{geometry}
+}
 
 % --- Enhanced image handling for better PDF generation ---
 \\usepackage{graphicx}
@@ -1331,6 +1331,9 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
       const floatSettingsPath = path.join(tempDir, `float_settings_${uniqueId}.tex`);
       
       // Write geometry settings
+      console.log(`[GEOMETRY DEBUG] Generated LaTeX code for ${pageSizeKey}:`);
+      console.log(geometry.latexCode);
+      console.log(`[GEOMETRY DEBUG] Writing to file: ${tmpHeaderPath}`);
       fs.writeFileSync(tmpHeaderPath, geometry.latexCode);
       
       // Enhanced float settings for better image handling
@@ -1394,7 +1397,9 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
       ];
       
       // Add variables and metadata
-      getPandocVariables(options).forEach(v => args.push('--variable', v));
+      const pandocVars = getPandocVariables(options);
+      console.log(`[PANDOC DEBUG] Variables being passed:`, pandocVars);
+      pandocVars.forEach(v => args.push('--variable', v));
       getPandocMetadata(options).forEach(m => args.push('--metadata', m));
       
       // Section numbering
