@@ -132,7 +132,6 @@ function assembleBookPdf(sections, options = {}) {
   // --- FRONT MATTER ---
   output += '```{=latex}\n';
   output += '\\frontmatter\n';
-  output += '\\pagenumbering{roman}\n';
   output += '```\n\n';
 
   // Insert Title Page (if present)
@@ -241,8 +240,6 @@ function assembleBookPdf(sections, options = {}) {
   if (mainMatterSections.length > 0) {
     output += '```{=latex}\n';
     output += '\\mainmatter\n';
-    output += '\\pagenumbering{arabic}\n';
-    output += '\\setcounter{page}{1}\n';
     output += '```\n\n';
     
     for (const section of mainMatterSections) {

@@ -49,6 +49,8 @@ $if(dir)$
 \fi
 $endif$
 
+
+
 % --- FONT SETUP ---
 $if(script-switching)$
 % NEW: Script-based font switching for Hindi, Tamil, etc.
@@ -295,6 +297,21 @@ $if(dir)$
   $endif$
 \fi
 $endif$
+
+% --- Front Matter / Main Matter Commands ---
+% Define proper frontmatter command with roman numerals
+\renewcommand{\frontmatter}{%
+  \cleardoublepage
+  \pagenumbering{roman}
+  \setcounter{page}{1}
+}
+
+% Define proper mainmatter command with arabic numerals  
+\renewcommand{\mainmatter}{%
+  \cleardoublepage
+  \pagenumbering{arabic}
+  \setcounter{page}{1}
+}
 
 % --- Document begin ---
 \begin{document}
