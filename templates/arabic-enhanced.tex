@@ -51,10 +51,7 @@
   \XeTeXinterchartokenstate=1
 \fi
 
-% Load bidi package for proper RTL support (must be loaded late)
-\ifxetex
-  \usepackage[RTLdocument]{bidi}
-\fi
+
 
 % Enhanced page numbering for RTL
 \makeatletter
@@ -222,9 +219,14 @@
 \makeatother
 
 % RTL support with bidi (MUST be loaded LAST to avoid conflicts)
-\usepackage[RTLdocument]{bidi}
+% Note: bidi loading moved to just before \begin{document} to avoid Pandoc conflicts
 
 \begin{document}
+
+% Load bidi package as the very last package to avoid conflicts
+\ifxetex
+  \RequirePackage[RTLdocument]{bidi}
+\fi
 
 % Arabic document direction
 \setRTL
