@@ -18,6 +18,158 @@ const { exportEpub } = require('./exportEpub');
 const os = require('os');
 const { v4: uuidv4 } = require('uuid');
 const { exportPdf } = require('./exportPdf');
+
+// Simple RTL Export Function - Dennis: Proven approach for Arabic/Hebrew/Yiddish
+async function simpleRTLExport(markdown, options) {
+  const fs = require('fs');
+  const path = require('path');
+  const { execSync } = require('child_process');
+  
+  console.log(`[SIMPLE RTL] Starting export for language: ${options.language}`);
+  
+  // Language-specific settings
+  const langSettings = {
+    'ar': { 
+      font: 'Noto Sans Arabic', 
+      script: 'Arabic',
+      name: 'Arabic'
+    },
+    'he': { 
+      font: 'Noto Sans Hebrew', 
+      script: 'Hebrew',
+      name: 'Hebrew' 
+    },
+    'yi': { 
+      font: 'Noto Sans Hebrew', 
+      script: 'Hebrew',
+      name: 'Yiddish' 
+    }
+  };
+  
+  const settings = langSettings[options.language];
+  if (!settings) {
+    throw new Error(`Unsupported RTL language: ${options.language}`);
+  }
+  
+  // Create simple LaTeX template based on your working test case
+  const template = `\\documentclass[12pt,oneside,openany]{book}
+
+% Essential packages
+\\usepackage{fontspec}
+\\usepackage{polyglossia}
+
+% RTL Language setup
+\\setmainlanguage{${options.language === 'ar' ? 'arabic' : 'hebrew'}}
+\\setotherlanguage{english}
+
+% Font setup
+\\newfontfamily\\arabicfont[
+  Script=${settings.script},
+  Language=${settings.script},
+  Renderer=HarfBuzz,
+  Scale=MatchLowercase
+]{${options.fontFamily || settings.font}}
+
+\\newfontfamily\\englishfont{Liberation Serif}
+
+% Page numbering in local digits
+\\makeatletter
+${options.language === 'ar' ? 
+  '\\renewcommand*\\thepage{\\arabicdigits{\\arabic{page}}}' : 
+  '\\renewcommand*\\thepage{\\hebrewnumerals{\\arabic{page}}}'
+}
+\\makeatother
+
+% Basic page setup
+\\usepackage[margin=1in]{geometry}
+\\usepackage{hyperref}
+\\hypersetup{hidelinks}
+
+\\begin{document}
+
+% Title
+\\title{${options.title || 'Document'}}
+\\author{${options.author || 'Anonymous'}}
+\\date{\\today}
+\\maketitle
+
+% TOC
+\\tableofcontents
+\\clearpage
+
+% Body content will be inserted here
+BODY_CONTENT
+
+\\end{document}`;
+
+  // Generate unique filenames
+  const timestamp = Date.now();
+  const texFile = path.join(__dirname, 'temp', `simple_rtl_${timestamp}.tex`);
+  const pdfFile = path.join(__dirname, 'temp', `simple_rtl_${timestamp}.pdf`);
+  
+  try {
+    // Create temp directory if it doesn't exist
+    const tempDir = path.dirname(texFile);
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+    
+    // Process markdown to simple text (remove complex formatting for now)
+    const simpleContent = markdown
+      .replace(/^---[\\s\\S]*?---/m, '') // Remove YAML frontmatter
+      .replace(/\`\`\`[\\s\\S]*?\`\`\`/g, '') // Remove code blocks for simplicity
+      .replace(/!\[.*?\]\(.*?\)/g, '') // Remove images for now
+      .trim();
+    
+    // Create final LaTeX content
+    const finalLatex = template.replace('BODY_CONTENT', simpleContent);
+    
+    // Write LaTeX file
+    fs.writeFileSync(texFile, finalLatex, 'utf8');
+    console.log(`[SIMPLE RTL] Created LaTeX file: ${texFile}`);
+    
+    // Compile with XeLaTeX
+    const xelatexCmd = `xelatex -interaction=nonstopmode -output-directory="${path.dirname(pdfFile)}" "${texFile}"`;
+    console.log(`[SIMPLE RTL] Compiling: ${xelatexCmd}`);
+    
+    execSync(xelatexCmd, { 
+      stdio: ['pipe', 'pipe', 'pipe'],
+      cwd: path.dirname(texFile)
+    });
+    
+    // Check if PDF was created
+    if (!fs.existsSync(pdfFile)) {
+      throw new Error('PDF compilation failed - no output file generated');
+    }
+    
+    // Read and return PDF buffer
+    const pdfBuffer = fs.readFileSync(pdfFile);
+    console.log(`[SIMPLE RTL] Success! Generated PDF: ${pdfBuffer.length} bytes`);
+    
+    // Cleanup
+    try {
+      fs.unlinkSync(texFile);
+      fs.unlinkSync(pdfFile);
+    } catch (cleanupError) {
+      console.warn(`[SIMPLE RTL] Cleanup warning:`, cleanupError.message);
+    }
+    
+    return pdfBuffer;
+    
+  } catch (error) {
+    console.error(`[SIMPLE RTL] Export failed:`, error);
+    
+    // Cleanup on error
+    try {
+      if (fs.existsSync(texFile)) fs.unlinkSync(texFile);
+      if (fs.existsSync(pdfFile)) fs.unlinkSync(pdfFile);
+    } catch (cleanupError) {
+      // Ignore cleanup errors
+    }
+    
+    throw new Error(`Simple RTL export failed: ${error.message}`);
+  }
+}
 const { assembleBookPdf } = require('./bookAssemblerPdf');
 const { assembleBookEpub } = require('./bookAssemblerEpub');
 const { assembleBookDocx } = require('./bookAssemblerDocx');
@@ -481,10 +633,25 @@ app.post('/export/pdf', rateLimiting.export, authenticateJWT, async (req, res) =
       language: exportOptions?.language || 'en',
     };
 
-    // Select template based on language - Dennis: Modular template system
+    // Simple RTL Export Path - Dennis: Dedicated path for Arabic/Hebrew/Yiddish
+    if (['ar', 'he', 'yi'].includes(pdfOptions.language)) {
+      console.log(`🌍 RTL language detected (${pdfOptions.language}): using simple export path`);
+      try {
+        const pdfBuffer = await simpleRTLExport(processedMarkdown, pdfOptions);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="${title || 'export'}.pdf"`);
+        res.send(pdfBuffer);
+        return;
+      } catch (error) {
+        console.error('Simple RTL export failed:', error);
+        throw new Error(`RTL PDF generation failed: ${error.message}`);
+      }
+    }
+    
+    // Fallback: Complex Pandoc path for other languages
     if (pdfOptions.language === 'ar') {
       pdfOptions.template = 'templates/arabic-enhanced.tex';
-      console.log('🇸🇦 Arabic detected: using arabic-enhanced.tex template');
+      console.log('🇸🇦 Arabic detected: using arabic-enhanced.tex template (fallback)');
     }
     
     console.log('Passing fontFamily to PDF export:', pdfOptions.fontFamily);

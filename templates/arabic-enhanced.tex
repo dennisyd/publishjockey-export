@@ -49,10 +49,8 @@ $else$
   \newfontfamily\englishfont{Latin Modern Roman}
 $endif$
 
-% ---------- Geometry (Pandoc may also inject geometry via include-in-header) ----------
-$if(geometry)$
-  \usepackage[$for(geometry)$$geometry$$sep$,$endfor$]{geometry}
-$endif$
+% ---------- Geometry (handled entirely by Pandoc include-in-header) ----------
+% Note: No geometry package loaded here to avoid conflicts with Pandoc injection
 
 % ---------- Microtype & Hyperref ----------
 \IfFileExists{microtype.sty}{\usepackage{microtype}}{}
