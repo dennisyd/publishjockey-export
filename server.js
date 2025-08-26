@@ -668,26 +668,13 @@ app.post('/export/pdf', rateLimiting.export, authenticateJWT, async (req, res) =
       language: exportOptions?.language || 'en',
     };
 
-    // Simple RTL Export Path - Dennis: Dedicated path for Arabic/Hebrew/Yiddish
+    // RTL Export Path - Dennis: Temporarily disabled for launch
     if (['ar', 'he', 'yi'].includes(pdfOptions.language)) {
-      console.log(`🌍 RTL language detected (${pdfOptions.language}): using simple export path`);
-      try {
-        const pdfBuffer = await simpleRTLExport(processedMarkdown, pdfOptions);
-        res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `attachment; filename="${title || 'export'}.pdf"`);
-        res.send(pdfBuffer);
-        return;
-      } catch (error) {
-        console.error('Simple RTL export failed:', error);
-        throw new Error(`RTL PDF generation failed: ${error.message}`);
-      }
+      console.log(`🌍 RTL language detected (${pdfOptions.language}): RTL support coming soon!`);
+      throw new Error(`RTL languages (Arabic, Hebrew, Yiddish) are coming soon! Currently supported: English, French, German, Russian, Hindi, Tamil, and other LTR languages.`);
     }
     
-    // Fallback: Complex Pandoc path for other languages
-    if (pdfOptions.language === 'ar') {
-      pdfOptions.template = 'templates/arabic-enhanced.tex';
-      console.log('🇸🇦 Arabic detected: using arabic-enhanced.tex template (fallback)');
-    }
+    // Note: RTL language support will be re-enabled in future release
     
     console.log('Passing fontFamily to PDF export:', pdfOptions.fontFamily);
 
