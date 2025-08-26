@@ -83,7 +83,13 @@ $if(script-switching)$
 \hypersetup{
   pdfencoding=auto,
   bookmarksopen=true,
-  bookmarksopenlevel=1
+  bookmarksopenlevel=1,
+  pdftitle={$if(title-meta)$$title-meta$$else$$if(title)$$title$$else$Document$endif$$endif$},
+  pdfauthor={$if(author-meta)$$author-meta$$else$$if(author)$$author$$else$$endif$$endif$},
+  pdfsubject={$if(subject)$$subject$$else$$if(title)$$title$$else$$endif$$endif$},
+  pdfkeywords={$if(keywords)$$for(keywords)$$keywords$$sep$, $endfor$$endif$},
+  pdfcreator={PublishJockey.com},
+  pdfproducer={PublishJockey.com}
 }
 $else$
 $if(polyglossia)$
@@ -150,7 +156,13 @@ $endif$
   \hypersetup{
     pdfencoding=auto,
     bookmarksopen=true,
-    bookmarksopenlevel=1
+    bookmarksopenlevel=1,
+    pdftitle={$if(title-meta)$$title-meta$$else$$if(title)$$title$$else$Document$endif$$endif$},
+    pdfauthor={$if(author-meta)$$author-meta$$else$$if(author)$$author$$else$$endif$$endif$},
+    pdfsubject={$if(subject)$$subject$$else$$if(title)$$title$$else$$endif$$endif$},
+    pdfkeywords={$if(keywords)$$for(keywords)$$keywords$$sep$, $endfor$$endif$},
+    pdfcreator={PublishJockey.com},
+    pdfproducer={PublishJockey.com}
   }
 \fi
 $endif$
