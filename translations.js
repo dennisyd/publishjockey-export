@@ -45,7 +45,7 @@ const tocTranslations = {
   'sv': 'Inneh\u00E5llsf\u00F6rteckning',  // å, ö
   'tn': 'Tafole ya Dikahare',
   'tr': '\u0130\u00E7indekiler',  // İ, ç
-  'xh': 'Iindeksa',
+  'xh': 'Uluhlu Lweziqulatho',  // isiXhosa: Table of Contents
   'yo': 'At\u1ECDka',  // ọ
   'vi': 'M\u1EE5c L\u1EE5c',  // ụ, ụ
   'zu': 'Isiqephu',

@@ -62,7 +62,9 @@ $if(script-switching)$
   Renderer=HarfBuzz,
   Ligatures=TeX,
   Scale=MatchLowercase$if(script-language)$,
-  Language=$script-language$$endif$
+  Language=$script-language$$endif$,
+  WordSpace=1.0,
+  PunctuationSpace=1.0
 ]
 
 % Define Latin font for automatic switching
@@ -72,11 +74,21 @@ $if(script-switching)$
 ]
 
 % Automatic font switching: Switch to English font for Latin characters
+% Fixed spacing for Tamil script
 \setTransitionsForLatin{
-  \begingroup\englishfont
+  \begingroup\englishfont%
 }{
-  \endgroup
+  \endgroup%
 }
+
+% Tamil-specific spacing fixes
+$if(script-name)$
+$if(mainfont)$
+% Additional Tamil script spacing optimization
+\newcommand{\tamilspace}{\hspace{0pt}}
+\XeTeXinterchartoks 255 0 = {\tamilspace}
+$endif$
+$endif$
 
 % Unicode-aware PDF setup
 \usepackage[unicode]{hyperref}

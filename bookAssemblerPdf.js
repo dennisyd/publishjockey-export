@@ -70,6 +70,19 @@ function assembleBookPdf(sections, options = {}) {
     tocDepth = 1, // Default to 1 if not provided
     language = 'en', // Default to English
   } = options;
+  
+  // Tamil script requires special handling to preserve proper spacing
+  const isTamilScript = language === 'ta';
+  
+  // Helper function to safely trim Tamil text without disrupting script spacing
+  const safeTrim = (text) => {
+    if (!text) return text;
+    if (isTamilScript) {
+      // For Tamil, only remove leading/trailing whitespace, preserve internal spacing
+      return text.replace(/^\s+/, '').replace(/\s+$/, '');
+    }
+    return text.trim();
+  };
 
   // Convert tocDepth to number and ensure it's valid - declare at function level
   const numericTocDepth = parseInt(tocDepth, 10) || 1;
@@ -175,7 +188,7 @@ function assembleBookPdf(sections, options = {}) {
     output += '```{=latex}\n';
     output += '\\clearpage\n';
     output += '```\n\n';
-    output += copyrightSection.content.trim() + '\n\n';
+    output += safeTrim(copyrightSection.content) + '\n\n';
   }
   
   // Insert TOC
@@ -192,7 +205,7 @@ function assembleBookPdf(sections, options = {}) {
 
   // Process remaining front matter sections
   for (const section of frontMatterSections) {
-    let content = section.content.trim();
+    let content = safeTrim(section.content);
     
     // Skip empty sections - no content, no headings
     if (!content) {
@@ -242,7 +255,7 @@ function assembleBookPdf(sections, options = {}) {
     output += '```\n\n';
     
     for (const section of mainMatterSections) {
-      let content = section.content.trim();
+      let content = safeTrim(section.content);
       
       // Skip empty sections - no content, no headings
       if (!content) {
@@ -304,7 +317,7 @@ function assembleBookPdf(sections, options = {}) {
   if (backMatterSections.length > 0) {
     // Continue arabic numbering, but use unnumbered chapters
     for (const section of backMatterSections) {
-      let content = section.content.trim();
+      let content = safeTrim(section.content);
       
       // Skip empty sections - no content, no headings
       if (!content) {
@@ -348,7 +361,7 @@ function assembleBookPdf(sections, options = {}) {
     output += '```\n\n';
     
     for (const section of backMatterSections) {
-      let content = section.content.trim();
+      let content = safeTrim(section.content);
       
       // Skip empty sections - no content, no headings
       if (!content) {
@@ -392,7 +405,7 @@ function assembleBookPdf(sections, options = {}) {
     }
   }
 
-  return output.trim();
+  return safeTrim(output);
 }
 
 module.exports = { assembleBookPdf, rewriteMarkdownWithStyledChapters };
