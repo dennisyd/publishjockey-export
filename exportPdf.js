@@ -938,6 +938,11 @@ function getPandocVariables(options) {
     vars.push(`script-language=${scriptInfo.language}`);
     vars.push('sansfont=Liberation Serif');
     
+    // Arabic-specific flag for template conditionals
+    if (language === 'ar') {
+      vars.push('arabic-script=true');
+    }
+    
     console.log(`[FONT] Script-switching setup for ${language}: ${scriptInfo.font} + Liberation Serif fallback`);
   } else if (isDevanagari) {
     // Legacy Hindi support - keeping for backward compatibility
