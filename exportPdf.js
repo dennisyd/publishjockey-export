@@ -1375,15 +1375,7 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
       fs.writeFileSync(floatSettingsPath, floatSettings);
       
       // Build Pandoc arguments
-      console.log(`[TEMPLATE DEBUG] Template from options: ${options.template}`);
-      console.log(`[TEMPLATE DEBUG] Final template: ${options.template || 'templates/custom.tex'}`);
-      
-      // Check if Arabic template exists
-      if (options.template) {
-        const templatePath = path.resolve(__dirname, options.template);
-        const templateExists = fs.existsSync(templatePath);
-        console.log(`[TEMPLATE DEBUG] Template file exists: ${templateExists} at ${templatePath}`);
-      }
+      console.log(`[PDF EXPORT] Using template: ${options.template || 'templates/custom.tex'}`)
       
       let args = [
         assembledPath,

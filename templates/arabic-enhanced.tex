@@ -1,150 +1,129 @@
-% Enhanced Arabic Template with Mixed Content Support
-% Based on custom.tex but with specific Arabic/English font switching
-% Dennis: Custom Arabic template for mixed Arabic/English content with RTL support
+% ===============================
+% arabic-enhanced.tex — Pandoc template (XeLaTeX, RTL Arabic)
+% Production-ready: uses modern babel for full RTL layout, mixed-language handling,
+% and Arabic-Indic numerals. No bidi/ucharclasses required.
+% ===============================
 
+$if(documentclass)$
+\documentclass[$for(classoptions)$$classoptions$$sep$,$endfor$]{$documentclass$}
+$else$
 \documentclass[12pt,oneside,openany]{book}
+$endif$
 
-% Essential packages
-\usepackage{amssymb,amsmath}
+% ---------- Engine detection ----------
 \usepackage{ifxetex,ifluatex}
-\usepackage{fixltx2e}
+\newif\ifxetexorluatex
+\ifxetex \xetexorluatextrue \fi
+\ifluatex \xetexorluatextrue \fi
 
-\ifnum 0\ifxetex 1\fi\ifluatex 1\fi=0
+% ---------- Fonts & encodings ----------
+\ifxetexorluatex
+  \usepackage{fontspec}
+\else
+  % Fallback (not expected in this template)
   \usepackage[T1]{fontenc}
   \usepackage[utf8]{inputenc}
-\else
-  \ifxetex
-    \usepackage{mathspec}
-  \else
-    \usepackage{fontspec}
-  \fi
-  \defaultfontfeatures{Ligatures=TeX,Scale=MatchLowercase}
 \fi
 
-% Enhanced Arabic with English support using ucharclasses
-\ifxetex
-  \usepackage{fontspec}
-  \usepackage{ucharclasses}
-  
-  % Set main Arabic font
-  \setmainfont{Noto Sans Arabic}[
+% ---------- Essential packages ----------
+\usepackage{amssymb,amsmath}
+\usepackage{fixltx2e}
+
+% ---------- Geometry (let Pandoc inject page geometry files or variables) ----------
+$if(geometry)$
+  \usepackage[$for(geometry)$$geometry$$sep$,$endfor$]{geometry}
+$endif$
+
+% ---------- Microtype (harmless with Arabic fonts; improves Latin text) ----------
+\IfFileExists{microtype.sty}{\usepackage{microtype}}{}
+
+% ---------- Hyperref (safe defaults) ----------
+\IfFileExists{hyperref.sty}{\usepackage{hyperref}}{}
+$if(colorlinks)$
+  \hypersetup{colorlinks, linkcolor=black, citecolor=black, urlcolor=black}
+$else$
+  \hypersetup{hidelinks}
+$endif$
+
+% ---------- BABEL: Arabic main, English secondary; full RTL support ----------
+% bidi=basic lets babel own paragraph direction; mapdigits makes Arabic-Indic numerals the default
+\usepackage[bidi=basic]{babel}
+\babelprovide[main, import, mapdigits]{arabic}
+\babelprovide[import]{english}
+
+% ---------- Fonts selection via babel-aware \babelfont ----------
+% Arabic main font
+$if(mainfont)$
+  \babelfont{rm}[
     Script=Arabic,
-    Ligatures=TeX,
+    Language=Arabic,
+    Renderer=HarfBuzz,
     Scale=MatchLowercase
-  ]
-  
-  % Define English font for Latin characters
-  \newfontfamily\englishfont{Liberation Serif}[
-    Script=Latin,
-    Ligatures=TeX,
+  ]{$mainfont$}
+$else$
+  \babelfont{rm}[
+    Script=Arabic,
+    Language=Arabic,
+    Renderer=HarfBuzz,
     Scale=MatchLowercase
-  ]
-  
-  % Automatic script switching - use the PROVEN working approach from ArabicTest
-  \setTransitionsForLatin{\englishfont}{}
-  
-  % Enable Unicode character transitions
-  \XeTeXinterchartokenstate=1
-\fi
+  ]{Noto Sans Arabic}
+$endif$
 
+% Optional Latin (English) font override
+$if(latinfont)$
+  \babelfont[english]{rm}{$latinfont$}
+$else$
+  \babelfont[english]{rm}{Liberation Serif}
+$endif$
 
-
-% Enhanced page numbering for RTL
+% ---------- Page numbering in Arabic-Indic digits ----------
 \makeatletter
-% Arabic-Indic numerals for page numbers
-\def\@arabic#1{\ifcase#1\or ١\or ٢\or ٣\or ٤\or ٥\or ٦\or ٧\or ٨\or ٩\or ١٠\else\number#1\fi}
-
-% RTL page layout
-\if@twoside
-  \def\ps@headings{%
-    \let\@oddfoot\@empty\let\@evenfoot\@empty
-    \def\@evenhead{\thepage\hfil\slshape\leftmark}%
-    \def\@oddhead{{\slshape\rightmark}\hfil\thepage}%
-    \let\@mkboth\markboth
-    \def\chaptermark##1{%
-      \markboth {\MakeUppercase{%
-        \ifnum \c@secnumdepth >\m@ne
-          \if@mainmatter
-            \@chapapp\ \thechapter. \ %
-          \fi
-        \fi
-        ##1}}{}}%
-    \def\sectionmark##1{%
-      \markright {\MakeUppercase{%
-        \ifnum \c@secnumdepth >\z@
-          \thesection. \ %
-        \fi
-        ##1}}}}
-\else
-  \def\ps@headings{%
-    \let\@oddfoot\@empty
-    \def\@oddhead{{\slshape\rightmark}\hfil\thepage}%
-    \let\@mkboth\markboth
-    \def\chaptermark##1{%
-      \markright {\MakeUppercase{%
-        \ifnum \c@secnumdepth >\m@ne
-          \if@mainmatter
-            \@chapapp\ \thechapter. \ %
-          \fi
-        \fi
-        ##1}}}}
-\fi
+\renewcommand*\thepage{\localedigits*{\arabic{page}}}
 \makeatother
 
-% Basic document setup
-\usepackage{geometry}
-\geometry{paperwidth=6in, paperheight=9in, margin=0.75in}
+% ---------- Section numbering depth ----------
+$if(numbersections)$
+  % Pandoc will set secnumdepth; leave as-is
+$else$
+  \setcounter{secnumdepth}{-10}
+$endif$
 
-% Define tightlist for Pandoc compatibility
-\providecommand{\tightlist}{%
-  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+% ---------- Headers/footers (optional minimal pagestyle) ----------
+$if(pagestyle)$
+  \pagestyle{$pagestyle$}
+$else$
+  % Default to empty unless user overrides
+  \pagestyle{plain}
+$endif$
 
-% Simple code block support without colors
-\usepackage{fancyvrb}
-\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
-\newenvironment{Shaded}{\begin{quote}}{\end{quote}}
+% ---------- Title metadata ----------
+$if(title)$
+  \title{$title$}
+$endif$
+$if(subtitle)$
+  \providecommand{\subtitle}[1]{\gdef\@subtitle{#1}}
+  \subtitle{$subtitle$}
+$endif$
+$if(author)$
+  \author{$for(author)$$author$$sep$ \\ $endfor$}
+$endif$
+$if(date)$
+  \date{$date$}
+$else$
+  \date{\today}
+$endif$
 
-% Simple token definitions (no colors)
-\newcommand{\KeywordTok}[1]{\textbf{#1}}
-\newcommand{\DataTypeTok}[1]{#1}
-\newcommand{\DecValTok}[1]{#1}
-\newcommand{\BaseNTok}[1]{#1}
-\newcommand{\FloatTok}[1]{#1}
-\newcommand{\ConstantTok}[1]{#1}
-\newcommand{\CharTok}[1]{#1}
-\newcommand{\SpecialCharTok}[1]{#1}
-\newcommand{\StringTok}[1]{#1}
-\newcommand{\VerbatimStringTok}[1]{#1}
-\newcommand{\SpecialStringTok}[1]{#1}
-\newcommand{\ImportTok}[1]{#1}
-\newcommand{\CommentTok}[1]{\textit{#1}}
-\newcommand{\DocumentationTok}[1]{\textit{#1}}
-\newcommand{\AnnotationTok}[1]{\textit{#1}}
-\newcommand{\CommentVarTok}[1]{\textit{#1}}
-\newcommand{\OtherTok}[1]{#1}
-\newcommand{\FunctionTok}[1]{#1}
-\newcommand{\VariableTok}[1]{#1}
-\newcommand{\ControlFlowTok}[1]{\textbf{#1}}
-\newcommand{\OperatorTok}[1]{\textbf{#1}}
-\newcommand{\BuiltInTok}[1]{#1}
-\newcommand{\ExtensionTok}[1]{#1}
-\newcommand{\PreprocessorTok}[1]{\textit{#1}}
-\newcommand{\AttributeTok}[1]{#1}
-\newcommand{\RegionMarkerTok}[1]{#1}
-\newcommand{\InformationTok}[1]{\textit{#1}}
-\newcommand{\WarningTok}[1]{\textit{#1}}
-\newcommand{\AlertTok}[1]{#1}
-\newcommand{\ErrorTok}[1]{\textbf{#1}}
-\newcommand{\NormalTok}[1]{#1}
+% ---------- Header includes (from Pandoc) ----------
+$for(header-includes)$
+$header-includes$
+$endfor$
 
-% Typography and spacing
-\usepackage{setspace}
-\setstretch{1.2}
-\usepackage{parskip}
-\setlength{\parindent}{0pt}
-\setlength{\parskip}{6pt plus 2pt minus 1pt}
+% ---------- TOC settings ----------
+$if(toc-title)$
+  \addto\captionsarabic{\renewcommand{\contentsname}{$toc-title$}}
+$endif$
 
-% Enhanced graphics support
+% ---------- Graphics support ----------
 \usepackage{graphicx}
 \makeatletter
 \def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
@@ -152,109 +131,42 @@
 \makeatother
 \setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
 
-% Code highlighting
+% ---------- Verbatim/code support ----------
 \usepackage{fancyvrb}
-\usepackage{color}
-\usepackage{fancyhdr}
-
-% Table support
-\usepackage{longtable,booktabs}
-\usepackage{array}
-\usepackage{multirow}
-\usepackage{wrapfig}
-\usepackage{float}
-\usepackage{colortbl}
-\usepackage{pdflscape}
-\usepackage{tabu}
-\usepackage{threeparttable}
-\usepackage{threeparttablex}
-\usepackage[normalem]{ulem}
-
-% Arabic TOC setup
-\renewcommand{\contentsname}{المحتويات}
-
-% Simple RTL formatting without titlesec (to avoid conflicts)
-\makeatletter
-\renewcommand{\@makechapterhead}[1]{%
-  \vspace*{50\p@}%
-  {\parindent \z@ \raggedleft \normalfont
-    \ifnum \c@secnumdepth >\m@ne
-        \huge\bfseries الفصل \thechapter
-        \par\nobreak
-        \vskip 20\p@
-    \fi
-    \interlinepenalty\@M
-    \Huge \bfseries #1\par\nobreak
-    \vskip 40\p@
-  }}
-\renewcommand{\@makeschapterhead}[1]{%
-  \vspace*{50\p@}%
-  {\parindent \z@ \raggedleft
-    \normalfont
-    \interlinepenalty\@M
-    \Huge \bfseries  #1\par\nobreak
-    \vskip 40\p@
-  }}
-\makeatother
-
-% Hyperlinks (must be loaded late)
-\usepackage{hyperref}
-\hypersetup{
-  unicode=true,
-  pdfborder={0 0 0},
-  breaklinks=true,
-  colorlinks=true,
-  linkcolor=blue,
-  citecolor=blue,
-  urlcolor=blue
-}
-
-% Fix for Arabic text in URLs
-\makeatletter
-\g@addto@macro{\UrlBreaks}{\UrlOrds}
-\makeatother
-
-% --- Load bidi package for RTL support (must be loaded last) ---
-% Force load bidi for Arabic (since variables aren't working properly)
-\typeout{ARABIC-TEMPLATE-DEBUG: Force loading bidi package for Arabic}
-\ifxetex
-  \usepackage[RTLdocument]{bidi}
-  \typeout{ARABIC-TEMPLATE-DEBUG: bidi package loaded successfully}
-\fi
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
 
 \begin{document}
 
-% Arabic document direction
-\setRTL
-
-% Title page (if needed)
+% ---------- Title page ----------
 $if(title)$
-\begin{titlepage}
-\begin{center}
-\vspace*{2cm}
-{\Huge\bfseries $title$}
-\vspace{1cm}
-
-$if(author)$
-{\Large بقلم: $author$}
-\vspace{0.5cm}
+\maketitle
 $endif$
 
-$if(date)$
-{\large $date$}
-$endif$
-\end{center}
-\end{titlepage}
-\clearpage
-$endif$
-
-% Table of Contents
+% ---------- Table of contents ----------
 $if(toc)$
-\tableofcontents
-\clearpage
+{\hypersetup{hidelinks}\tableofcontents}
 $endif$
 
-% Main content
+% NOTE: You can insert \frontmatter / \mainmatter via raw LaTeX blocks from Pandoc Markdown
+% to switch Roman/Arabic numerals or separate front matter. This template does not fight that.
+
+% ---------- Body ----------
 $body$
+
+% ---------- End matter / Bibliography ----------
+$if(bibliography)$
+$if(natbib)$
+\bibliographystyle{$if(biblio-style)$$biblio-style$$else$plainnat$endif$}
+\bibliography{$for(bibliography)$$bibliography$$sep$, $endfor$}
+$endif$
+$if(biblatex)$
+\printbibliography[heading=bibintoc]
+$endif$
+$endif$
+
+% ---------- Include-after (Pandoc) ----------
+$for(include-after)$
+$include-after$
+$endfor$
 
 \end{document}
