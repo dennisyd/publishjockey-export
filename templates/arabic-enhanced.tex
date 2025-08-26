@@ -45,23 +45,22 @@ $else$
   \hypersetup{hidelinks}
 $endif$
 
-% ---------- BABEL: Arabic main, English secondary; full RTL support ----------
-% bidi=basic lets babel own paragraph direction; mapdigits makes Arabic-Indic numerals the default
-\usepackage[bidi=basic]{babel}
-\babelprovide[main, import, mapdigits]{arabic}
-\babelprovide[import]{english}
+% ---------- POLYGLOSSIA: XeLaTeX-compatible RTL Arabic support ----------
+\usepackage{polyglossia}
+\setmainlanguage{arabic}
+\setotherlanguage{english}
 
-% ---------- Fonts selection via babel-aware \babelfont ----------
+% ---------- Fonts selection via polyglossia ----------
 % Arabic main font
 $if(mainfont)$
-  \babelfont{rm}[
+  \newfontfamily\arabicfont[
     Script=Arabic,
     Language=Arabic,
     Renderer=HarfBuzz,
     Scale=MatchLowercase
   ]{$mainfont$}
 $else$
-  \babelfont{rm}[
+  \newfontfamily\arabicfont[
     Script=Arabic,
     Language=Arabic,
     Renderer=HarfBuzz,
@@ -71,14 +70,14 @@ $endif$
 
 % Optional Latin (English) font override
 $if(latinfont)$
-  \babelfont[english]{rm}{$latinfont$}
+  \newfontfamily\englishfont{$latinfont$}
 $else$
-  \babelfont[english]{rm}{Liberation Serif}
+  \newfontfamily\englishfont{Liberation Serif}
 $endif$
 
 % ---------- Page numbering in Arabic-Indic digits ----------
 \makeatletter
-\renewcommand*\thepage{\localedigits*{\arabic{page}}}
+\renewcommand*\thepage{\arabicdigits{\arabic{page}}}
 \makeatother
 
 % ---------- Section numbering depth ----------
