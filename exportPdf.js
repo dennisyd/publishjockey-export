@@ -922,7 +922,7 @@ function getPandocVariables(options) {
   } else if (isHebrew) {
     defaultFont = 'Noto Sans Hebrew'; // Hebrew font
   } else if (language === 'ar') {
-    // Arabic uses its own proven template (arabic-enhanced.tex)
+    // Arabic uses its own proven template (arabic-enhanced.tex) - Dennis: Modular templates
     defaultFont = 'Noto Sans Arabic';
     console.log(`[FONT] Arabic detected: using arabic-enhanced.tex template with ${defaultFont}`);
   } else if (language === 'pt' || language === 'pt-BR' || language === 'pt-PT' || 

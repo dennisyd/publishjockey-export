@@ -481,7 +481,7 @@ app.post('/export/pdf', rateLimiting.export, authenticateJWT, async (req, res) =
       language: exportOptions?.language || 'en',
     };
 
-    // Select template based on language
+    // Select template based on language - Dennis: Modular template system
     if (pdfOptions.language === 'ar') {
       pdfOptions.template = 'templates/arabic-enhanced.tex';
       console.log('🇸🇦 Arabic detected: using arabic-enhanced.tex template');
