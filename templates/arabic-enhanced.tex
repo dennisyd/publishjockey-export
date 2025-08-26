@@ -1,7 +1,6 @@
 % ===============================
-% arabic-enhanced.tex — Pandoc template (XeLaTeX, RTL Arabic)
-% Production-ready: uses modern babel for full RTL layout, mixed-language handling,
-% and Arabic-Indic numerals. No bidi/ucharclasses required.
+% arabic-enhanced.tex — Pandoc template (XeLaTeX RTL with polyglossia)
+% Fixes: bidi/float load-order error; no external 'bidi' package used
 % ===============================
 
 $if(documentclass)$
@@ -10,50 +9,22 @@ $else$
 \documentclass[12pt,oneside,openany]{book}
 $endif$
 
+% ---------- PRELOAD float (must come before anything that might pull bidi) ----------
+\IfFileExists{float.sty}{\RequirePackage{float}}{}
+
 % ---------- Engine detection ----------
 \usepackage{ifxetex,ifluatex}
-\newif\ifxetexorluatex
-\ifxetex \xetexorluatextrue \fi
-\ifluatex \xetexorluatextrue \fi
+\ifxetex\else\errmessage{This template requires XeLaTeX}\fi
 
-% ---------- Fonts & encodings ----------
-\ifxetexorluatex
-  \usepackage{fontspec}
-\else
-  % Fallback (not expected in this template)
-  \usepackage[T1]{fontenc}
-  \usepackage[utf8]{inputenc}
-\fi
-
-% ---------- Essential packages ----------
-\usepackage{amssymb,amsmath}
-\usepackage{fixltx2e}
-
-% ---------- Pre-load packages that must come before bidi ----------
-\usepackage{caption}
-\usepackage{graphicx}
-
-% ---------- Geometry (handled via Pandoc include-in-header) ----------
-% Note: Geometry package is loaded via Pandoc's include-in-header mechanism
-% to avoid option clashes
-
-% ---------- Microtype (harmless with Arabic fonts; improves Latin text) ----------
-\IfFileExists{microtype.sty}{\usepackage{microtype}}{}
-
-% ---------- Hyperref (safe defaults) ----------
-\IfFileExists{hyperref.sty}{\usepackage{hyperref}}{}
-$if(colorlinks)$
-  \hypersetup{colorlinks, linkcolor=black, citecolor=black, urlcolor=black}
-$else$
-  \hypersetup{hidelinks}
-$endif$
-
-% ---------- POLYGLOSSIA: XeLaTeX-compatible RTL Arabic support ----------
+% ---------- Fonts & language engine ----------
+\usepackage{fontspec}
 \usepackage{polyglossia}
+
+% Main language: Arabic (RTL); secondary: English (LTR)
 \setmainlanguage{arabic}
 \setotherlanguage{english}
 
-% ---------- Fonts selection via polyglossia ----------
+% ---------- Font setup ----------
 % Arabic main font
 $if(mainfont)$
   \newfontfamily\arabicfont[
@@ -71,49 +42,54 @@ $else$
   ]{Noto Sans Arabic}
 $endif$
 
-% Optional Latin (English) font override
+% Latin font for English runs (optional override)
 $if(latinfont)$
   \newfontfamily\englishfont{$latinfont$}
 $else$
-  \newfontfamily\englishfont{Liberation Serif}
+  \newfontfamily\englishfont{Latin Modern Roman}
 $endif$
 
-% ---------- Page numbering in Arabic-Indic digits ----------
+% ---------- Geometry (Pandoc may also inject geometry via include-in-header) ----------
+$if(geometry)$
+  \usepackage[$for(geometry)$$geometry$$sep$,$endfor$]{geometry}
+$endif$
+
+% ---------- Microtype & Hyperref ----------
+\IfFileExists{microtype.sty}{\usepackage{microtype}}{}
+\IfFileExists{hyperref.sty}{\usepackage{hyperref}}{}
+$if(colorlinks)$
+  \hypersetup{colorlinks, linkcolor=black, citecolor=black, urlcolor=black}
+$else$
+  \hypersetup{hidelinks}
+$endif$
+
+% ---------- Page numbering: Arabic-Indic digits ----------
 \makeatletter
 \renewcommand*\thepage{\arabicdigits{\arabic{page}}}
 \makeatother
 
 % ---------- Section numbering depth ----------
 $if(numbersections)$
-  % Pandoc will set secnumdepth; leave as-is
+  % Pandoc sets secnumdepth when needed
 $else$
   \setcounter{secnumdepth}{-10}
 $endif$
 
-% ---------- Headers/footers (optional minimal pagestyle) ----------
+% ---------- Pagestyle ----------
 $if(pagestyle)$
   \pagestyle{$pagestyle$}
 $else$
-  % Default to empty unless user overrides
   \pagestyle{plain}
 $endif$
 
 % ---------- Title metadata ----------
-$if(title)$
-  \title{$title$}
-$endif$
+$if(title)$\title{$title$}$endif$
 $if(subtitle)$
   \providecommand{\subtitle}[1]{\gdef\@subtitle{#1}}
   \subtitle{$subtitle$}
 $endif$
-$if(author)$
-  \author{$for(author)$$author$$sep$ \\ $endfor$}
-$endif$
-$if(date)$
-  \date{$date$}
-$else$
-  \date{\today}
-$endif$
+$if(author)$\author{$for(author)$$author$$sep$ \\ $endfor$}$endif$
+$if(date)$\date{$date$}$else$\date{\today}$endif$
 
 % ---------- Header includes (from Pandoc) ----------
 $for(header-includes)$
@@ -122,40 +98,26 @@ $endfor$
 
 % ---------- TOC settings ----------
 $if(toc-title)$
+  % Localize TOC title for Arabic
   \addto\captionsarabic{\renewcommand{\contentsname}{$toc-title$}}
 $endif$
 
-% ---------- Graphics support ----------
-% Note: graphicx loaded earlier to avoid bidi conflicts
-\makeatletter
-\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
-\def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}
-\makeatother
-\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
-
-% ---------- Verbatim/code support ----------
-\usepackage{fancyvrb}
-\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
-
 \begin{document}
 
-% ---------- Title page ----------
-$if(title)$
-\maketitle
-$endif$
+% ---------- Title ----------
+$if(title)$\maketitle$endif$
 
 % ---------- Table of contents ----------
 $if(toc)$
 {\hypersetup{hidelinks}\tableofcontents}
 $endif$
 
-% NOTE: You can insert \frontmatter / \mainmatter via raw LaTeX blocks from Pandoc Markdown
-% to switch Roman/Arabic numerals or separate front matter. This template does not fight that.
+% NOTE: Use raw LaTeX blocks in Markdown to insert \frontmatter / \mainmatter if desired.
 
 % ---------- Body ----------
 $body$
 
-% ---------- End matter / Bibliography ----------
+% ---------- Bibliography ----------
 $if(bibliography)$
 $if(natbib)$
 \bibliographystyle{$if(biblio-style)$$biblio-style$$else$plainnat$endif$}
