@@ -40,11 +40,20 @@
     Scale=MatchLowercase
   ]
   
-  % Automatic script switching - simplified to avoid group conflicts
-  \setTransitionsForLatin{\englishfont}{}
+  % Automatic script switching with balanced groups
+  \setTransitionsForLatin{%
+    \begingroup\englishfont
+  }{%
+    \endgroup
+  }
   
   % Enable Unicode character transitions
   \XeTeXinterchartokenstate=1
+\fi
+
+% Load bidi package for proper RTL support (must be loaded late)
+\ifxetex
+  \usepackage[RTLdocument]{bidi}
 \fi
 
 % Enhanced page numbering for RTL
