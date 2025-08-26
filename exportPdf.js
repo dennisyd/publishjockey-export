@@ -643,6 +643,7 @@ const pageSizes = {
   "7.44x9.69": { width: "7.44in", height: "9.69in" },
   "7.5x9.25": { width: "7.5in", height: "9.25in" },
   "8x10": { width: "8in", height: "10in" },
+  "8.25x11": { width: "8.25in", height: "11in" },
   "8.5x11": { width: "8.5in", height: "11in" }
 };
 
@@ -683,6 +684,7 @@ function getDynamicMargins(pageSizeKey, pageCount, includeBleed = false, hasPage
       bottom = Math.max(bottom, 0.5);
       break;
     case "8x10":
+    case "8.25x11":
     case "8.5x11":
       outside = Math.max(outside, 0.525);
       top = Math.max(top, 0.5);
@@ -730,6 +732,7 @@ function estimatePageCount(markdownText, pageSizeKey, includeToc = true) {
       break;
     case "7.5x9.25":
     case "8x10":
+    case "8.25x11":
     case "8.5x11":
       wordsPerPage = 400;
       break;
@@ -1316,7 +1319,7 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
       
       // STEP 6: Setup Pandoc arguments
       console.log(`[PDF EXPORT] Step 6: Setting up Pandoc arguments...`);
-      const pageSizeKey = options.papersize || "6x9";
+      const pageSizeKey = options.bookSize || options.papersize || "6x9";
       const estimatedPages = estimatePageCount(markdown, pageSizeKey, options.includeToc !== false);
       const pageCount = options.estimatedPageCount || estimatedPages || 100;
       const hasPageNumbers = true;

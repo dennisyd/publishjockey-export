@@ -629,7 +629,8 @@ app.post('/export/pdf', rateLimiting.export, authenticateJWT, async (req, res) =
         
         // Book format settings
         documentclass: exportOptions?.documentclass || 'book',
-        papersize: papersize, // Already processed from exportOptions.bookSize
+        bookSize: papersize, // Pass the processed book size
+        papersize: papersize, // Keep for backward compatibility
         fontsize: exportOptions?.fontsize || '12pt',
         margin: exportOptions?.margin || '1in',
         
