@@ -1050,6 +1050,21 @@ function getPandocVariables(options) {
   if (options.lineheight) {
     vars.push(`linestretch=${options.lineheight}`);
   }
+  
+  // Add explicit geometry variables to ensure correct paper size
+  if (options.bookSize) {
+    const geometry = generatePageGeometryCode(options.bookSize, options.pageCount || 100, false);
+    // Add complete geometry as Pandoc variables
+    vars.push(`paperwidth=${geometry.width}in`);
+    vars.push(`paperheight=${geometry.height}in`);
+    vars.push(`leftmargin=${geometry.margins.outside}in`);
+    vars.push(`rightmargin=${geometry.margins.outside}in`);
+    vars.push(`topmargin=${geometry.margins.top}in`);
+    vars.push(`bottommargin=${geometry.margins.bottom}in`);
+    vars.push(`footskip=0.25in`);
+    console.log(`[PANDOC GEOMETRY] Added complete geometry for ${options.bookSize}: ${geometry.width}x${geometry.height} with margins L/R:${geometry.margins.outside}, T/B:${geometry.margins.top}/${geometry.margins.bottom}`);
+  }
+  
   return vars;
 }
 
@@ -1327,14 +1342,11 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
       
       // Create unique temporary files
       const uniqueId = `${Date.now()}_${Math.random().toString(36).substr(2, 8)}`;
-      const tmpHeaderPath = path.join(tempDir, `page_geometry_${uniqueId}.tex`);
       const floatSettingsPath = path.join(tempDir, `float_settings_${uniqueId}.tex`);
       
-      // Write geometry settings
-      console.log(`[GEOMETRY DEBUG] Generated LaTeX code for ${pageSizeKey}:`);
-      console.log(geometry.latexCode);
-      console.log(`[GEOMETRY DEBUG] Writing to file: ${tmpHeaderPath}`);
-      fs.writeFileSync(tmpHeaderPath, geometry.latexCode);
+      // Geometry is now handled via template variables, no separate header file needed
+      console.log(`[GEOMETRY DEBUG] Using template geometry variables for ${pageSizeKey}:`);
+      console.log(`[GEOMETRY DEBUG] ${geometry.width}x${geometry.height} with margins: ${geometry.margins.outside}in (L/R), ${geometry.margins.top}/${geometry.margins.bottom}in (T/B)`);
       
       // Enhanced float settings for better image handling
       const floatSettings = `
@@ -1392,9 +1404,11 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
         `--template=${options.template || 'templates/custom.tex'}`, // Dennis: Added custom template support for Arabic test
         '--standalone',
         '--variable=links-as-notes',
-        '--include-in-header', tmpHeaderPath,
         '--include-in-header', floatSettingsPath
       ];
+      
+      // Skip geometry header injection - let template handle all geometry via variables
+      console.log(`[GEOMETRY] Using template geometry variables instead of header injection for ${options.bookSize}`);
       
       // Add variables and metadata
       const pandocVars = getPandocVariables(options);

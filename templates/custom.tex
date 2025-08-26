@@ -215,7 +215,7 @@ $endif$
 \RequirePackage{ragged2e}
 
 % --- Additional packages ---
-\usepackage{geometry}
+% geometry package is loaded dynamically via --include-in-header for custom page sizes
 % Removed duplicate fancyhdr and titlesec - already loaded above
 \usepackage{setspace}
 \usepackage{enumitem}
@@ -243,7 +243,21 @@ $endif$
 \makeatother
 
 % --- Page setup ---
+% Load geometry package and use complete geometry variables if provided
+$if(paperwidth)$
+\usepackage[
+  paperwidth=$paperwidth$,
+  paperheight=$paperheight$,
+  left=$leftmargin$,
+  right=$rightmargin$,
+  top=$topmargin$,
+  bottom=$bottommargin$,
+  footskip=$footskip$,
+  bindingoffset=0pt
+]{geometry}
+$else$
 % Geometry is handled via --include-in-header files for better control
+$endif$
 
 % --- Header/footer setup ---
 $if(pagestyle)$
