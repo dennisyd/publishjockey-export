@@ -477,11 +477,17 @@ app.post('/export/pdf', rateLimiting.export, authenticateJWT, async (req, res) =
         titlePageContent: exportOptions?.titlePageContent,
         // FIXED: Pass the selected font family from the frontend
         fontFamily: exportOptions?.fontFamily || 'Liberation Serif',
-        // FIXED: Pass the language for proper TOC translation
-        language: exportOptions?.language || 'en',
-      };
-      
-      console.log('Passing fontFamily to PDF export:', pdfOptions.fontFamily);
+              // FIXED: Pass the language for proper TOC translation
+      language: exportOptions?.language || 'en',
+    };
+
+    // Select template based on language
+    if (pdfOptions.language === 'ar') {
+      pdfOptions.template = 'templates/arabic-enhanced.tex';
+      console.log('🇸🇦 Arabic detected: using arabic-enhanced.tex template');
+    }
+    
+    console.log('Passing fontFamily to PDF export:', pdfOptions.fontFamily);
 
       // Print the markdown for debugging - add more detailed info about metadata
       const mdSample = processedMarkdown.substring(0, 500);

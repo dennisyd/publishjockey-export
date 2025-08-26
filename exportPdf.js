@@ -897,8 +897,8 @@ function getPandocVariables(options) {
     'kn': { font: 'Noto Sans Kannada', script: 'Kannada', language: 'Kannada' },
     'ml': { font: 'Noto Sans Malayalam', script: 'Malayalam', language: 'Malayalam' },
     'pa': { font: 'Noto Sans Gurmukhi', script: 'Gurmukhi', language: 'Punjabi' },
-    'or': { font: 'Noto Sans Oriya', script: 'Oriya', language: 'Oriya' },
-    'ar': { font: 'Noto Sans Arabic', script: 'Arabic', language: 'Arabic' }
+    'or': { font: 'Noto Sans Oriya', script: 'Oriya', language: 'Oriya' }
+    // Note: Arabic (ar) uses its own template (arabic-enhanced.tex)
   };
   
   const requiresScriptSwitching = scriptSwitchingLanguages[language];
@@ -921,13 +921,15 @@ function getPandocVariables(options) {
     defaultFont = 'Times New Roman'; // Good Cyrillic support
   } else if (isHebrew) {
     defaultFont = 'Noto Sans Hebrew'; // Hebrew font
-  } else if (isRTL && language === 'ar') {
-    defaultFont = 'Noto Sans Arabic'; // Arabic font (changed from Amiri)
+  } else if (language === 'ar') {
+    // Arabic uses its own proven template (arabic-enhanced.tex)
+    defaultFont = 'Noto Sans Arabic';
+    console.log(`[FONT] Arabic detected: using arabic-enhanced.tex template with ${defaultFont}`);
   } else if (language === 'pt' || language === 'pt-BR' || language === 'pt-PT' || 
              language === 'is' || language === 'hr') {
     defaultFont = 'Noto Sans'; // Portuguese, Icelandic, Croatian - use Noto Sans for better Latin script support
   } else if (requiresScriptSwitching) {
-    // Script-based language that needs ucharclasses font switching
+    // Script-based language that needs ucharclasses font switching (Hindi, Tamil, etc.)
     const scriptInfo = scriptSwitchingLanguages[language];
     defaultFont = scriptInfo.font;
     
@@ -937,11 +939,6 @@ function getPandocVariables(options) {
     vars.push(`script-name=${scriptInfo.script}`);
     vars.push(`script-language=${scriptInfo.language}`);
     vars.push('sansfont=Liberation Serif');
-    
-    // Arabic-specific flag for template conditionals
-    if (language === 'ar') {
-      vars.push('arabic-script=true');
-    }
     
     console.log(`[FONT] Script-switching setup for ${language}: ${scriptInfo.font} + Liberation Serif fallback`);
   } else if (isDevanagari) {
