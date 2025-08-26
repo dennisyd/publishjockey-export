@@ -104,8 +104,8 @@ These English terms should display correctly within the Arabic text flow.
       'latex-dir-rtl': true,
       // Enhanced Arabic font handling
       mainfont: 'Noto Sans Arabic',
-      // Use enhanced Arabic template (fixed bidi package order)
-      template: 'templates/arabic-enhanced.tex'
+      // Use main production template with integrated Arabic support
+      // template: 'templates/custom.tex' // This is the default, no need to specify
     };
     
     console.log('🔧 Test options:', testOptions);

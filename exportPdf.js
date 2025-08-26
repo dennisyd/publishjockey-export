@@ -897,7 +897,8 @@ function getPandocVariables(options) {
     'kn': { font: 'Noto Sans Kannada', script: 'Kannada', language: 'Kannada' },
     'ml': { font: 'Noto Sans Malayalam', script: 'Malayalam', language: 'Malayalam' },
     'pa': { font: 'Noto Sans Gurmukhi', script: 'Gurmukhi', language: 'Punjabi' },
-    'or': { font: 'Noto Sans Oriya', script: 'Oriya', language: 'Oriya' }
+    'or': { font: 'Noto Sans Oriya', script: 'Oriya', language: 'Oriya' },
+    'ar': { font: 'Noto Sans Arabic', script: 'Arabic', language: 'Arabic' }
   };
   
   const requiresScriptSwitching = scriptSwitchingLanguages[language];

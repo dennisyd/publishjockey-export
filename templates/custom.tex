@@ -76,6 +76,16 @@ $if(script-switching)$
   \endgroup
 }
 
+% Arabic-specific RTL support (only for Arabic script-switching)
+$if(script-name)$
+$if(script-name=Arabic)$
+% Arabic RTL page numbering
+\makeatletter
+\def\@arabic#1{\ifcase#1\or ١\or ٢\or ٣\or ٤\or ٥\or ٦\or ٧\or ٨\or ٩\or ١٠\else\number#1\fi}
+\makeatother
+$endif$
+$endif$
+
 % Unicode-aware PDF setup
 \usepackage[unicode]{hyperref}
 \hypersetup{
