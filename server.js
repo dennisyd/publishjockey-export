@@ -128,14 +128,58 @@ BODY_CONTENT
     fs.writeFileSync(texFile, finalLatex, 'utf8');
     console.log(`[SIMPLE RTL] Created LaTeX file: ${texFile}`);
     
-    // Compile with XeLaTeX
-    const xelatexCmd = `xelatex -interaction=nonstopmode -output-directory="${path.dirname(pdfFile)}" "${texFile}"`;
+    // Check XeLaTeX availability
+    try {
+      execSync('which xelatex', { stdio: 'pipe' });
+      console.log(`[SIMPLE RTL] XeLaTeX found in PATH`);
+    } catch (whichError) {
+      console.log(`[SIMPLE RTL] XeLaTeX not in PATH, trying pandoc cache...`);
+    }
+    
+    // Compile with XeLaTeX (try different paths)
+    const xelatexPaths = [
+      'xelatex',
+      '/root/.cache/pandoc-3.6.4',  // Your system uses cached pandoc
+      '/usr/bin/xelatex',
+      '/usr/local/bin/xelatex'
+    ];
+    
+    let xelatexCmd = null;
+    for (const xelatexPath of xelatexPaths) {
+      try {
+        execSync(`${xelatexPath} --version`, { stdio: 'pipe' });
+        xelatexCmd = `${xelatexPath} -interaction=nonstopmode -output-directory="${path.dirname(pdfFile)}" "${texFile}"`;
+        console.log(`[SIMPLE RTL] Using XeLaTeX: ${xelatexPath}`);
+        break;
+      } catch (testError) {
+        console.log(`[SIMPLE RTL] ${xelatexPath} not available`);
+      }
+    }
+    
+    if (!xelatexCmd) {
+      throw new Error('XeLaTeX not found in any expected location');
+    }
+    
     console.log(`[SIMPLE RTL] Compiling: ${xelatexCmd}`);
     
-    execSync(xelatexCmd, { 
-      stdio: ['pipe', 'pipe', 'pipe'],
-      cwd: path.dirname(texFile)
-    });
+    try {
+      const result = execSync(xelatexCmd, { 
+        stdio: ['pipe', 'pipe', 'pipe'],
+        cwd: path.dirname(texFile),
+        encoding: 'utf8'
+      });
+      console.log(`[SIMPLE RTL] XeLaTeX output:`, result);
+    } catch (xelatexError) {
+      console.error(`[SIMPLE RTL] XeLaTeX failed with exit code:`, xelatexError.status);
+      console.error(`[SIMPLE RTL] XeLaTeX stdout:`, xelatexError.stdout);
+      console.error(`[SIMPLE RTL] XeLaTeX stderr:`, xelatexError.stderr);
+      
+      // Also log the actual LaTeX content for debugging
+      console.error(`[SIMPLE RTL] LaTeX content that failed:`);
+      console.error(fs.readFileSync(texFile, 'utf8'));
+      
+      throw new Error(`XeLaTeX compilation failed: ${xelatexError.stderr || xelatexError.stdout || 'Unknown error'}`);
+    }
     
     // Check if PDF was created
     if (!fs.existsSync(pdfFile)) {
