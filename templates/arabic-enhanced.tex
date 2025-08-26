@@ -29,10 +29,9 @@ $endif$
 \usepackage{amssymb,amsmath}
 \usepackage{fixltx2e}
 
-% ---------- Geometry (let Pandoc inject page geometry files or variables) ----------
-$if(geometry)$
-  \usepackage[$for(geometry)$$geometry$$sep$,$endfor$]{geometry}
-$endif$
+% ---------- Geometry (handled via Pandoc include-in-header) ----------
+% Note: Geometry package is loaded via Pandoc's include-in-header mechanism
+% to avoid option clashes
 
 % ---------- Microtype (harmless with Arabic fonts; improves Latin text) ----------
 \IfFileExists{microtype.sty}{\usepackage{microtype}}{}
