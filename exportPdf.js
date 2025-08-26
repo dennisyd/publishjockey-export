@@ -1470,7 +1470,7 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
        }, (error, stdout, stderr) => {
          // Function to cleanup temporary files
          const doCleanup = () => {
-           const cleanupFiles = [tmpHeaderPath, floatSettingsPath, ...downloadedFiles];
+           const cleanupFiles = [floatSettingsPath, ...downloadedFiles];
            cleanupFiles.forEach(file => {
              try {
                if (fs.existsSync(file)) {
