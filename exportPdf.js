@@ -1375,6 +1375,9 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
       fs.writeFileSync(floatSettingsPath, floatSettings);
       
       // Build Pandoc arguments
+      console.log(`[TEMPLATE DEBUG] Template from options: ${options.template}`);
+      console.log(`[TEMPLATE DEBUG] Final template: ${options.template || 'templates/custom.tex'}`);
+      
       let args = [
         assembledPath,
         '-o', outputPath,
