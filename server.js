@@ -51,53 +51,36 @@ async function simpleRTLExport(markdown, options) {
     throw new Error(`Unsupported RTL language: ${options.language}`);
   }
   
-  // Create simple LaTeX template based on your working test case
+  // Create simple LaTeX template with correct package order
   const template = `\\documentclass[12pt,oneside,openany]{book}
 
-% Essential packages
+% CRITICAL: Load packages in correct order for bidi compatibility
+\\usepackage[margin=1in]{geometry}
 \\usepackage{fontspec}
+
+% Polyglossia AFTER fontspec
 \\usepackage{polyglossia}
 
 % RTL Language setup
 \\setmainlanguage{${options.language === 'ar' ? 'arabic' : 'hebrew'}}
 \\setotherlanguage{english}
 
-% Font setup
-\\newfontfamily\\arabicfont[
-  Script=${settings.script},
-  Language=${settings.script},
-  Renderer=HarfBuzz,
-  Scale=MatchLowercase
-]{${options.fontFamily || settings.font}}
+% Simple font setup - no complex options
+\\setmainfont{${options.fontFamily || settings.font}}
 
-\\newfontfamily\\englishfont{Liberation Serif}
-
-% Page numbering in local digits
-\\makeatletter
-${options.language === 'ar' ? 
-  '\\renewcommand*\\thepage{\\arabicdigits{\\arabic{page}}}' : 
-  '\\renewcommand*\\thepage{\\hebrewnumerals{\\arabic{page}}}'
-}
-\\makeatother
-
-% Basic page setup
-\\usepackage[margin=1in]{geometry}
+% Hyperref LAST
 \\usepackage{hyperref}
 \\hypersetup{hidelinks}
 
-\\begin{document}
-
-% Title
 \\title{${options.title || 'Document'}}
 \\author{${options.author || 'Anonymous'}}
-\\date{\\today}
-\\maketitle
 
-% TOC
+\\begin{document}
+
+\\maketitle
 \\tableofcontents
 \\clearpage
 
-% Body content will be inserted here
 BODY_CONTENT
 
 \\end{document}`;
@@ -114,11 +97,19 @@ BODY_CONTENT
       fs.mkdirSync(tempDir, { recursive: true });
     }
     
-    // Process markdown to simple text (remove complex formatting for now)
+    // Process markdown to clean content for LaTeX
     const simpleContent = markdown
       .replace(/^---[\\s\\S]*?---/m, '') // Remove YAML frontmatter
       .replace(/\`\`\`[\\s\\S]*?\`\`\`/g, '') // Remove code blocks for simplicity
       .replace(/!\[.*?\]\(.*?\)/g, '') // Remove images for now
+      .replace(/\\usepackage.*$/gm, '') // Remove any LaTeX package commands
+      .replace(/\\setlength.*$/gm, '') // Remove LaTeX length commands
+      .replace(/\\setcounter.*$/gm, '') // Remove LaTeX counter commands
+      .replace(/\\let.*$/gm, '') // Remove LaTeX macro definitions
+      .replace(/\\newcommand.*$/gm, '') // Remove LaTeX new commands
+      .replace(/\\renewcommand.*$/gm, '') // Remove LaTeX renewcommands
+      .replace(/\\makeatletter.*$/gm, '') // Remove LaTeX internals
+      .replace(/\\makeatother.*$/gm, '') // Remove LaTeX internals
       .trim();
     
     // Create final LaTeX content
