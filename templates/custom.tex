@@ -304,6 +304,7 @@ $endif$
   \cleardoublepage
   \pagenumbering{roman}
   \setcounter{page}{1}
+  \pagestyle{plain}
 }
 
 % Define proper mainmatter command with arabic numerals  
@@ -311,6 +312,13 @@ $endif$
   \cleardoublepage
   \pagenumbering{arabic}
   \setcounter{page}{1}
+  \pagestyle{plain}
+}
+
+% Define proper backmatter command  
+\renewcommand{\backmatter}{%
+  \cleardoublepage
+  \pagestyle{plain}
 }
 
 % --- Document begin ---
