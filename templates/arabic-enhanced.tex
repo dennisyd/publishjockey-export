@@ -40,12 +40,8 @@
     Scale=MatchLowercase
   ]
   
-  % Automatic script switching with balanced groups
-  \setTransitionsForLatin{%
-    \begingroup\englishfont
-  }{%
-    \endgroup
-  }
+  % Automatic script switching - use the PROVEN working approach from ArabicTest
+  \setTransitionsForLatin{\englishfont}{}
   
   % Enable Unicode character transitions
   \XeTeXinterchartokenstate=1
