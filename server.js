@@ -249,21 +249,12 @@ console.log('ℹ️ MongoDB sanitization disabled - relying on main backend sani
 
 // Update CORS configuration to explicitly allow frontend connections
 app.use(cors({
-  origin: ['https://publishjockey-frontend.vercel.app', 'http://localhost:3000', 'http://localhost:5173', 'https://publishjockey.com'],
+  origin: true, //['https://publishjockey-frontend.vercel.app','http://localhost:3000', 'http://localhost:5173'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   exposedHeaders: ['Content-Disposition'] // Expose Content-Disposition header for downloads
 }));
-
-// Handle preflight OPTIONS requests explicitly
-app.options('*', (req, res) => {
-  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.sendStatus(200);
-});
 
 // Apply general rate limiting to all routes
 app.use(rateLimiting.general);
