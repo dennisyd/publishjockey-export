@@ -99,8 +99,8 @@
 
 % Simple code block support without colors
 \usepackage{fancyvrb}
-\newenvironment{Shaded}{\begin{quote}\begin{verbatim}}{\end{verbatim}\end{quote}}
-\newenvironment{Highlighting}{\begin{quote}\begin{verbatim}}{\end{verbatim}\end{quote}}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+\newenvironment{Shaded}{\begin{quote}}{\end{quote}}
 
 % Simple token definitions (no colors)
 \newcommand{\KeywordTok}[1]{\textbf{#1}}
