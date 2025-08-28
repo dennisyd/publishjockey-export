@@ -14,6 +14,21 @@
 % --- Load fancyhdr for page styling ---
 \usepackage{fancyhdr}
 
+% --- Configure fancyhdr for proper page numbering ---
+\pagestyle{fancy}
+\fancyhf{} % Clear all header and footer fields
+\fancyfoot[C]{\thepage} % Page number in center of footer
+\renewcommand{\headrulewidth}{0pt} % No header rule
+\renewcommand{\footrulewidth}{0pt} % No footer rule
+
+% --- Plain style for chapter pages ---
+\fancypagestyle{plain}{
+  \fancyhf{}
+  \fancyfoot[C]{\thepage}
+  \renewcommand{\headrulewidth}{0pt}
+  \renewcommand{\footrulewidth}{0pt}
+}
+
 \ifnum 0\ifxetex 1\fi\ifluatex 1\fi=0 % if pdftex
   \usepackage[$if(fontenc)$$fontenc$$else$T1$endif$]{fontenc}
   \usepackage[utf8]{inputenc}
@@ -348,7 +363,7 @@ $endif$
   \cleardoublepage
   \pagenumbering{arabic}
   \setcounter{page}{1}
-  \pagestyle{plain}
+  \pagestyle{fancy}
 }
 
 % Define proper backmatter command  

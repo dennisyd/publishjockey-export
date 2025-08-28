@@ -695,7 +695,9 @@ function getDynamicMargins(pageSizeKey, pageCount, includeBleed = false, hasPage
   }
 
   if (hasPageNumbers) {
-    bottom += 0.25;
+    // Amazon KDP requires adequate space for page numbers to prevent cutoff
+    // Increase bottom margin significantly to ensure page numbers are visible
+    bottom += 0.5; // Increased from 0.25 to 0.5 inches
   }
 
   outside += 0.3;
@@ -778,7 +780,8 @@ function generatePageGeometryCode(pageSizeKey, pageCount, hasPageNumbers = true)
   const height = size.height.replace('in', '');
   const textWidth = parseFloat(width) - margins.inside - margins.outside;
   const textHeight = parseFloat(height) - margins.top - margins.bottom;
-  const footskip = hasPageNumbers ? '0.25in' : '0.40in';
+  // Amazon KDP requires adequate footskip to prevent page number cutoff
+  const footskip = hasPageNumbers ? '0.4in' : '0.4in'; // Increased from 0.25in to 0.4in for page numbers
 
   return {
     size,
@@ -1061,7 +1064,8 @@ function getPandocVariables(options) {
     vars.push(`rightmargin=${geometry.margins.outside}in`);
     vars.push(`topmargin=${geometry.margins.top}in`);
     vars.push(`bottommargin=${geometry.margins.bottom}in`);
-    vars.push(`footskip=0.25in`);
+    // Use proper footskip for Amazon KDP compliance
+    vars.push(`footskip=0.4in`);
     console.log(`[PANDOC GEOMETRY] Added complete geometry for ${options.bookSize}: ${geometry.width}x${geometry.height} with margins L/R:${geometry.margins.outside}, T/B:${geometry.margins.top}/${geometry.margins.bottom}`);
   }
   
