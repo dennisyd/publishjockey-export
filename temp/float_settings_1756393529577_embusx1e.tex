@@ -1,0 +1,39 @@
+
+% --- Enhanced image and float handling ---
+\usepackage{float}
+\floatplacement{figure}{!htbp}
+\floatplacement{table}{!htbp}
+
+% Disable figure numbering - show only caption text
+\usepackage{caption}
+\captionsetup[figure]{labelformat=empty}
+
+% Better figure handling
+\renewcommand{\floatpagefraction}{0.7}
+\renewcommand{\textfraction}{0.1}
+\renewcommand{\topfraction}{0.9}
+\renewcommand{\bottomfraction}{0.9}
+\setcounter{topnumber}{4}
+\setcounter{bottomnumber}{4}
+\setcounter{totalnumber}{10}
+
+% Handle missing images gracefully
+\usepackage{graphicx}
+\makeatletter
+\setlength{\@fptop}{0pt}
+\makeatother
+
+% Table handling
+\usepackage{tabularx}
+\usepackage{booktabs}
+\usepackage{longtable}
+\setlength\LTleft{0pt}
+\setlength\LTright{0pt}
+\setlength\LTpre{8pt}
+\setlength\LTpost{8pt}
+
+% Error handling for missing images
+\usepackage{ifthen}
+\newcommand{\safeinclude}[1]{%
+  \IfFileExists{#1}{\includegraphics{#1}}{\textit{[Image: #1 not found]}}%
+}

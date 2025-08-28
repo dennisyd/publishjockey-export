@@ -696,8 +696,39 @@ function getDynamicMargins(pageSizeKey, pageCount, includeBleed = false, hasPage
 
   if (hasPageNumbers) {
     // Amazon KDP requires adequate space for page numbers to prevent cutoff
-    // Increase bottom margin significantly to ensure page numbers are visible
-    bottom += 0.5; // Increased from 0.25 to 0.5 inches
+    // Use proportional margins based on book size for better spacing balance
+    let pageNumberMargin;
+    switch (pageSizeKey) {
+      case "5x8":
+      case "5.06x7.81":
+      case "5.25x8":
+      case "5.5x8.5":
+        // Smaller books need less additional margin
+        pageNumberMargin = 0.375;
+        break;
+      case "6x9":
+      case "6.14x9.21":
+        // Standard size - balanced margin
+        pageNumberMargin = 0.5;
+        break;
+      case "6.69x9.61":
+      case "7x10":
+      case "7.44x9.69":
+      case "7.5x9.25":
+        // Medium-large books
+        pageNumberMargin = 0.5;
+        break;
+      case "8x10":
+      case "8.25x11":
+      case "8.5x11":
+        // Larger books can accommodate slightly more margin
+        pageNumberMargin = 0.55;
+        break;
+      default:
+        pageNumberMargin = 0.5;
+    }
+    bottom += pageNumberMargin;
+    console.log(`[PAGE NUMBERS] Added ${pageNumberMargin}" bottom margin for ${pageSizeKey}`);
   }
 
   outside += 0.3;
@@ -781,7 +812,35 @@ function generatePageGeometryCode(pageSizeKey, pageCount, hasPageNumbers = true)
   const textWidth = parseFloat(width) - margins.inside - margins.outside;
   const textHeight = parseFloat(height) - margins.top - margins.bottom;
   // Amazon KDP requires adequate footskip to prevent page number cutoff
-  const footskip = hasPageNumbers ? '0.4in' : '0.4in'; // Increased from 0.25in to 0.4in for page numbers
+  // Use proportional footskip based on book size
+  let footskip = '0.4in'; // Default for no page numbers
+  if (hasPageNumbers) {
+    switch (sizeKey) {
+      case "5x8":
+      case "5.06x7.81":
+      case "5.25x8":
+      case "5.5x8.5":
+        footskip = '0.4in'; // Smaller books - tighter spacing
+        break;
+      case "6x9":
+      case "6.14x9.21":
+        footskip = '0.5in'; // Standard size - balanced spacing
+        break;
+      case "6.69x9.61":
+      case "7x10":
+      case "7.44x9.69":
+      case "7.5x9.25":
+        footskip = '0.5in'; // Medium-large books
+        break;
+      case "8x10":
+      case "8.25x11":
+      case "8.5x11":
+        footskip = '0.55in'; // Larger books - more spacing
+        break;
+      default:
+        footskip = '0.5in';
+    }
+  }
 
   return {
     size,
@@ -790,6 +849,7 @@ function generatePageGeometryCode(pageSizeKey, pageCount, hasPageNumbers = true)
     height,
     textWidth,
     textHeight,
+    footskip,
     latexCode: `
 % --- AMAZON KDP COMPLIANT PAGE SIZE AND MARGINS ---
 \\geometry{
@@ -847,13 +907,7 @@ function generatePageGeometryCode(pageSizeKey, pageCount, hasPageNumbers = true)
 \\usepackage{ragged2e}
 \\AtBeginDocument{\\justifying}
 
-% --- Page numbers ---
-\\usepackage{fancyhdr}
-\\pagestyle{fancy}
-\\fancyhf{}
-\\fancyfoot[C]{\\thepage}
-\\renewcommand{\\headrulewidth}{0pt}
-\\renewcommand{\\footrulewidth}{0pt}
+% --- Page numbers are handled by template fancyhdr configuration ---
 
 % --- PDF dimensions ---
 \\pdfpagewidth=${width}in
@@ -919,11 +973,27 @@ function getPandocVariables(options) {
   console.log(`[LANGUAGE DEBUG] isRTL: ${isRTL}, isCyrillic: ${isCyrillic}, isDevanagari: ${isDevanagari}, isHebrew: ${isHebrew}`);
   
   // Platform-aware font selection with language support
-  const exportPlatform = process.env.EXPORT_PLATFORM || 'server';
+  const exportPlatform = process.env.EXPORT_PLATFORM || (process.platform === 'win32' ? 'windows' : 'server');
   let defaultFont = exportPlatform === 'windows' ? 'Times New Roman' : 'Liberation Serif';
+  // Debug platform detection
+  console.log(`[FONT DEBUG] Platform detection:`);
+  console.log(`[FONT DEBUG] - process.env.EXPORT_PLATFORM: ${process.env.EXPORT_PLATFORM}`);
+  console.log(`[FONT DEBUG] - process.platform: ${process.platform}`);
+  console.log(`[FONT DEBUG] - exportPlatform: ${exportPlatform}`);
+  console.log(`[FONT DEBUG] - defaultFont: ${defaultFont}`);
+  
+  // For local testing, allow override via environment variable
+  if (process.env.LOCAL_FONT_OVERRIDE) {
+    defaultFont = process.env.LOCAL_FONT_OVERRIDE;
+    console.log(`[FONT] Using local font override: ${defaultFont}`);
+  }
   
   // Language-specific font selection
-  if (isCyrillic) {
+  if (language === 'en') {
+    // For English, use platform-appropriate font
+    // Don't override the already-calculated defaultFont for English
+    console.log(`[FONT] English detected: using platform font ${defaultFont} (platform: ${exportPlatform})`);
+  } else if (isCyrillic) {
     defaultFont = 'Times New Roman'; // Good Cyrillic support
   } else if (isHebrew) {
     defaultFont = 'Noto Sans Hebrew'; // Hebrew font
@@ -1025,10 +1095,17 @@ function getPandocVariables(options) {
   }
   
   vars.push('secstyle=\\Large\\bfseries\\filcenter');
-  vars.push('pagestyle=empty');
+  
+  // Only disable page styling if page numbers are explicitly disabled
+  if (options.includePageNumbers === false) {
+    vars.push('pagestyle=empty');
+    vars.push('plainfoot=');
+    vars.push('emptyfoot=');
+  } else {
+    // Enable plain page style for centered page numbers (handled by template)
+    vars.push('pagestyle=plain');
+  }
   vars.push('disable-headers=true');
-  vars.push('plainfoot=');
-  vars.push('emptyfoot=');
   if (options.includeToc !== false) {
     // Note: toc-title is now set in YAML metadata block, not as command line variable
     // vars.push(`toc-title=${getTocTitle(language)}`);
@@ -1056,7 +1133,7 @@ function getPandocVariables(options) {
   
   // Add explicit geometry variables to ensure correct paper size
   if (options.bookSize) {
-    const geometry = generatePageGeometryCode(options.bookSize, options.pageCount || 100, false);
+    const geometry = generatePageGeometryCode(options.bookSize, options.pageCount || 100, options.includePageNumbers !== false);
     // Add complete geometry as Pandoc variables
     vars.push(`paperwidth=${geometry.width}in`);
     vars.push(`paperheight=${geometry.height}in`);
@@ -1064,8 +1141,8 @@ function getPandocVariables(options) {
     vars.push(`rightmargin=${geometry.margins.outside}in`);
     vars.push(`topmargin=${geometry.margins.top}in`);
     vars.push(`bottommargin=${geometry.margins.bottom}in`);
-    // Use proper footskip for Amazon KDP compliance
-    vars.push(`footskip=0.4in`);
+    // Use proper footskip for Amazon KDP compliance (now dynamic based on book size)
+    vars.push(`footskip=${geometry.footskip}`);
     console.log(`[PANDOC GEOMETRY] Added complete geometry for ${options.bookSize}: ${geometry.width}x${geometry.height} with margins L/R:${geometry.margins.outside}, T/B:${geometry.margins.top}/${geometry.margins.bottom}`);
   }
   
@@ -1340,7 +1417,7 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
       console.log(`[PDF EXPORT] Step 6: Setting up Pandoc arguments...`);
       const pageSizeKey = options.bookSize || options.papersize || "6x9";
       const estimatedPages = estimatePageCount(markdown, pageSizeKey, options.includeToc !== false);
-      const pageCount = options.estimatedPageCount || estimatedPages || 100;
+      const pageCount = options.pageCount || options.estimatedPageCount || estimatedPages || 100;
       const hasPageNumbers = true;
       const geometry = generatePageGeometryCode(pageSizeKey, pageCount, hasPageNumbers);
       

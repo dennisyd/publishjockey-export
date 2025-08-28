@@ -11,23 +11,17 @@
 
 
 
-% --- Load fancyhdr for page styling ---
-\usepackage{fancyhdr}
+% --- Simple page numbering without fancyhdr ---
+% Use basic LaTeX page numbering that's more reliable
+\makeatletter
+\def\@oddfoot{\hfil\thepage\hfil}
+\def\@evenfoot{\hfil\thepage\hfil}
+\def\@oddhead{}
+\def\@evenhead{}
+\makeatother
 
-% --- Configure fancyhdr for proper page numbering ---
-\pagestyle{fancy}
-\fancyhf{} % Clear all header and footer fields
-\fancyfoot[C]{\thepage} % Page number in center of footer
-\renewcommand{\headrulewidth}{0pt} % No header rule
-\renewcommand{\footrulewidth}{0pt} % No footer rule
-
-% --- Plain style for chapter pages ---
-\fancypagestyle{plain}{
-  \fancyhf{}
-  \fancyfoot[C]{\thepage}
-  \renewcommand{\headrulewidth}{0pt}
-  \renewcommand{\footrulewidth}{0pt}
-}
+% Set page style to plain for simple centered page numbers
+\pagestyle{plain}
 
 \ifnum 0\ifxetex 1\fi\ifluatex 1\fi=0 % if pdftex
   \usepackage[$if(fontenc)$$fontenc$$else$T1$endif$]{fontenc}
@@ -240,7 +234,7 @@ $endif$
 \usepackage{sectsty}               % For section formatting
 \usepackage{titlesec}              % Advanced title formatting
 \usepackage{tocloft}               % TOC formatting
-\usepackage{fancyhdr}              % Required for page numbering and styles
+% fancyhdr removed - using simple page numbering instead
 \usepackage{tocbibind}
 \usepackage{etoolbox}              % Programming tools
 \usepackage{bookmark}              % PDF bookmarks
@@ -363,7 +357,7 @@ $endif$
   \cleardoublepage
   \pagenumbering{arabic}
   \setcounter{page}{1}
-  \pagestyle{fancy}
+  \pagestyle{plain}
 }
 
 % Define proper backmatter command  
