@@ -1,6 +1,7 @@
 require('dotenv').config(); // Yancy D Dennis
 const express = require('express');
 const cors = require('cors');
+const Logger = require('./utils/logger');
 const { execFile, execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
@@ -245,7 +246,7 @@ const rateLimiting = require('./middleware/rateLimiting');
 
 // MongoDB sanitization temporarily disabled due to Express 5 compatibility issues
 // Main backend already provides comprehensive input sanitization
-console.log('ℹ️ MongoDB sanitization disabled - relying on main backend sanitization for security');
+Logger.info('MongoDB sanitization disabled - relying on main backend sanitization for security');
 
 // Update CORS configuration to explicitly allow frontend connections
 app.use(cors({
@@ -466,12 +467,13 @@ app.post('/import/google', async (req, res) => {
  */
 app.post('/export/pdf', rateLimiting.export, authenticateJWT, async (req, res) => {
   try {
-    // Debugging: log received fontFamily and exportOptions
-    console.log('Received fontFamily from frontend:', req.body.exportOptions?.fontFamily);
-    console.log('Full exportOptions received:', req.body.exportOptions);
+    // Extract request data
 
-    console.log('\n==================== PDF EXPORT REQUEST ====================');
-    console.log('FULL REQUEST BODY:', JSON.stringify(req.body, null, 2));
+    Logger.debug('PDF export request received', { 
+      userId: req.user?.id,
+      sectionsCount: sections?.length,
+      hasExportOptions: !!exportOptions 
+    });
 
     const { sections, exportOptions } = req.body;
 
@@ -771,7 +773,10 @@ app.post('/export/pdf', rateLimiting.export, authenticateJWT, async (req, res) =
  */
 app.post('/export/epub', rateLimiting.export, authenticateJWT, async (req, res) => {
   // Log the full request body for debugging
-  console.log('EPUB EXPORT REQUEST BODY:', JSON.stringify(req.body, null, 2));
+  Logger.debug('EPUB export request received', { 
+    userId: req.user?.id,
+    sectionsCount: req.body.sections?.length 
+  });
   
   const { sections, exportOptions, title } = req.body;
   
@@ -1050,7 +1055,10 @@ app.post('/export/epub', rateLimiting.export, authenticateJWT, async (req, res) 
  */
 app.post('/export/docx', rateLimiting.export, authenticateJWT, async (req, res) => {
   // Log the full request body for debugging
-  console.log('DOCX EXPORT REQUEST BODY:', JSON.stringify(req.body, null, 2));
+  Logger.debug('DOCX export request received', { 
+    userId: req.user?.id,
+    sectionsCount: req.body.sections?.length 
+  });
   const { sections, exportOptions, title } = req.body;
   
   if (!sections || !Array.isArray(sections) || sections.length === 0) {
@@ -1694,7 +1702,7 @@ function processPdfMarkdown(markdown, tocDepth, options = {}) {
 }
 
 // Start the server
-app.listen(3002, () => console.log('Export server running on port 3002'));
+app.listen(3002, () => Logger.info('Export server running on port 3002'));
 
 /**
  * GET /health
@@ -2755,9 +2763,9 @@ function authenticateJWT(req, res, next) {
   }
   const token = authHeader.split(' ')[1];
   
-  // Debug token
-  console.log('Token received:', token ? `${token.substring(0, 10)}...${token.substring(token.length - 10)}` : 'NONE');
-  console.log('Using JWT_SECRET:', JWT_SECRET ? `${JWT_SECRET.substring(0, 10)}...` : 'NOT FOUND');
+  // Debug token (only in development)
+  Logger.debug('Token received:', token ? `${token.substring(0, 10)}...${token.substring(token.length - 10)}` : 'NONE');
+  Logger.debug('Using JWT_SECRET:', JWT_SECRET ? `${JWT_SECRET.substring(0, 10)}...` : 'NOT FOUND');
   
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
@@ -2768,27 +2776,23 @@ function authenticateJWT(req, res, next) {
       id: decoded.id || decoded.userId || decoded.user_id // Support multiple ID formats
     };
 
-    // Log for debugging
-    console.log('JWT authenticated with user:', {
-      id: req.user.id,
-      email: req.user.email || 'not provided',
-      tokenPayload: decoded
+    // Log for debugging (secure)
+    Logger.security('JWT authenticated', {
+      userId: req.user.id,
+      success: true
     });
     
     // Ensure we have a valid user ID
     if (!req.user.id) {
-      console.error('Missing user ID in token payload:', decoded);
+      Logger.error('Missing user ID in token payload');
       return res.status(401).json({ error: 'Invalid token: missing user identifier' });
     }
     
     next();
   } catch (err) {
-    console.error('JWT verification error:', err.message);
-    console.error('JWT verification error details:', {
-      name: err.name,
-      message: err.message,
-      tokenLength: token ? token.length : 0,
-      secretLength: JWT_SECRET ? JWT_SECRET.length : 0
+    Logger.security('JWT verification failed', {
+      error: err.message,
+      success: false
     });
     return res.status(401).json({ error: 'Invalid or expired token' });
   }
