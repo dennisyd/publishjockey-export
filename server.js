@@ -240,6 +240,9 @@ const PANDOC_PATH = process.env.PANDOC_PATH ||
 
 const app = express();
 
+// Trust proxy for rate limiting behind reverse proxy (Render)
+app.set('trust proxy', 1);
+
 // Import rate limiting middleware
 const rateLimiting = require('./middleware/rateLimiting');
 // const mongoSanitize = require('express-mongo-sanitize');
@@ -468,14 +471,13 @@ app.post('/import/google', async (req, res) => {
 app.post('/export/pdf', rateLimiting.export, authenticateJWT, async (req, res) => {
   try {
     // Extract request data
+    const { sections, exportOptions } = req.body;
 
     Logger.debug('PDF export request received', { 
       userId: req.user?.id,
       sectionsCount: sections?.length,
       hasExportOptions: !!exportOptions 
     });
-
-    const { sections, exportOptions } = req.body;
 
     if (!sections || !Array.isArray(sections) || sections.length === 0) {
       console.error('No sections provided for PDF export');
