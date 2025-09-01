@@ -1545,9 +1545,17 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
 }
 
 % --- Form field commands for underscore conversion ---
+% Load required packages for form fields
+\\usepackage{calc}
+
 % Creates a horizontal line for form fields with proportional width
-\\newcommand{\\formfield}[1]{\\rule{#1\\linewidth}{0.5pt}}
-% Alternative command for inline underlined spaces (already handled by \\underline{\\hspace{}})
+% Using a more robust approach with calc package
+\\newcommand{\\formfield}[1]{%
+  \\rule{#1\\linewidth}{0.5pt}%
+}
+
+% DEBUG: Add test to verify formfield command is loaded
+\\typeout{DEBUG: formfield command definition loaded successfully}
 `;
       
       fs.writeFileSync(floatSettingsPath, floatSettings);
