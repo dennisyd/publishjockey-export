@@ -315,47 +315,6 @@ function assembleBookPdf(sections, options = {}) {
 
   // --- BACK MATTER ---
   if (backMatterSections.length > 0) {
-    // Continue arabic numbering, but use unnumbered chapters
-    for (const section of backMatterSections) {
-      let content = safeTrim(section.content);
-      
-      // Skip empty sections - no content, no headings
-      if (!content) {
-        console.log(`[Back Matter] Skipping empty section: ${section.title}`);
-        continue;
-      }
-      
-      // Convert # Heading to unnumbered chapter
-      content = content.replace(/^# (.*)$/gm, (match, title) => {
-        return `\\chapter*{${title}}\n\\addcontentsline{toc}{chapter}{${title}}`;
-      });
-      
-      // Handle ## headings based on tocDepth
-      if (numericTocDepth >= 2) {
-        content = content.replace(/^## (.*)$/gm, (_, t) => {
-          return `\\section*{${t}}\n\\addcontentsline{toc}{section}{${t}}`;
-        });
-      } else {
-        // Create section heading without TOC entry
-        content = content.replace(/^## (.*)$/gm, '\\section*{$1}');
-      }
-      
-      // Handle ### headings based on tocDepth
-      if (numericTocDepth >= 3) {
-        content = content.replace(/^### (.*)$/gm, (_, t) => {
-          return `\\subsection*{${t}}\n\\addcontentsline{toc}{subsection}{${t}}`;
-        });
-      } else {
-        // Create subsection heading without TOC entry
-        content = content.replace(/^### (.*)$/gm, '\\subsection*{$1}');
-      }
-      
-      output += content + '\n\n';
-    }
-  }
-
-  // --- BACK MATTER ---
-  if (backMatterSections.length > 0) {
     output += '```{=latex}\n';
     output += '\\backmatter\n';
     output += '```\n\n';

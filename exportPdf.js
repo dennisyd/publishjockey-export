@@ -903,6 +903,11 @@ function generatePageGeometryCode(pageSizeKey, pageCount, hasPageNumbers = true)
 \\usepackage{seqsplit}
 \\urlstyle{same}
 
+% --- Form field commands for underscore conversion ---
+% Creates a horizontal line for form fields with proportional width
+\\newcommand{\\formfield}[1]{\\rule{#1\\linewidth}{0.5pt}}
+% Alternative command for inline underlined spaces (already handled by \\underline{\\hspace{}})
+
 % --- Justification ---
 \\usepackage{ragged2e}
 \\AtBeginDocument{\\justifying}
@@ -1302,6 +1307,71 @@ async function debugCloudinaryProcessing(markdown, tempDir) {
 }
 
 /**
+ * Convert underscore sequences to proper LaTeX form fields
+ * Handles both inline form fields (between words) and end-of-line form fields
+ */
+function convertUnderscoresToFormFields(markdown) {
+  console.log('[UNDERSCORE CONVERSION] Starting smart underscore conversion...');
+  
+  let processedMarkdown = markdown;
+  let conversionCount = 0;
+  
+  // Pattern 1: Handle inline form fields (underscores between words)
+  // Example: "Yancy ____ Dennis" -> "Yancy \underline{\hspace{0.4in}} Dennis"
+  processedMarkdown = processedMarkdown.replace(/(\S+)\s+(_{3,})\s+(\S+)/g, (match, beforeWord, underscores, afterWord) => {
+    const underscoreCount = underscores.length;
+    // Calculate width: 3-5 underscores = 0.3in, 6-10 = 0.6in, 11+ = 1.0in (max)
+    let width;
+    if (underscoreCount <= 5) width = '0.3';
+    else if (underscoreCount <= 10) width = '0.6';
+    else width = '1.0';
+    
+    console.log(`[UNDERSCORE CONVERSION] Inline: "${beforeWord} ${underscores} ${afterWord}" -> ${width}in width`);
+    conversionCount++;
+    return `${beforeWord} \\underline{\\hspace{${width}in}} ${afterWord}`;
+  });
+  
+  // Pattern 2: Handle end-of-line form fields (colon followed by underscores)
+  // Example: "Most unnecessary distraction today: _________________________"
+  processedMarkdown = processedMarkdown.replace(/^(\s*-?\s*)(.+?):\s*(_{10,})\s*$/gm, (match, listMarker, label, underscores) => {
+    const labelLength = label.trim().length;
+    let fillWidth;
+    
+    // Calculate width based on label length to maintain visual balance
+    if (labelLength < 15) fillWidth = '0.75';        // Short labels get longer lines
+    else if (labelLength < 30) fillWidth = '0.6';    // Medium labels get medium lines  
+    else if (labelLength < 45) fillWidth = '0.45';   // Long labels get shorter lines
+    else fillWidth = '0.3';                          // Very long labels get shortest lines
+    
+    console.log(`[UNDERSCORE CONVERSION] End-of-line: "${label}" (${labelLength} chars) -> ${fillWidth} line width`);
+    conversionCount++;
+    return `${listMarker}${label}: \\formfield{${fillWidth}}`;
+  });
+  
+  // Pattern 3: Handle simple end-of-line underscores without colons
+  // Example: "Name _________________________"
+  processedMarkdown = processedMarkdown.replace(/^(\s*-?\s*)(.+?)\s+(_{10,})\s*$/gm, (match, listMarker, label, underscores) => {
+    // Only process if it doesn't already have a colon (avoid double-processing)
+    if (label.includes(':')) return match;
+    
+    const labelLength = label.trim().length;
+    let fillWidth;
+    
+    if (labelLength < 10) fillWidth = '0.8';         // Very short labels
+    else if (labelLength < 20) fillWidth = '0.65';   // Short labels
+    else if (labelLength < 35) fillWidth = '0.5';    // Medium labels
+    else fillWidth = '0.35';                         // Long labels
+    
+    console.log(`[UNDERSCORE CONVERSION] Simple end-of-line: "${label}" (${labelLength} chars) -> ${fillWidth} line width`);
+    conversionCount++;
+    return `${listMarker}${label} \\formfield{${fillWidth}}`;
+  });
+  
+  console.log(`[UNDERSCORE CONVERSION] Converted ${conversionCount} underscore sequences to form fields`);
+  return processedMarkdown;
+}
+
+/**
  * MAIN EXPORT FUNCTION - Enhanced with better debugging and error handling
  */
 async function exportPdf(assembledPath, outputPath, options = {}) {
@@ -1376,6 +1446,10 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
       // STEP 4: Convert alignment divs
       console.log(`[PDF EXPORT] Step 4: Converting alignment divs...`);
       markdown = convertAlignmentDivsToLatex(markdown);
+      
+      // STEP 4.1: Convert underscore sequences to proper form fields
+      console.log(`[PDF EXPORT] Step 4.1: Converting underscore sequences to form fields...`);
+      markdown = convertUnderscoresToFormFields(markdown);
       
              // STEP 4.5: RTL language validation and warnings
        if (options.language && ['ar', 'he', 'yi'].includes(options.language)) {
