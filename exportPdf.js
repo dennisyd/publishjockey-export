@@ -1333,7 +1333,8 @@ function convertUnderscoresToFormFields(markdown) {
   
   // Pattern 2: Handle end-of-line form fields (colon followed by underscores)
   // Example: "Most unnecessary distraction today: _________________________"
-  processedMarkdown = processedMarkdown.replace(/^(\s*-?\s*)(.+?):\s*(_{10,})\s*$/gm, (match, listMarker, label, underscores) => {
+  // FIXED: Use [^\n\r] to ensure we don't cross line boundaries
+  processedMarkdown = processedMarkdown.replace(/^(\s*-?\s*)([^\n\r:]+):\s*(_{10,})\s*$/gm, (match, listMarker, label, underscores) => {
     const labelLength = label.trim().length;
     let fillWidth;
     
@@ -1350,7 +1351,8 @@ function convertUnderscoresToFormFields(markdown) {
   
   // Pattern 3: Handle simple end-of-line underscores without colons
   // Example: "Name _________________________"
-  processedMarkdown = processedMarkdown.replace(/^(\s*-?\s*)(.+?)\s+(_{10,})\s*$/gm, (match, listMarker, label, underscores) => {
+  // FIXED: Use [^\n\r] to ensure we don't cross line boundaries
+  processedMarkdown = processedMarkdown.replace(/^(\s*-?\s*)([^\n\r]+?)\s+(_{10,})\s*$/gm, (match, listMarker, label, underscores) => {
     // Only process if it doesn't already have a colon (avoid double-processing)
     if (label.includes(':')) return match;
     
