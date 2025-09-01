@@ -903,11 +903,6 @@ function generatePageGeometryCode(pageSizeKey, pageCount, hasPageNumbers = true)
 \\usepackage{seqsplit}
 \\urlstyle{same}
 
-% --- Form field commands for underscore conversion ---
-% Creates a horizontal line for form fields with proportional width
-\\newcommand{\\formfield}[1]{\\rule{#1\\linewidth}{0.5pt}}
-% Alternative command for inline underlined spaces (already handled by \\underline{\\hspace{}})
-
 % --- Justification ---
 \\usepackage{ragged2e}
 \\AtBeginDocument{\\justifying}
@@ -1548,6 +1543,11 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
 \\newcommand{\\safeinclude}[1]{%
   \\IfFileExists{#1}{\\includegraphics{#1}}{\\textit{[Image: #1 not found]}}%
 }
+
+% --- Form field commands for underscore conversion ---
+% Creates a horizontal line for form fields with proportional width
+\\newcommand{\\formfield}[1]{\\rule{#1\\linewidth}{0.5pt}}
+% Alternative command for inline underlined spaces (already handled by \\underline{\\hspace{}})
 `;
       
       fs.writeFileSync(floatSettingsPath, floatSettings);
