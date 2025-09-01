@@ -1318,13 +1318,16 @@ function convertUnderscoresToFormFields(markdown) {
   
   // Pattern 1: Handle inline form fields (underscores between words)
   // Example: "Yancy ____ Dennis" -> "Yancy \underline{\hspace{0.4in}} Dennis"
-  processedMarkdown = processedMarkdown.replace(/(\S+)\s+(_{3,})\s+(\S+)/g, (match, beforeWord, underscores, afterWord) => {
+  // FIXED: More restrictive - only match when there's meaningful text AFTER underscores on SAME LINE
+  processedMarkdown = processedMarkdown.replace(/(\S+)\s+(_{3,9})\s+([^\s\-\n\r][^\n\r]{2,})/g, (match, beforeWord, underscores, afterWord) => {
+    // Skip if this looks like an end-of-line pattern (colon before underscores)
+    if (beforeWord.endsWith(':')) return match;
+    
     const underscoreCount = underscores.length;
-    // Calculate width: 3-5 underscores = 0.3in, 6-10 = 0.6in, 11+ = 1.0in (max)
+    // Calculate width: 3-5 underscores = 0.3in, 6-9 = 0.6in
     let width;
     if (underscoreCount <= 5) width = '0.3';
-    else if (underscoreCount <= 10) width = '0.6';
-    else width = '1.0';
+    else width = '0.6';
     
     console.log(`[UNDERSCORE CONVERSION] Inline: "${beforeWord} ${underscores} ${afterWord}" -> ${width}in width`);
     conversionCount++;
