@@ -1342,9 +1342,9 @@ function convertUnderscoresToFormFields(markdown) {
     else if (labelLength < 45) fillWidth = '0.45';   // Long labels get shorter lines
     else fillWidth = '0.3';                          // Very long labels get shortest lines
     
-    console.log(`[UNDERSCORE CONVERSION] End-of-line: "${label}" (${labelLength} chars) -> ${fillWidth} line width`);
-    conversionCount++;
-    return `${listMarker}${label}: \\formfield{${fillWidth}}`;
+                    console.log(`[UNDERSCORE CONVERSION] End-of-line: "${label}" (${labelLength} chars) -> ${fillWidth} line width`);
+                conversionCount++;
+                return `${listMarker}${label}: \\rule{${fillWidth}\\linewidth}{0.4pt}`;
   });
   
   // Pattern 3: Handle simple end-of-line underscores without colons
@@ -1362,9 +1362,9 @@ function convertUnderscoresToFormFields(markdown) {
     else if (labelLength < 35) fillWidth = '0.5';    // Medium labels
     else fillWidth = '0.35';                         // Long labels
     
-    console.log(`[UNDERSCORE CONVERSION] Simple end-of-line: "${label}" (${labelLength} chars) -> ${fillWidth} line width`);
-    conversionCount++;
-    return `${listMarker}${label} \\formfield{${fillWidth}}`;
+                    console.log(`[UNDERSCORE CONVERSION] Simple end-of-line: "${label}" (${labelLength} chars) -> ${fillWidth} line width`);
+                conversionCount++;
+                return `${listMarker}${label} \\rule{${fillWidth}\\linewidth}{0.4pt}`;
   });
   
   console.log(`[UNDERSCORE CONVERSION] Converted ${conversionCount} underscore sequences to form fields`);
@@ -1544,18 +1544,9 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
   \\IfFileExists{#1}{\\includegraphics{#1}}{\\textit{[Image: #1 not found]}}%
 }
 
-% --- Form field commands for underscore conversion ---
-% Load required packages for form fields
-\\usepackage{calc}
-
-% Creates a horizontal line for form fields with proportional width
-% Using a more robust approach with calc package
-\\newcommand{\\formfield}[1]{%
-  \\rule{#1\\linewidth}{0.5pt}%
-}
-
-% DEBUG: Add test to verify formfield command is loaded
-\\typeout{DEBUG: formfield command definition loaded successfully}
+% --- Form field support for underscore conversion ---
+% Using standard LaTeX \\rule command - no additional packages needed
+% Note: \\rule{width}{height} creates horizontal lines for form fields
 `;
       
       fs.writeFileSync(floatSettingsPath, floatSettings);
