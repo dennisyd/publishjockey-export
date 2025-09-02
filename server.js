@@ -256,7 +256,7 @@ app.use(cors({
   origin: true, //['https://publishjockey-frontend.vercel.app','http://localhost:3000', 'http://localhost:5173'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'cache-control', 'x-requested-with', 'x-csrf-token', 'pragma', 'x-nonce', 'x-timestamp'],
   exposedHeaders: ['Content-Disposition'] // Expose Content-Disposition header for downloads
 }));
 
