@@ -895,7 +895,7 @@ function generatePageGeometryCode(pageSizeKey, pageCount, hasPageNumbers = true)
 }
 \\makeatother
 
-% --- Better text handling ---
+% --- Enhanced URL and text handling ---
 \\usepackage{microtype}
 \\usepackage{url}
 \\usepackage{xurl}
@@ -903,7 +903,15 @@ function generatePageGeometryCode(pageSizeKey, pageCount, hasPageNumbers = true)
 \\usepackage{seqsplit}
 \\urlstyle{same}
 
-% --- Justification ---
+% Better URL breaking - allows URLs to break at more characters
+\\def\\UrlBreaks{\\do\\-\\do\\_\\do\\.\\do\\@\\do\\\\\\do\\/}
+\\def\\UrlBigBreaks{\\do\\-\\do\\_\\do\\.\\do\\@\\do\\\\\\do\\/}
+
+% Allow emergency stretching for URLs and long text
+\\emergencystretch=3em
+\\tolerance=2000
+
+% --- Enhanced Justification with URL consideration ---
 \\usepackage{ragged2e}
 \\AtBeginDocument{\\justifying}
 
@@ -914,12 +922,20 @@ function generatePageGeometryCode(pageSizeKey, pageCount, hasPageNumbers = true)
 \\pdfpageheight=${height}in
 \\special{papersize=${width}in,${height}in}
 
-% --- Text flow ---
+% --- Enhanced text flow for URLs and justification ---
 \\tolerance=3000
-\\emergencystretch=3em
+\\emergencystretch=5em
 \\hbadness=10000
 \\vfuzz=30pt
 \\hfuzz=30pt
+
+% Additional penalties for better URL handling
+\\hyphenpenalty=50
+\\exhyphenpenalty=50
+\\binoppenalty=700
+\\relpenalty=500
+\\clubpenalty=150
+\\widowpenalty=150
 \\setlength{\\rightskip}{0pt plus 5pt}
 \\parfillskip=0pt plus 0.75\\textwidth
 \\sloppy

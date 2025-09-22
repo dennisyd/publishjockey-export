@@ -6,6 +6,43 @@ const { identifySpecialSections } = require('./utils/bookStructureLocalization')
 // Image processing now handled by exportPdf.js
 
 /**
+ * Detects and wraps URLs in LaTeX \url{} commands to prevent justification issues.
+ * This function identifies URLs (http://, https://, www., and email addresses) 
+ * and wraps them in proper LaTeX commands for better line breaking.
+ */
+function processUrlsForLatex(content) {
+  if (!content || typeof content !== 'string') return content;
+  
+  // URL regex patterns - comprehensive but conservative to avoid false positives
+  const patterns = [
+    // Full URLs with protocol
+    {
+      regex: /(^|[^\\])(https?:\/\/[^\s\(\)\[\]<>"']+[^\s\(\)\[\]<>"'.,;!?:])/gi,
+      replacement: '$1\\url{$2}'
+    },
+    // URLs starting with www (common pattern)
+    {
+      regex: /(^|[^\\])(www\.[^\s\(\)\[\]<>"']+[^\s\(\)\[\]<>"'.,;!?:])/gi,
+      replacement: '$1\\url{$2}'
+    },
+    // Email addresses
+    {
+      regex: /(^|[^\\])([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/gi,
+      replacement: '$1\\url{$2}'
+    }
+  ];
+  
+  let processedContent = content;
+  
+  // Apply each pattern
+  for (const pattern of patterns) {
+    processedContent = processedContent.replace(pattern.regex, pattern.replacement);
+  }
+  
+  return processedContent;
+}
+
+/**
  * Processes markdown content to automatically number chapters.
  * - Each level 1 heading gets transformed into a centered div with Chapter and title
  * - All other content is preserved
@@ -204,14 +241,17 @@ function assembleBookPdf(sections, options = {}) {
   }
 
   // Process remaining front matter sections
-  for (const section of frontMatterSections) {
-    let content = safeTrim(section.content);
-    
-    // Skip empty sections - no content, no headings
-    if (!content) {
-      console.log(`[Front Matter] Skipping empty section: ${section.title}`);
-      continue;
-    }
+    for (const section of frontMatterSections) {
+      let content = safeTrim(section.content);
+      
+      // Skip empty sections - no content, no headings
+      if (!content) {
+        console.log(`[Front Matter] Skipping empty section: ${section.title}`);
+        continue;
+      }
+      
+      // Process URLs before other content processing
+      content = processUrlsForLatex(content);
     
     // Debug: Log what we're processing
     console.log(`[Front Matter] Processing section: ${section.title}, tocDepth: ${numericTocDepth}`);
@@ -262,6 +302,9 @@ function assembleBookPdf(sections, options = {}) {
         console.log(`[Main Matter] Skipping empty section: ${section.title}`);
         continue;
       }
+      
+      // Process URLs before other content processing
+      content = processUrlsForLatex(content);
       
       // Check if this section is a Part divider
       const isPartDivider = section.title && /^Part [IVXLCDM]+:/.test(section.title);
@@ -327,6 +370,9 @@ function assembleBookPdf(sections, options = {}) {
         console.log(`[Back Matter] Skipping empty section: ${section.title}`);
         continue;
       }
+      
+      // Process URLs before other content processing
+      content = processUrlsForLatex(content);
       
       // Debug: Log what we're processing
       console.log(`[Back Matter] Processing section: ${section.title}, tocDepth: ${numericTocDepth}`);
