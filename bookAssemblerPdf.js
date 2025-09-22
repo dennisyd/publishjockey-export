@@ -9,35 +9,43 @@ const { identifySpecialSections } = require('./utils/bookStructureLocalization')
  * Detects and wraps URLs in LaTeX \url{} commands to prevent justification issues.
  * This function identifies URLs (http://, https://, www., and email addresses) 
  * and wraps them in proper LaTeX commands for better line breaking.
+ * Prevents double-wrapping by checking for existing \url{} commands.
  */
 function processUrlsForLatex(content) {
   if (!content || typeof content !== 'string') return content;
   
-  // URL regex patterns - comprehensive but conservative to avoid false positives
-  const patterns = [
-    // Full URLs with protocol
-    {
-      regex: /(^|[^\\])(https?:\/\/[^\s\(\)\[\]<>"']+[^\s\(\)\[\]<>"'.,;!?:])/gi,
-      replacement: '$1\\url{$2}'
-    },
-    // URLs starting with www (common pattern)
-    {
-      regex: /(^|[^\\])(www\.[^\s\(\)\[\]<>"']+[^\s\(\)\[\]<>"'.,;!?:])/gi,
-      replacement: '$1\\url{$2}'
-    },
-    // Email addresses
-    {
-      regex: /(^|[^\\])([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/gi,
-      replacement: '$1\\url{$2}'
-    }
-  ];
-  
   let processedContent = content;
   
-  // Apply each pattern
-  for (const pattern of patterns) {
-    processedContent = processedContent.replace(pattern.regex, pattern.replacement);
-  }
+  // Process URLs in order of specificity (most specific first) to prevent nested wrapping
+  // 1. First, handle full URLs with protocol (most specific)
+  processedContent = processedContent.replace(
+    /(^|[^\\{])(https?:\/\/[^\s\(\)\[\]<>"']+[^\s\(\)\[\]<>"'.,;!?:])/gi,
+    '$1\\url{$2}'
+  );
+  
+  // 2. Then handle www URLs, but avoid those already in \url{} commands
+  processedContent = processedContent.replace(
+    /(^|[^\\{])(www\.[^\s\(\)\[\]<>"'{}]+[^\s\(\)\[\]<>"'.,;!?:{}])/gi,
+    (match, prefix, url) => {
+      // Don't wrap if this www URL is already inside a \url{} command
+      if (processedContent.includes(`\\url{${url}`) || processedContent.includes(`\\url{https://${url}`) || processedContent.includes(`\\url{http://${url}`)) {
+        return match; // Leave unchanged
+      }
+      return `${prefix}\\url{${url}}`;
+    }
+  );
+  
+  // 3. Finally, handle email addresses
+  processedContent = processedContent.replace(
+    /(^|[^\\{])([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/gi,
+    (match, prefix, email) => {
+      // Don't wrap if this email is already inside a \url{} command
+      if (processedContent.includes(`\\url{${email}`)) {
+        return match; // Leave unchanged
+      }
+      return `${prefix}\\url{${email}}`;
+    }
+  );
   
   return processedContent;
 }
