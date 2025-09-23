@@ -17,10 +17,16 @@ function processUrlsForLatex(content) {
   let processedContent = content;
   
   // Process URLs in order of specificity (most specific first) to prevent nested wrapping
-  // 1. First, handle full URLs with protocol (most specific)
+  // 1. First, handle full URLs with protocol (most specific), but skip Cloudinary image URLs
   processedContent = processedContent.replace(
     /(^|[^\\{])(https?:\/\/[^\s\(\)\[\]<>"']+[^\s\(\)\[\]<>"'.,;!?:])/gi,
-    '$1\\url{$2}'
+    (match, prefix, url) => {
+      // Skip Cloudinary URLs in markdown image syntax to prevent breaking image processing
+      if (url.includes('res.cloudinary.com') || url.includes('cloudinary')) {
+        return match; // Leave unchanged
+      }
+      return `${prefix}\\url{${url}}`;
+    }
   );
   
   // 2. Then handle www URLs, but avoid those already in \url{} commands

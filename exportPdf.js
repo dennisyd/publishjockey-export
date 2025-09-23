@@ -129,8 +129,10 @@ function convertCustomImageSyntax(markdown) {
     const scaleValue = parseFloat(scale) || 1.0;
     // Don't use default captions - if alt is "Image" or empty, make it empty
     const cleanAlt = (alt && alt.trim() && alt.trim() !== 'Image') ? alt.trim() : '';
-    console.log(`[CLOUDINARY] Alt cleaned: "${alt}" -> "${cleanAlt}"`);
-    return `![${cleanAlt}](${url})<!-- scale:${scaleValue} -->`;
+    // Escape LaTeX special characters in alt text to prevent LaTeX errors
+    const escapedAlt = cleanAlt.replace(/[{}]/g, '\\$&'); // Escape { and } braces
+    console.log(`[CLOUDINARY] Alt cleaned: "${alt}" -> "${cleanAlt}" -> "${escapedAlt}"`);
+    return `![${escapedAlt}](${url})<!-- scale:${scaleValue} -->`;
   });
   
   console.log(`[CLOUDINARY] Converted ${convertCount} custom images to markdown`);
