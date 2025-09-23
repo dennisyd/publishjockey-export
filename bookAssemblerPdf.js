@@ -3,6 +3,7 @@ const { removeEmojis } = require('./utils');
 const { assembleBookPlain } = require('./assembleBookPlain');
 const { getTocTitle } = require('./translations');
 const { identifySpecialSections } = require('./utils/bookStructureLocalization');
+const { BibliographyDetector } = require('./BibliographyDetector');
 // Image processing now handled by exportPdf.js
 
 /**
@@ -56,106 +57,7 @@ function processUrlsForLatex(content) {
   return processedContent;
 }
 
-/**
- * Check if a section title is a bibliography section in any supported language
- * Uses the existing localization system to support all languages
- */
-function isBibliographySection(sectionTitle) {
-  if (!sectionTitle) return false;
-  
-  // Get bibliography terms from all supported languages
-  const { localizedStructures } = require('./utils/bookStructureLocalization');
-  
-  // Collect all bibliography-related terms from all languages
-  const bibliographyTerms = new Set();
-  
-  Object.values(localizedStructures).forEach(structure => {
-    if (structure.back) {
-      structure.back.forEach(term => {
-        const lowerTerm = term.toLowerCase();
-        // Add terms that are likely bibliography-related
-        if (lowerTerm.includes('reference') || lowerTerm.includes('bibliograph') || 
-            lowerTerm.includes('source') || lowerTerm.includes('cited') ||
-            lowerTerm.includes('référence') || lowerTerm.includes('bibliografia') ||
-            lowerTerm.includes('bibliografie') || lowerTerm.includes('библиография') ||
-            lowerTerm.includes('مراجع') || lowerTerm.includes('مصادر') ||
-            lowerTerm.includes('ссылки') || lowerTerm.includes('riferimenti') ||
-            lowerTerm.includes('referenzen') || lowerTerm.includes('referencias')) {
-          bibliographyTerms.add(lowerTerm);
-        }
-      });
-    }
-  });
-  
-  const titleLower = sectionTitle.toLowerCase();
-  
-  // Check if section title matches any bibliography term
-  for (const term of bibliographyTerms) {
-    if (titleLower.includes(term)) {
-      console.log(`[BIBLIOGRAPHY] Detected bibliography section: "${sectionTitle}" (matched: "${term}")`);
-      return true;
-    }
-  }
-  
-  return false;
-}
-
-/**
- * Add zero-width spaces to long URLs for better line breaking in XeLaTeX
- * This is specifically for bibliography sections where URLs tend to be very long
- */
-function addZeroWidthSpacesToLongUrls(content) {
-  if (!content || typeof content !== 'string') return content;
-  
-  const ZERO_WIDTH_SPACE = '\u200B';
-  const MAX_URL_LENGTH = 30; // Lower threshold for narrow book columns
-  
-  console.log(`[URL BREAKS] Processing content for zero-width space insertion...`);
-  
-  // Process URLs that are already in \url{} commands (from processUrlsForLatex)
-  let processedContent = content.replace(/\\url\{([^}]+)\}/g, (match, url) => {
-    if (url.length > MAX_URL_LENGTH) {
-      console.log(`[URL BREAKS] Adding breaks to long URL in \\url{}: ${url.substring(0, 40)}... (${url.length} chars)`);
-      
-      // Add zero-width spaces after common URL separators
-      let breakableUrl = url
-        .replace(/\//g, `/${ZERO_WIDTH_SPACE}`)      // After slashes
-        .replace(/\./g, `.${ZERO_WIDTH_SPACE}`)      // After dots  
-        .replace(/\-/g, `-${ZERO_WIDTH_SPACE}`)      // After hyphens
-        .replace(/\?/g, `?${ZERO_WIDTH_SPACE}`)      // After question marks
-        .replace(/\&/g, `&${ZERO_WIDTH_SPACE}`)      // After ampersands  
-        .replace(/\=/g, `=${ZERO_WIDTH_SPACE}`)      // After equals
-        .replace(/_/g, `_${ZERO_WIDTH_SPACE}`);      // After underscores
-        
-      return `\\url{${breakableUrl}}`;
-    }
-    return match;
-  });
-  
-  // Also process any bare URLs that weren't caught by processUrlsForLatex
-  processedContent = processedContent.replace(/(https?:\/\/[^\s\(\)\[\]<>"']+)/g, (match, url) => {
-    // Skip if it's already in a \url{} command
-    if (match.includes('\\url{')) return match;
-    
-    if (url.length > MAX_URL_LENGTH) {
-      console.log(`[URL BREAKS] Adding breaks to bare URL: ${url.substring(0, 40)}... (${url.length} chars)`);
-      
-      let breakableUrl = url
-        .replace(/\//g, `/${ZERO_WIDTH_SPACE}`)
-        .replace(/\./g, `.${ZERO_WIDTH_SPACE}`)
-        .replace(/\-/g, `-${ZERO_WIDTH_SPACE}`)
-        .replace(/\?/g, `?${ZERO_WIDTH_SPACE}`)
-        .replace(/\&/g, `&${ZERO_WIDTH_SPACE}`)
-        .replace(/\=/g, `=${ZERO_WIDTH_SPACE}`)
-        .replace(/_/g, `_${ZERO_WIDTH_SPACE}`);
-        
-      return `\\url{${breakableUrl}}`;
-    }
-    return match;
-  });
-  
-  return processedContent;
-}
+// Old bibliography detection functions removed - now using BibliographyDetector class
 
 /**
  * Processes markdown content to automatically number chapters.
@@ -477,6 +379,23 @@ function assembleBookPdf(sections, options = {}) {
     output += '\\backmatter\n';
     output += '```\n\n';
     
+    // Step 1: Advanced bibliography detection and URL processing
+    console.log(`[BACK MATTER] Starting advanced bibliography detection for ${backMatterSections.length} sections...`);
+    const detector = new BibliographyDetector({
+      minScore: 0.6,           // Minimum score to consider as bibliography
+      urlDensity: 0.25,        // Minimum URLs per 100 words  
+      avgLineLength: 75        // Minimum average line length
+    });
+    
+    // Collect all back matter content for analysis
+    const allBackMatterContent = backMatterSections
+      .map(section => `# ${section.title}\n\n${section.content || ''}`)
+      .join('\n\n');
+    
+    // Process only detected bibliography sections with advanced URL breaking
+    const bibliographyProcessedContent = detector.processOnlyBibliographies(allBackMatterContent);
+    
+    // Step 2: Process individual sections for LaTeX structure
     for (const section of backMatterSections) {
       let content = safeTrim(section.content);
       
@@ -486,14 +405,22 @@ function assembleBookPdf(sections, options = {}) {
         continue;
       }
       
-      // Process URLs before other content processing - enhanced for bibliography
-      content = processUrlsForLatex(content);
-      
-      // Additional URL processing for bibliography sections (longer URLs need more breaks)
-      if (isBibliographySection(section.title)) {
-        console.log(`[Back Matter] Applying enhanced URL breaking for bibliography section: ${section.title}`);
-        content = addZeroWidthSpacesToLongUrls(content);
+      // Try to find this section's content in the bibliography-processed version
+      const sectionWithHeader = `# ${section.title}\n\n${content}`;
+      const sectionStart = bibliographyProcessedContent.indexOf(sectionWithHeader);
+      if (sectionStart >= 0) {
+        // Extract the processed content (skip the header we added)
+        const headerLength = `# ${section.title}\n\n`.length;
+        const sectionEnd = bibliographyProcessedContent.indexOf('\n\n# ', sectionStart + 1);
+        const endPos = sectionEnd >= 0 ? sectionEnd : bibliographyProcessedContent.length;
+        content = bibliographyProcessedContent.substring(sectionStart + headerLength, endPos).trim();
+        console.log(`[Back Matter] Using bibliography-processed content for: ${section.title}`);
+      } else {
+        console.log(`[Back Matter] Using original content for: ${section.title}`);
       }
+      
+      // Apply regular URL processing (but skip Cloudinary URLs to avoid conflicts)
+      content = processUrlsForLatex(content);
       
       // Debug: Log what we're processing
       console.log(`[Back Matter] Processing section: ${section.title}, tocDepth: ${numericTocDepth}`);
