@@ -57,6 +57,50 @@ function processUrlsForLatex(content) {
 }
 
 /**
+ * Check if a section title is a bibliography section in any supported language
+ * Uses the existing localization system to support all languages
+ */
+function isBibliographySection(sectionTitle) {
+  if (!sectionTitle) return false;
+  
+  // Get bibliography terms from all supported languages
+  const { localizedStructures } = require('./utils/bookStructureLocalization');
+  
+  // Collect all bibliography-related terms from all languages
+  const bibliographyTerms = new Set();
+  
+  Object.values(localizedStructures).forEach(structure => {
+    if (structure.back) {
+      structure.back.forEach(term => {
+        const lowerTerm = term.toLowerCase();
+        // Add terms that are likely bibliography-related
+        if (lowerTerm.includes('reference') || lowerTerm.includes('bibliograph') || 
+            lowerTerm.includes('source') || lowerTerm.includes('cited') ||
+            lowerTerm.includes('référence') || lowerTerm.includes('bibliografia') ||
+            lowerTerm.includes('bibliografie') || lowerTerm.includes('библиография') ||
+            lowerTerm.includes('مراجع') || lowerTerm.includes('مصادر') ||
+            lowerTerm.includes('ссылки') || lowerTerm.includes('riferimenti') ||
+            lowerTerm.includes('referenzen') || lowerTerm.includes('referencias')) {
+          bibliographyTerms.add(lowerTerm);
+        }
+      });
+    }
+  });
+  
+  const titleLower = sectionTitle.toLowerCase();
+  
+  // Check if section title matches any bibliography term
+  for (const term of bibliographyTerms) {
+    if (titleLower.includes(term)) {
+      console.log(`[BIBLIOGRAPHY] Detected bibliography section: "${sectionTitle}" (matched: "${term}")`);
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+/**
  * Add zero-width spaces to long URLs for better line breaking in XeLaTeX
  * This is specifically for bibliography sections where URLs tend to be very long
  */
@@ -446,10 +490,7 @@ function assembleBookPdf(sections, options = {}) {
       content = processUrlsForLatex(content);
       
       // Additional URL processing for bibliography sections (longer URLs need more breaks)
-      if (section.title && (section.title.toLowerCase().includes('reference') || 
-                           section.title.toLowerCase().includes('bibliograph') || 
-                           section.title.toLowerCase().includes('sources') || 
-                           section.title.toLowerCase().includes('works cited'))) {
+      if (isBibliographySection(section.title)) {
         console.log(`[Back Matter] Applying enhanced URL breaking for bibliography section: ${section.title}`);
         content = addZeroWidthSpacesToLongUrls(content);
       }
