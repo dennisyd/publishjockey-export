@@ -379,23 +379,15 @@ function assembleBookPdf(sections, options = {}) {
     output += '\\backmatter\n';
     output += '```\n\n';
     
-    // Step 1: Advanced bibliography detection and URL processing
+    // Step 1: Initialize bibliography detector with book-friendly settings
     console.log(`[BACK MATTER] Starting advanced bibliography detection for ${backMatterSections.length} sections...`);
     const detector = new BibliographyDetector({
-      minScore: 0.6,           // Minimum score to consider as bibliography
-      urlDensity: 0.25,        // Minimum URLs per 100 words  
-      avgLineLength: 75        // Minimum average line length
+      minScore: 0.5,           // Lowered for book bibliographies
+      urlDensity: 0.1,         // Much lower for book-heavy references  
+      avgLineLength: 60        // Lower for varied citation lengths
     });
     
-    // Collect all back matter content for analysis
-    const allBackMatterContent = backMatterSections
-      .map(section => `# ${section.title}\n\n${section.content || ''}`)
-      .join('\n\n');
-    
-    // Process only detected bibliography sections with advanced URL breaking
-    const bibliographyProcessedContent = detector.processOnlyBibliographies(allBackMatterContent);
-    
-    // Step 2: Process individual sections for LaTeX structure
+    // Step 2: Process each section individually (simpler and more reliable)
     for (const section of backMatterSections) {
       let content = safeTrim(section.content);
       
@@ -405,25 +397,23 @@ function assembleBookPdf(sections, options = {}) {
         continue;
       }
       
-      // Try to find this section's content in the bibliography-processed version
+      // Check if this section is a bibliography using content analysis
       const sectionWithHeader = `# ${section.title}\n\n${content}`;
-      const sectionStart = bibliographyProcessedContent.indexOf(sectionWithHeader);
-      if (sectionStart >= 0) {
-        // Extract the processed content (skip the header we added)
-        const headerLength = `# ${section.title}\n\n`.length;
-        const sectionEnd = bibliographyProcessedContent.indexOf('\n\n# ', sectionStart + 1);
-        const endPos = sectionEnd >= 0 ? sectionEnd : bibliographyProcessedContent.length;
-        content = bibliographyProcessedContent.substring(sectionStart + headerLength, endPos).trim();
-        console.log(`[Back Matter] Using bibliography-processed content for: ${section.title}`);
+      const bibliographySections = detector.detectBibliographySections(sectionWithHeader);
+      
+      if (bibliographySections.length > 0 && bibliographySections[0].score >= 0.5) {
+        console.log(`[Back Matter] Bibliography detected for "${section.title}" (score: ${bibliographySections[0].score.toFixed(3)})`);
+        // Apply advanced URL processing for detected bibliography
+        content = detector.processUrlsInSection(content);
       } else {
-        console.log(`[Back Matter] Using original content for: ${section.title}`);
+        console.log(`[Back Matter] Regular section: "${section.title}"`);
       }
       
       // Apply regular URL processing (but skip Cloudinary URLs to avoid conflicts)
       content = processUrlsForLatex(content);
       
       // Debug: Log what we're processing
-      console.log(`[Back Matter] Processing section: ${section.title}, tocDepth: ${numericTocDepth}`);
+      console.log(`[Back Matter] Finalizing LaTeX structure for: ${section.title}, tocDepth: ${numericTocDepth}`);
       
       // Convert # Heading to unnumbered chapter
       content = content.replace(/^# (.*)$/gm, (match, title) => {

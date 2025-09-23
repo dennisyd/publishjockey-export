@@ -7,9 +7,9 @@
 class BibliographyDetector {
   constructor(options = {}) {
     this.thresholds = {
-      bibliographyScore: options.minScore || 0.6,
-      urlDensity: options.urlDensity || 0.25,        // URLs per 100 words
-      avgLineLength: options.avgLineLength || 75,     // Characters
+      bibliographyScore: options.minScore || 0.5,     // Lowered for book bibliographies
+      urlDensity: options.urlDensity || 0.1,          // Much lower for book bibliographies
+      avgLineLength: options.avgLineLength || 60,     // Lower for varied citation lengths
       ...options
     };
     
@@ -66,11 +66,11 @@ class BibliographyDetector {
       return 0;
     }
 
-    // 1. URL DENSITY (40% weight) - Language agnostic
+    // 1. URL DENSITY (20% weight) - Reduced for book-heavy bibliographies
     const urlCount = (content.match(/https?:\/\/[^\s\)]+/g) || []).length;
     const urlDensity = urlCount / (words / 100); // URLs per 100 words
-    if (urlDensity > this.thresholds.urlDensity) {
-      const urlScore = 0.4 * Math.min(urlDensity / 2, 1); // Cap at 2 URLs per 100 words
+    if (urlDensity > 0.1) { // Lower threshold - even 1-2 URLs can indicate bibliography
+      const urlScore = 0.2 * Math.min(urlDensity / 1, 1); // Cap at 1 URL per 100 words
       score += urlScore;
       console.log(`[BIBLIOGRAPHY DETECTOR]   - URL density: ${urlDensity.toFixed(2)} per 100 words → +${urlScore.toFixed(3)}`);
     }
@@ -93,34 +93,58 @@ class BibliographyDetector {
       console.log(`[BIBLIOGRAPHY DETECTOR]   - List structure detected → +0.10`);
     }
 
-    // 3. CITATION PATTERNS (20% weight) - Universal academic formats
+    // 3. CITATION PATTERNS (40% weight) - Enhanced for book bibliographies
     let citationScore = 0;
     
-    // Years in text (very common in all languages)
+    // Years in text (very common in all languages) - Enhanced scoring
     const yearPattern = /\b(19|20)\d{2}\b/g;
     const yearCount = (content.match(yearPattern) || []).length;
     if (yearCount > 3) {
-      citationScore += 0.1;
-      console.log(`[BIBLIOGRAPHY DETECTOR]   - Multiple years (${yearCount}) → +0.10`);
+      citationScore += Math.min(0.15, yearCount * 0.01); // Up to 0.15 for many years
+      console.log(`[BIBLIOGRAPHY DETECTOR]   - Multiple years (${yearCount}) → +${Math.min(0.15, yearCount * 0.01).toFixed(3)}`);
+    }
+    
+    // Book citation patterns - Author names with periods and capitals
+    const authorPattern = /[A-Z][a-z]+,\s+[A-Z]\.(?:\s+[A-Z]\.)?/g; // Smith, J. or Smith, J. A.
+    const authorCount = (content.match(authorPattern) || []).length;
+    if (authorCount > 2) {
+      citationScore += Math.min(0.1, authorCount * 0.01); // Up to 0.1 for many authors
+      console.log(`[BIBLIOGRAPHY DETECTOR]   - Author patterns (${authorCount}) → +${Math.min(0.1, authorCount * 0.01).toFixed(3)}`);
+    }
+    
+    // Italicized titles (book citations) - *Title* or _Title_
+    const italicPattern = /[*_][^*_]{10,}[*_]/g; // Italicized text longer than 10 chars
+    const italicCount = (content.match(italicPattern) || []).length;
+    if (italicCount > 2) {
+      citationScore += Math.min(0.08, italicCount * 0.015); // Up to 0.08 for many italic titles
+      console.log(`[BIBLIOGRAPHY DETECTOR]   - Italicized titles (${italicCount}) → +${Math.min(0.08, italicCount * 0.015).toFixed(3)}`);
+    }
+    
+    // Publisher patterns - "Press", "University", "Company", etc.
+    const publisherPattern = /(Press|University|Company|Publisher|Books|Publications)/gi;
+    const publisherCount = (content.match(publisherPattern) || []).length;
+    if (publisherCount > 2) {
+      citationScore += Math.min(0.05, publisherCount * 0.01); // Up to 0.05 for publishers
+      console.log(`[BIBLIOGRAPHY DETECTOR]   - Publisher patterns (${publisherCount}) → +${Math.min(0.05, publisherCount * 0.01).toFixed(3)}`);
     }
     
     // DOI patterns (language agnostic)
     if (/doi:10\./i.test(content)) {
-      citationScore += 0.05;
-      console.log(`[BIBLIOGRAPHY DETECTOR]   - DOI patterns found → +0.05`);
+      citationScore += 0.03;
+      console.log(`[BIBLIOGRAPHY DETECTOR]   - DOI patterns found → +0.03`);
     }
     
     // Page number patterns (pp. p. etc - common across languages)
     if (/\bpp?\.\s*\d+/i.test(content)) {
-      citationScore += 0.03;
-      console.log(`[BIBLIOGRAPHY DETECTOR]   - Page number patterns → +0.03`);
+      citationScore += 0.02;
+      console.log(`[BIBLIOGRAPHY DETECTOR]   - Page number patterns → +0.02`);
     }
     
-    // Parenthetical citations pattern
+    // Parenthetical citations pattern (year)
     const parentheticalCitations = (content.match(/\([^)]*\d{4}[^)]*\)/g) || []).length;
     if (parentheticalCitations > 2) {
-      citationScore += 0.02;
-      console.log(`[BIBLIOGRAPHY DETECTOR]   - Parenthetical citations (${parentheticalCitations}) → +0.02`);
+      citationScore += Math.min(0.05, parentheticalCitations * 0.01); // Up to 0.05
+      console.log(`[BIBLIOGRAPHY DETECTOR]   - Parenthetical citations (${parentheticalCitations}) → +${Math.min(0.05, parentheticalCitations * 0.01).toFixed(3)}`);
     }
     
     score += citationScore;
