@@ -57,6 +57,63 @@ function processUrlsForLatex(content) {
 }
 
 /**
+ * Add zero-width spaces to long URLs for better line breaking in XeLaTeX
+ * This is specifically for bibliography sections where URLs tend to be very long
+ */
+function addZeroWidthSpacesToLongUrls(content) {
+  if (!content || typeof content !== 'string') return content;
+  
+  const ZERO_WIDTH_SPACE = '\u200B';
+  const MAX_URL_LENGTH = 30; // Lower threshold for narrow book columns
+  
+  console.log(`[URL BREAKS] Processing content for zero-width space insertion...`);
+  
+  // Process URLs that are already in \url{} commands (from processUrlsForLatex)
+  let processedContent = content.replace(/\\url\{([^}]+)\}/g, (match, url) => {
+    if (url.length > MAX_URL_LENGTH) {
+      console.log(`[URL BREAKS] Adding breaks to long URL in \\url{}: ${url.substring(0, 40)}... (${url.length} chars)`);
+      
+      // Add zero-width spaces after common URL separators
+      let breakableUrl = url
+        .replace(/\//g, `/${ZERO_WIDTH_SPACE}`)      // After slashes
+        .replace(/\./g, `.${ZERO_WIDTH_SPACE}`)      // After dots  
+        .replace(/\-/g, `-${ZERO_WIDTH_SPACE}`)      // After hyphens
+        .replace(/\?/g, `?${ZERO_WIDTH_SPACE}`)      // After question marks
+        .replace(/\&/g, `&${ZERO_WIDTH_SPACE}`)      // After ampersands  
+        .replace(/\=/g, `=${ZERO_WIDTH_SPACE}`)      // After equals
+        .replace(/_/g, `_${ZERO_WIDTH_SPACE}`);      // After underscores
+        
+      return `\\url{${breakableUrl}}`;
+    }
+    return match;
+  });
+  
+  // Also process any bare URLs that weren't caught by processUrlsForLatex
+  processedContent = processedContent.replace(/(https?:\/\/[^\s\(\)\[\]<>"']+)/g, (match, url) => {
+    // Skip if it's already in a \url{} command
+    if (match.includes('\\url{')) return match;
+    
+    if (url.length > MAX_URL_LENGTH) {
+      console.log(`[URL BREAKS] Adding breaks to bare URL: ${url.substring(0, 40)}... (${url.length} chars)`);
+      
+      let breakableUrl = url
+        .replace(/\//g, `/${ZERO_WIDTH_SPACE}`)
+        .replace(/\./g, `.${ZERO_WIDTH_SPACE}`)
+        .replace(/\-/g, `-${ZERO_WIDTH_SPACE}`)
+        .replace(/\?/g, `?${ZERO_WIDTH_SPACE}`)
+        .replace(/\&/g, `&${ZERO_WIDTH_SPACE}`)
+        .replace(/\=/g, `=${ZERO_WIDTH_SPACE}`)
+        .replace(/_/g, `_${ZERO_WIDTH_SPACE}`);
+        
+      return `\\url{${breakableUrl}}`;
+    }
+    return match;
+  });
+  
+  return processedContent;
+}
+
+/**
  * Processes markdown content to automatically number chapters.
  * - Each level 1 heading gets transformed into a centered div with Chapter and title
  * - All other content is preserved
@@ -385,8 +442,17 @@ function assembleBookPdf(sections, options = {}) {
         continue;
       }
       
-      // Process URLs before other content processing
+      // Process URLs before other content processing - enhanced for bibliography
       content = processUrlsForLatex(content);
+      
+      // Additional URL processing for bibliography sections (longer URLs need more breaks)
+      if (section.title && (section.title.toLowerCase().includes('reference') || 
+                           section.title.toLowerCase().includes('bibliograph') || 
+                           section.title.toLowerCase().includes('sources') || 
+                           section.title.toLowerCase().includes('works cited'))) {
+        console.log(`[Back Matter] Applying enhanced URL breaking for bibliography section: ${section.title}`);
+        content = addZeroWidthSpacesToLongUrls(content);
+      }
       
       // Debug: Log what we're processing
       console.log(`[Back Matter] Processing section: ${section.title}, tocDepth: ${numericTocDepth}`);
