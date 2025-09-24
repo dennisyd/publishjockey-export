@@ -397,18 +397,26 @@ function assembleBookPdf(sections, options = {}) {
         continue;
       }
       
-      // Check if this section is a bibliography using content analysis
-      const sectionWithHeader = `# ${section.title}\n\n${content}`;
-      const bibliographySections = detector.detectBibliographySections(sectionWithHeader);
+      // STEP 1: Quick title-based check first (most common case)
+      let isBibliography = detector.isBibliographyByTitle(section.title);
       
-      let isBibliography = false;
-      if (bibliographySections.length > 0 && bibliographySections[0].score >= 0.5) {
-        console.log(`[Back Matter] Bibliography detected for "${section.title}" (score: ${bibliographySections[0].score.toFixed(3)})`);
+      // STEP 2: If not detected by title, use content analysis as fallback
+      if (!isBibliography) {
+        const sectionWithHeader = `# ${section.title}\n\n${content}`;
+        const bibliographySections = detector.detectBibliographySections(sectionWithHeader);
+        
+        if (bibliographySections.length > 0 && bibliographySections[0].score >= 0.5) {
+          console.log(`[Back Matter] Bibliography detected for "${section.title}" (content analysis, score: ${bibliographySections[0].score.toFixed(3)})`);
+          isBibliography = true;
+        }
+      }
+      
+      if (isBibliography) {
+        console.log(`[Back Matter] Bibliography section "${section.title}" → applying advanced URL processing`);
         // Apply advanced URL processing for detected bibliography
         content = detector.processUrlsInSection(content);
-        isBibliography = true;
       } else {
-        console.log(`[Back Matter] Regular section: "${section.title}"`);
+        console.log(`[Back Matter] Regular section: "${section.title}" → applying standard URL processing`);
         // Apply regular URL processing only for non-bibliography sections
         content = processUrlsForLatex(content);
       }

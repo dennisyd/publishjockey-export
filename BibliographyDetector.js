@@ -1,7 +1,7 @@
 /**
  * BibliographyDetector - Advanced bibliography section detection and URL processing
- * Uses multi-factor analysis to identify bibliography sections regardless of title or language
- * Based on content patterns, structure, and document position rather than section names
+ * Uses title-based detection first (from user's starter templates), then falls back to 
+ * multi-factor content analysis for edge cases
  */
 
 class BibliographyDetector {
@@ -13,11 +13,48 @@ class BibliographyDetector {
       ...options
     };
     
-    console.log(`[BIBLIOGRAPHY DETECTOR] Initialized with thresholds:`, this.thresholds);
+    // Comprehensive list of bibliography/references titles from all language templates
+    this.knownBibliographyTitles = new Set([
+      // English
+      'References', 'Bibliography',
+      // Spanish (all variants)
+      'Referencias', 'Bibliografía', 
+      // French  
+      'Références', 'Bibliographie',
+      // Catalan
+      'Referències', 'Bibliografia',
+      // Occitan  
+      'Referéncias',
+      // Portuguese
+      'Referências',
+      // German
+      'Referenzen', 
+      // Italian
+      'Riferimenti',
+      // Hindi  
+      'संदर्भ', 'ग्रंथ सूची',
+      // Polish
+      'Bibliografia',
+      // Swedish
+      'Referenser', 'Bibliografi', 
+      // Danish/Norwegian
+      'Referencer', 'Referanser',
+      // Finnish
+      'Viitteet',
+      // Galician 
+      'Referencias',
+      // Slovak
+      'Referencie',
+      // Indonesian/Malay
+      'Referensi', 'Bibliografi', 'Rujukan', 'Bibliografi'
+    ]);
+    
+    console.log(`[BIBLIOGRAPHY DETECTOR] Initialized with ${this.knownBibliographyTitles.size} known titles and thresholds:`, this.thresholds);
   }
 
   /**
    * Detect bibliography sections in markdown content
+   * Uses title-based detection first, then falls back to content analysis
    * @param {string} markdownContent - Full markdown content
    * @returns {Array} Array of detected bibliography sections with scores
    */
@@ -25,22 +62,35 @@ class BibliographyDetector {
     const sections = this.splitIntoSections(markdownContent);
     const bibliographySections = [];
 
-    console.log(`[BIBLIOGRAPHY DETECTOR] Analyzing ${sections.length} sections for bibliography patterns...`);
+    console.log(`[BIBLIOGRAPHY DETECTOR] Analyzing ${sections.length} sections with hybrid approach...`);
 
     sections.forEach((section, index) => {
-      const score = this.calculateBibliographyScore(section, index, sections.length);
+      let score = 0;
+      let detectionMethod = 'unknown';
       
-      console.log(`[BIBLIOGRAPHY DETECTOR] Section ${index + 1} "${section.headerText || 'Untitled'}" score: ${score.toFixed(3)}`);
+      // STEP 1: Title-based detection (fast and reliable for starter templates)
+      if (section.headerText && this.knownBibliographyTitles.has(section.headerText.trim())) {
+        score = 1.0; // Maximum confidence for known titles
+        detectionMethod = 'title-match';
+        console.log(`[BIBLIOGRAPHY DETECTOR] Section ${index + 1} "${section.headerText}" → TITLE MATCH (score: 1.0)`);
+      } 
+      // STEP 2: Content analysis fallback (for renamed or custom sections)
+      else {
+        score = this.calculateBibliographyScore(section, index, sections.length);
+        detectionMethod = 'content-analysis';
+        console.log(`[BIBLIOGRAPHY DETECTOR] Section ${index + 1} "${section.headerText || 'Untitled'}" → CONTENT ANALYSIS (score: ${score.toFixed(3)})`);
+      }
       
       if (score >= this.thresholds.bibliographyScore) {
         bibliographySections.push({
           section,
           index,
           score,
+          detectionMethod,
           startPos: section.startPos,
           endPos: section.endPos
         });
-        console.log(`[BIBLIOGRAPHY DETECTOR] ✓ Bibliography detected: "${section.headerText || 'Untitled'}" (score: ${score.toFixed(3)})`);
+        console.log(`[BIBLIOGRAPHY DETECTOR] ✓ Bibliography detected: "${section.headerText || 'Untitled'}" (${detectionMethod}, score: ${score.toFixed(3)})`);
       }
     });
 
@@ -351,6 +401,20 @@ class BibliographyDetector {
       .replace(/\&/g, `&${ZERO_WIDTH_SPACE}`)
       .replace(/\=/g, `=${ZERO_WIDTH_SPACE}`)
       .replace(/_/g, `_${ZERO_WIDTH_SPACE}`);
+  }
+
+  /**
+   * Quick title-based check for known bibliography section names
+   * @param {string} sectionTitle - The section title to check
+   * @returns {boolean} True if the title matches known bibliography titles
+   */
+  isBibliographyByTitle(sectionTitle) {
+    if (!sectionTitle) return false;
+    const match = this.knownBibliographyTitles.has(sectionTitle.trim());
+    if (match) {
+      console.log(`[BIBLIOGRAPHY DETECTOR] Quick title match: "${sectionTitle}" → BIBLIOGRAPHY`);
+    }
+    return match;
   }
 }
 
