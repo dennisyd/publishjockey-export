@@ -135,23 +135,11 @@ class TitleStyleProcessor {
     // Use \providecommand to prevent "already defined" errors
     if (content.includes('\\titlefont')) {
       const fontConfig = await this.fontManager.getFontConfigForStyle(styleName);
-      // Define titlefont as a font selection command, not display the font name
-      const titleFontDef = '\\providecommand\\titlefont{}\\renewcommand\\titlefont{\\fontfamily{' + this.latexFontFamily(fontConfig.title) + '}\\selectfont}';
+      // XeLaTeX can use ANY system font by name directly with \newfontfamily
+      const titleFontDef = '\\providecommand\\titlefont{}\\renewcommand\\titlefont{}\\newfontfamily\\titlefont{' + fontConfig.title + '}';
       return '```{=latex}\n' + titleFontDef + '\n' + content + '\n```\n\n';
     }
     return '```{=latex}\n' + content + '\n```\n\n';
-  }
-
-  // Helper to convert font names to LaTeX font families
-  latexFontFamily(fontName) {
-    const fontMap = {
-      'Liberation Serif': 'lmr',      // Latin Modern Roman
-      'Liberation Sans': 'lmss',      // Latin Modern Sans
-      'Linux Libertine O': 'LinuxLibertineT-OsF', // Linux Libertine
-      'TeX Gyre Termes': 'qtm',       // TeX Gyre Termes
-      'Source Serif Pro': 'SourceSerifPro-TLF' // Source Serif Pro
-    };
-    return fontMap[fontName] || 'rmdefault'; // Default to roman font
   }
 
   // All title generation methods use safe string concatenation
