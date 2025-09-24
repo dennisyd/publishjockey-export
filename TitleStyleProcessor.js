@@ -114,8 +114,14 @@ class TitleStyleProcessor {
     return result;
   }
 
-  // SAFE METHOD: Generate LaTeX without template literals
-  wrapLatex(content) {
+  // SAFE METHOD: Generate LaTeX without template literals and handle titlefont
+  wrapLatex(content, includeTitleFont = false, styleName = 'standard') {
+    // Check if content uses \titlefont and define it if needed
+    if (content.includes('\\titlefont')) {
+      const fontConfig = this.fontManager.getFontConfigForStyle(styleName);
+      const titleFontDef = '\\newfontfamily\\titlefont{' + fontConfig.title + '}';
+      return '```{=latex}\n' + titleFontDef + '\n' + content + '\n```\n\n';
+    }
     return '```{=latex}\n' + content + '\n```\n\n';
   }
 
