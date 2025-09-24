@@ -131,13 +131,13 @@ class TitleStyleProcessor {
 
   // SAFE METHOD: Generate LaTeX without template literals and handle titlefont
   async wrapLatex(content, includeTitleFont = false, styleName = 'standard') {
-    // Check if content uses \titlefont and define it if needed
-    // Use \providecommand to prevent "already defined" errors
+    // Check if content uses \titlefont and replace it with direct font selection
     if (content.includes('\\titlefont')) {
       const fontConfig = await this.fontManager.getFontConfigForStyle(styleName);
-      // XeLaTeX can use ANY system font by name directly with \newfontfamily
-      const titleFontDef = '\\providecommand\\titlefont{}\\renewcommand\\titlefont{}\\newfontfamily\\titlefont{' + fontConfig.title + '}';
-      return '```{=latex}\n' + titleFontDef + '\n' + content + '\n```\n\n';
+      // Replace \titlefont with direct font selection to avoid redefinition conflicts
+      const directFontSelection = '\\fontspec{' + fontConfig.title + '}';
+      const processedContent = content.replace(/\\titlefont/g, directFontSelection);
+      return '```{=latex}\n' + processedContent + '\n```\n\n';
     }
     return '```{=latex}\n' + content + '\n```\n\n';
   }
