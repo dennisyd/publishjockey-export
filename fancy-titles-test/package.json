@@ -1,0 +1,41 @@
+{
+  "name": "publishjockey-fancy-titles-test",
+  "version": "1.0.0",
+  "description": "Test system for PublishJockey fancy publisher-style titles and drop caps",
+  "main": "run.js",
+  "scripts": {
+    "test": "node run.js",
+    "test:fonts": "node run.js --fonts-only",
+    "test:no-pdfs": "node run.js --no-pdfs",
+    "test:debug": "node run.js --debug",
+    "install-fonts": "sudo apt-get update && sudo apt-get install fonts-liberation fonts-texgyre fonts-source-pro texlive-fonts-extra && sudo fc-cache -fv"
+  },
+  "keywords": [
+    "publishjockey",
+    "typography",
+    "latex",
+    "xelatex", 
+    "drop-caps",
+    "publisher",
+    "book-design",
+    "fonts",
+    "test-system"
+  ],
+  "author": "PublishJockey Team",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "dependencies": {},
+  "devDependencies": {},
+  "os": ["linux", "darwin"],
+  "cpu": ["x64", "arm64"],
+  "repository": {
+    "type": "git", 
+    "url": "https://github.com/publishjockey/fancy-titles-test"
+  },
+  "bugs": {
+    "url": "https://github.com/publishjockey/fancy-titles-test/issues"
+  },
+  "homepage": "https://publishjockey.com"
+}
