@@ -5,6 +5,8 @@ const { getTocTitle } = require('./translations');
 const { identifySpecialSections } = require('./utils/bookStructureLocalization');
 const { BibliographyDetector } = require('./BibliographyDetector');
 const { XeLaTeXUrlProcessor } = require('./XeLaTeXUrlProcessor');
+const { TitleStyleProcessor } = require('./TitleStyleProcessor');
+const { FontManager } = require('./FontManager');
 // Image processing now handled by exportPdf.js
 
 /**
@@ -124,6 +126,8 @@ function assembleBookPdf(sections, options = {}) {
     metadata = {},
     tocDepth = 1, // Default to 1 if not provided
     language = 'en', // Default to English
+    titleStyle = 'standard', // Default title style
+    dropCapStyle = 'none', // Default drop cap style
   } = options;
   
   // Tamil script requires special handling to preserve proper spacing
@@ -154,6 +158,12 @@ function assembleBookPdf(sections, options = {}) {
     enableRegularBreaks: true,
     enableBareUrlWrapping: true
   });
+
+  // Initialize fancy titles system
+  const fontManager = new FontManager();
+  const titleProcessor = new TitleStyleProcessor(language, fontManager);
+  
+  console.log(`[FANCY TITLES] Initializing with style: ${titleStyle}, drop caps: ${dropCapStyle}, language: ${language}`);
 
   let output = '';
 
@@ -331,6 +341,12 @@ function assembleBookPdf(sections, options = {}) {
       
       // Process URLs before other content processing
       content = processUrlsForLatex(content);
+      
+      // Apply fancy titles processing if not using standard style
+      if (titleStyle !== 'standard' || dropCapStyle !== 'none') {
+        console.log(`[FANCY TITLES] Processing main content with style: ${titleStyle}, drop caps: ${dropCapStyle}`);
+        content = titleProcessor.processChapterContent(content, titleStyle, dropCapStyle);
+      }
       
       // Check if this section is a Part divider
       const isPartDivider = section.title && /^Part [IVXLCDM]+:/.test(section.title);

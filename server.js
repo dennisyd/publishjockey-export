@@ -19,6 +19,8 @@ const { exportEpub } = require('./exportEpub');
 const os = require('os');
 const { v4: uuidv4 } = require('uuid');
 const { exportPdf } = require('./exportPdf');
+const { TitleStyleProcessor } = require('./TitleStyleProcessor');
+const { FontManager } = require('./FontManager');
 
 // Simple RTL Export Function - Dennis: Proven approach for Arabic/Hebrew/Yiddish
 async function simpleRTLExport(markdown, options) {
@@ -528,6 +530,8 @@ app.post('/export/pdf', rateLimiting.export, authenticateJWT, async (req, res) =
         useAutoChapterNumbers: exportOptions?.useAutoChapterNumbers === true, // Only for PDF
         tocDepth: exportOptions?.tocDepth || exportOptions?.bookOptions?.tocDepth || 3, // Pass tocDepth to assembler
         language: exportOptions?.language || 'en', // Pass language for TOC translation
+        titleStyle: exportOptions?.titleStyle || 'standard', // Fancy titles style
+        dropCapStyle: exportOptions?.dropCapStyle || 'none', // Drop cap style
         metadata: {
           title,
           subtitle,
@@ -2011,6 +2015,123 @@ app.post('/test/chapter-numbering', (req, res) => {
     return res.status(500).json({
       error: 'Test failed',
       details: error.message
+    });
+  }
+});
+
+/**
+ * Fancy Titles API Endpoints
+ */
+
+/**
+ * GET /api/fancy-titles/styles
+ * Returns available title styles and their information
+ */
+app.get('/api/fancy-titles/styles', async (req, res) => {
+  try {
+    console.log('[FANCY TITLES] Getting available title styles...');
+    
+    const fontManager = new FontManager();
+    const titleProcessor = new TitleStyleProcessor('en', fontManager);
+    
+    const styles = titleProcessor.getAvailableStyles();
+    const styleInfo = {};
+    
+    styles.forEach(styleName => {
+      styleInfo[styleName] = titleProcessor.getStyleInfo(styleName);
+    });
+    
+    res.json({
+      success: true,
+      styles: styleInfo,
+      dropCapStyles: ['none', 'traditional', 'raised', 'decorated'],
+      supportedLanguages: ['en', 'fr', 'it', 'es', 'pt', 'de']
+    });
+    
+  } catch (error) {
+    console.error('[FANCY TITLES] Error getting styles:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to get title styles',
+      details: error.message 
+    });
+  }
+});
+
+/**
+ * GET /api/fancy-titles/fonts
+ * Returns available fonts for the current system
+ */
+app.get('/api/fancy-titles/fonts', async (req, res) => {
+  try {
+    console.log('[FANCY TITLES] Getting available fonts...');
+    
+    const fontManager = new FontManager();
+    await fontManager.detectSystemFonts();
+    
+    const fontCompatibility = await fontManager.validateFontCompatibility();
+    
+    res.json({
+      success: true,
+      fonts: fontManager.detectedFonts,
+      compatibility: fontCompatibility,
+      totalFonts: fontManager.detectedFonts.length
+    });
+    
+  } catch (error) {
+    console.error('[FANCY TITLES] Error getting fonts:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to get fonts',
+      details: error.message 
+    });
+  }
+});
+
+/**
+ * POST /api/fancy-titles/preview
+ * Generate a preview of title styles with sample content
+ */
+app.post('/api/fancy-titles/preview', async (req, res) => {
+  try {
+    const { titleStyle = 'standard', dropCapStyle = 'none', language = 'en', sampleText = '' } = req.body;
+    
+    console.log(`[FANCY TITLES] Generating preview: style=${titleStyle}, dropCap=${dropCapStyle}, lang=${language}`);
+    
+    const fontManager = new FontManager();
+    const titleProcessor = new TitleStyleProcessor(language, fontManager);
+    
+    // Use provided sample text or default
+    const testContent = sampleText || `# Chapter 1: The Beginning
+
+This is the first paragraph of our sample chapter. In traditional typography, the opening letter of the first paragraph is often decorated with a drop cap to create visual interest and establish the beginning of a new section.
+
+The story continues with additional paragraphs that demonstrate how the text flows naturally after the initial drop cap treatment.
+
+# Chapter 2: Advanced Techniques
+
+Another chapter begins here, showcasing how consistent styling is applied throughout the document while maintaining readability and professional appearance.`;
+    
+    const processedContent = titleProcessor.processChapterContent(testContent, titleStyle, dropCapStyle);
+    
+    res.json({
+      success: true,
+      preview: {
+        originalContent: testContent,
+        processedContent: processedContent,
+        titleStyle: titleStyle,
+        dropCapStyle: dropCapStyle,
+        language: language,
+        styleInfo: titleProcessor.getStyleInfo(titleStyle)
+      }
+    });
+    
+  } catch (error) {
+    console.error('[FANCY TITLES] Error generating preview:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to generate preview',
+      details: error.message 
     });
   }
 });
