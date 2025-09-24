@@ -554,7 +554,7 @@ app.post('/export/pdf', rateLimiting.export, authenticateJWT, async (req, res) =
 
       // Use assembleBookPdf to get proper page numbering with front/main matter
       console.log('Using assembleBookPdf for proper front/main matter page numbering');
-      const markdown = assembleBookPdf(validSections, assemblyOptions);
+      const markdown = await assembleBookPdf(validSections, assemblyOptions);
 
       // Remove emojis from markdown before PDF export
       let cleanMarkdown = markdown;

@@ -118,7 +118,7 @@ function rewriteMarkdownWithStyledChapters(markdown) {
   return output.join('\n').replace(/^\s*\n/, '').replace(/\n\s*$/, '') + '\n';
 }
 
-function assembleBookPdf(sections, options = {}) {
+async function assembleBookPdf(sections, options = {}) {
   const {
     useAutoChapterNumbers = false,
     numberedHeadings = false,
