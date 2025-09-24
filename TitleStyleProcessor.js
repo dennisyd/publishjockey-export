@@ -135,7 +135,7 @@ class TitleStyleProcessor {
       '\\end{center}',
       '\\vspace{2em}'
     ].join('\n');
-    return this.wrapLatex(latex);
+    return this.wrapLatex(latex, true, styleName);
   }
 
   generateModernMinimalistHeader(titleText, chapterNumber, colors) {
@@ -149,7 +149,7 @@ class TitleStyleProcessor {
       '\\end{center}',
       '\\vspace{2em}'
     ].join('\n');
-    return this.wrapLatex(latex);
+    return this.wrapLatex(latex, true, styleName);
   }
 
   generateAcademicPressHeader(titleText, chapterNumber, colors) {
@@ -167,7 +167,7 @@ class TitleStyleProcessor {
       '\\noindent\\textcolor[HTML]{' + colors.primary.replace('#', '') + '}{\\rule{\\textwidth}{1pt}}',
       '\\vspace{2em}'
     ].join('\n');
-    return this.wrapLatex(latex);
+    return this.wrapLatex(latex, true, styleName);
   }
 
   generateClassicalOrnateHeader(titleText, chapterNumber, colors) {
@@ -186,7 +186,7 @@ class TitleStyleProcessor {
       '\\end{center}',
       '\\vspace{2em}'
     ].join('\n');
-    return this.wrapLatex(latex);
+    return this.wrapLatex(latex, true, styleName);
   }
 
   generateTechnicalProgrammingHeader(titleText, chapterNumber, colors) {
@@ -204,7 +204,7 @@ class TitleStyleProcessor {
       '}',
       '\\vspace{1em}'
     ].join('\n');
-    return this.wrapLatex(latex);
+    return this.wrapLatex(latex, true, styleName);
   }
 
   generateMagazineStyleHeader(titleText, chapterNumber, colors) {
@@ -218,7 +218,7 @@ class TitleStyleProcessor {
       '\\end{flushleft}',
       '\\vspace{2em}'
     ].join('\n');
-    return this.wrapLatex(latex);
+    return this.wrapLatex(latex, true, styleName);
   }
 
   generateLuxuryFashionHeader(titleText, chapterNumber, colors) {
@@ -236,7 +236,7 @@ class TitleStyleProcessor {
       '\\end{center}',
       '\\vspace{3em}'
     ].join('\n');
-    return this.wrapLatex(latex);
+    return this.wrapLatex(latex, true, styleName);
   }
 
   generateStandardHeader(titleText, chapterNumber, colors) {
@@ -250,7 +250,7 @@ class TitleStyleProcessor {
       '\\end{center}',
       '\\vspace{2em}'
     ].join('\n');
-    return this.wrapLatex(latex);
+    return this.wrapLatex(latex, true, styleName);
   }
 
   applyDropCaps(content, dropCapStyle = 'traditional') {
