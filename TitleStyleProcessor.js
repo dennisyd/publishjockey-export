@@ -120,7 +120,7 @@ class TitleStyleProcessor {
   }
 
   // All title generation methods use safe string concatenation
-  generateClassicLiteratureHeader(titleText, chapterNumber, colors) {
+  generateClassicLiteratureHeader(titleText, chapterNumber, colors, styleName = 'classic_literature') {
     const latex = [
       '\\vspace{2em}',
       '\\begin{center}',
@@ -138,7 +138,7 @@ class TitleStyleProcessor {
     return this.wrapLatex(latex, true, styleName);
   }
 
-  generateModernMinimalistHeader(titleText, chapterNumber, colors) {
+  generateModernMinimalistHeader(titleText, chapterNumber, colors, styleName = 'modern_minimalist') {
     const latex = [
       '\\vspace{2em}',
       '\\begin{center}',
@@ -152,7 +152,7 @@ class TitleStyleProcessor {
     return this.wrapLatex(latex, true, styleName);
   }
 
-  generateAcademicPressHeader(titleText, chapterNumber, colors) {
+  generateAcademicPressHeader(titleText, chapterNumber, colors, styleName = 'academic_press') {
     const latex = [
       '\\vspace{2em}',
       '\\noindent\\textcolor[HTML]{' + colors.primary.replace('#', '') + '}{\\rule{\\textwidth}{1pt}}',
@@ -170,7 +170,7 @@ class TitleStyleProcessor {
     return this.wrapLatex(latex, true, styleName);
   }
 
-  generateClassicalOrnateHeader(titleText, chapterNumber, colors) {
+  generateClassicalOrnateHeader(titleText, chapterNumber, colors, styleName = 'classical_ornate') {
     const romanNumeral = this.toRomanNumeral(chapterNumber);
     const latex = [
       '\\vspace{2em}',
@@ -189,7 +189,7 @@ class TitleStyleProcessor {
     return this.wrapLatex(latex, true, styleName);
   }
 
-  generateTechnicalProgrammingHeader(titleText, chapterNumber, colors) {
+  generateTechnicalProgrammingHeader(titleText, chapterNumber, colors, styleName = 'technical_programming') {
     const latex = [
       '\\vspace{1em}',
       '\\noindent\\colorbox[HTML]{' + colors.accent.replace('#', '') + '}{%',
@@ -207,7 +207,7 @@ class TitleStyleProcessor {
     return this.wrapLatex(latex, true, styleName);
   }
 
-  generateMagazineStyleHeader(titleText, chapterNumber, colors) {
+  generateMagazineStyleHeader(titleText, chapterNumber, colors, styleName = 'magazine_style') {
     const latex = [
       '\\vspace{2em}',
       '\\begin{flushleft}',
@@ -221,7 +221,7 @@ class TitleStyleProcessor {
     return this.wrapLatex(latex, true, styleName);
   }
 
-  generateLuxuryFashionHeader(titleText, chapterNumber, colors) {
+  generateLuxuryFashionHeader(titleText, chapterNumber, colors, styleName = 'luxury_fashion') {
     const latex = [
       '\\vspace{3em}',
       '\\begin{center}',
@@ -239,7 +239,7 @@ class TitleStyleProcessor {
     return this.wrapLatex(latex, true, styleName);
   }
 
-  generateStandardHeader(titleText, chapterNumber, colors) {
+  generateStandardHeader(titleText, chapterNumber, colors, styleName = 'standard') {
     const latex = [
       '\\vspace{2em}',
       '\\begin{center}',
