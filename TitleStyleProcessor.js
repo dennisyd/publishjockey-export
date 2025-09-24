@@ -6,9 +6,10 @@
  */
 
 class TitleStyleProcessor {
-  constructor(options = {}) {
-    this.userLanguage = options.userLanguage || 'en';
-    this.dropCapStyle = options.dropCapStyle || 'traditional';
+  constructor(userLanguage = 'en', fontManager = null) {
+    this.userLanguage = userLanguage;
+    this.dropCapStyle = 'traditional'; // Default, will be overridden in processChapterContent
+    this.fontManager = fontManager; // Store the fontManager instance
     
     // Only 6 languages support drop caps for cultural appropriateness
     this.dropCapSupportedLanguages = new Set(['en', 'fr', 'it', 'es', 'pt', 'de']);
