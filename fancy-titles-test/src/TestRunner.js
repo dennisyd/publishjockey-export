@@ -122,7 +122,7 @@ class TestRunner {
     };
     
     // Test each style
-    for (const styleName of Object.keys(availableStyles.styles)) {
+    for (const styleName of availableStyles) {
       const fontConfig = await this.fontManager.findBestFontForStyle(styleName);
       compatibility.styleCompatibility[styleName] = {
         recommendedFont: fontConfig.primary,
@@ -185,7 +185,7 @@ class TestRunner {
    * Generate sample documents for each title style
    */
   async generateStyleSamples() {
-    const styles = Object.keys(this.titleProcessor.getAvailableStyles().styles);
+    const styles = this.titleProcessor.getAvailableStyles();
     const samples = {};
     
     for (const styleName of styles) {
@@ -222,7 +222,7 @@ class TestRunner {
    * Test drop cap combinations with each style (6 supported languages only)
    */
   async testDropCapCombinations() {
-    const styles = Object.keys(this.titleProcessor.getAvailableStyles().styles);
+    const styles = this.titleProcessor.getAvailableStyles();
     const dropCapStyles = ['traditional', 'raised', 'decorated', 'none'];
     const supportedLanguages = ['en', 'fr', 'it', 'es', 'pt', 'de']; // Only these 6!
     
@@ -270,7 +270,7 @@ class TestRunner {
    * Generate comparison documents showing all styles
    */
   async generateComparisonDocuments() {
-    const styles = Object.keys(this.titleProcessor.getAvailableStyles().styles);
+    const styles = this.titleProcessor.getAvailableStyles();
     const comparisons = {};
     
     // All styles comparison
