@@ -177,14 +177,14 @@ class TitleStyleProcessor {
     const latex = [
       '\\vspace{2em}',
       '\\noindent\\textcolor[HTML]{' + colors.primary.replace('#', '') + '}{\\rule{\\textwidth}{1pt}}',
-      '\\\\[0.5em]',
+      '\\vspace{0.5em}',
       '\\begin{center}',
       '  \\titlefont',
       '  {\\large\\scshape Chapter ' + chapterNumber + '}',
       '  \\\\[0.3em]',
       '  {\\Large\\bfseries ' + titleText + '}',
       '\\end{center}',
-      '\\\\[0.5em]',
+      '\\vspace{0.5em}',
       '\\noindent\\textcolor[HTML]{' + colors.primary.replace('#', '') + '}{\\rule{\\textwidth}{1pt}}',
       '\\vspace{2em}'
     ].join('\n');
