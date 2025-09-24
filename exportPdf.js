@@ -1528,6 +1528,9 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
 \\floatplacement{figure}{!htbp}
 \\floatplacement{table}{!htbp}
 
+% --- Drop cap support for fancy titles ---
+\\usepackage{lettrine}
+
 % Disable figure numbering - show only caption text
 \\usepackage{caption}
 \\captionsetup[figure]{labelformat=empty}

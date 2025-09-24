@@ -145,7 +145,8 @@ class TitleStyleProcessor {
   // All title generation methods use safe string concatenation
   async generateClassicLiteratureHeader(titleText, chapterNumber, colors, styleName = 'classic_literature') {
     const latex = [
-      '\\vspace{2em}',
+      '\\clearpage',
+      '\\vspace{3em}',
       '\\begin{center}',
       '  \\titlefont',
       '  \\textcolor[HTML]{' + colors.primary.replace('#', '') + '}{\\rule{0.3\\textwidth}{0.4pt}}',
@@ -161,7 +162,8 @@ class TitleStyleProcessor {
 
   async generateModernMinimalistHeader(titleText, chapterNumber, colors, styleName = 'modern_minimalist') {
     const latex = [
-      '\\vspace{2em}',
+      '\\clearpage',
+      '\\vspace{3em}',
       '\\begin{center}',
       '  \\sffamily',
       '  {\\Huge\\bfseries\\textcolor[HTML]{' + colors.primary.replace('#', '') + '}{' + titleText + '}}',
@@ -173,7 +175,8 @@ class TitleStyleProcessor {
 
   async generateAcademicPressHeader(titleText, chapterNumber, colors, styleName = 'academic_press') {
     const latex = [
-      '\\vspace{2em}',
+      '\\clearpage',
+      '\\vspace{3em}',
       '\\noindent\\textcolor[HTML]{' + colors.primary.replace('#', '') + '}{\\rule{\\textwidth}{1pt}}',
       '\\vspace{0.5em}',
       '\\begin{center}',
@@ -189,7 +192,8 @@ class TitleStyleProcessor {
 
   async generateClassicalOrnateHeader(titleText, chapterNumber, colors, styleName = 'classical_ornate') {
     const latex = [
-      '\\vspace{2em}',
+      '\\clearpage',
+      '\\vspace{3em}',
       '\\begin{center}',
       '  \\titlefont',
       '  {\\large ❦ ❦ ❦}',
@@ -205,7 +209,8 @@ class TitleStyleProcessor {
 
   async generateTechnicalProgrammingHeader(titleText, chapterNumber, colors, styleName = 'technical_programming') {
     const latex = [
-      '\\vspace{1em}',
+      '\\clearpage',
+      '\\vspace{2em}',
       '\\noindent\\colorbox[HTML]{' + colors.accent.replace('#', '') + '}{%',
       '  \\parbox{\\textwidth}{%',
       '    \\vspace{0.5em}',
@@ -221,7 +226,8 @@ class TitleStyleProcessor {
 
   async generateMagazineStyleHeader(titleText, chapterNumber, colors, styleName = 'magazine_style') {
     const latex = [
-      '\\vspace{2em}',
+      '\\clearpage',
+      '\\vspace{3em}',
       '\\begin{flushleft}',
       '  \\sffamily',
       '  {\\Huge\\bfseries\\textcolor[HTML]{' + colors.primary.replace('#', '') + '}{' + titleText.toUpperCase() + '}}',
@@ -233,6 +239,7 @@ class TitleStyleProcessor {
 
   async generateLuxuryFashionHeader(titleText, chapterNumber, colors, styleName = 'luxury_fashion') {
     const latex = [
+      '\\clearpage',
       '\\vspace{3em}',
       '\\begin{center}',
       '  \\titlefont',
@@ -249,7 +256,8 @@ class TitleStyleProcessor {
 
   async generateStandardHeader(titleText, chapterNumber, colors, styleName = 'standard') {
     const latex = [
-      '\\vspace{2em}',
+      '\\clearpage',
+      '\\vspace{3em}',
       '\\begin{center}',
       '  \\titlefont',
       '  {\\huge\\bfseries ' + titleText + '}',
@@ -310,7 +318,8 @@ class TitleStyleProcessor {
         return paragraph;
     }
     
-    return this.wrapLatex(latexContent);
+    // Return LaTeX directly wrapped in markdown code blocks
+    return '```{=latex}\n' + latexContent + '\n```\n\n';
   }
 
   generateStylePreamble(styleName, fontConfig) {
