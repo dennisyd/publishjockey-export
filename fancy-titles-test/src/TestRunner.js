@@ -411,7 +411,7 @@ class TestRunner {
     const benchmarks = {
       fontDetection: {},
       styleProcessing: {},
-      languageDetection: {},
+      languageRestrictions: {},
       overall: {}
     };
     
