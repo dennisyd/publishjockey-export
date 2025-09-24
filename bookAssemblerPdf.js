@@ -345,7 +345,7 @@ function assembleBookPdf(sections, options = {}) {
       // Apply fancy titles processing if not using standard style
       if (titleStyle !== 'standard' || dropCapStyle !== 'none') {
         console.log(`[FANCY TITLES] Processing main content with style: ${titleStyle}, drop caps: ${dropCapStyle}`);
-        content = titleProcessor.processChapterContent(content, titleStyle, dropCapStyle);
+        content = await titleProcessor.processChapterContent(content, titleStyle, dropCapStyle);
       }
       
       // Check if this section is a Part divider

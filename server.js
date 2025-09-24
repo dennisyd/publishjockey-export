@@ -2112,7 +2112,7 @@ The story continues with additional paragraphs that demonstrate how the text flo
 
 Another chapter begins here, showcasing how consistent styling is applied throughout the document while maintaining readability and professional appearance.`;
     
-    const processedContent = titleProcessor.processChapterContent(testContent, titleStyle, dropCapStyle);
+    const processedContent = await titleProcessor.processChapterContent(testContent, titleStyle, dropCapStyle);
     
     res.json({
       success: true,

@@ -45,51 +45,65 @@ class TitleStyleProcessor {
     return this.dropCapSupportedLanguages.has(this.userLanguage);
   }
 
-  processChapterContent(content, titleStyle = 'classic_literature') {
+  async processChapterContent(content, titleStyle = 'standard', dropCapStyle = 'none') {
     if (!content || content.length === 0) return content;
     
     console.log("[TITLE PROCESSOR] Processing content with style: " + titleStyle + ", language: " + this.userLanguage);
     
     const chapterPattern = /^(#+)\s+(.+)$/gm;
     let chapterNumber = 1;
+    let match;
+    const replacements = [];
     
-    content = content.replace(chapterPattern, (match, hashes, titleText) => {
+    // Collect all matches first
+    while ((match = chapterPattern.exec(content)) !== null) {
+      const [fullMatch, hashes, titleText] = match;
       if (hashes.length === 1) {
-        const styledHeader = this.generateStyledHeader(titleText.trim(), chapterNumber, titleStyle);
+        const styledHeader = await this.generateStyledHeader(titleText.trim(), chapterNumber, titleStyle);
+        replacements.push({
+          original: fullMatch,
+          replacement: styledHeader,
+          index: match.index
+        });
         chapterNumber++;
-        return styledHeader;
       }
-      return match;
-    });
-
-    if (this.isDropCapSupported()) {
-      content = this.applyDropCaps(content, this.dropCapStyle);
+    }
+    
+    // Apply replacements in reverse order to preserve indices
+    let result = content;
+    for (let i = replacements.length - 1; i >= 0; i--) {
+      const { original, replacement, index } = replacements[i];
+      result = result.slice(0, index) + replacement + result.slice(index + original.length);
     }
 
-    return content;
+    if (this.isDropCapSupported() && dropCapStyle !== 'none') {
+      result = this.applyDropCaps(result, dropCapStyle);
+    }
+
+    return result;
   }
 
-  generateStyledHeader(titleText, chapterNumber, styleName) {
+  async generateStyledHeader(titleText, chapterNumber, styleName) {
     const colors = this.colorSchemes[styleName] || this.colorSchemes.standard;
 
     switch (styleName) {
       case 'classic_literature':
-        return this.generateClassicLiteratureHeader(titleText, chapterNumber, colors);
+        return await this.generateClassicLiteratureHeader(titleText, chapterNumber, colors, styleName);
       case 'modern_minimalist':
-        return this.generateModernMinimalistHeader(titleText, chapterNumber, colors);
+        return await this.generateModernMinimalistHeader(titleText, chapterNumber, colors, styleName);
       case 'academic_press':
-        return this.generateAcademicPressHeader(titleText, chapterNumber, colors);
+        return await this.generateAcademicPressHeader(titleText, chapterNumber, colors, styleName);
       case 'classical_ornate':
-        return this.generateClassicalOrnateHeader(titleText, chapterNumber, colors);
+        return await this.generateClassicalOrnateHeader(titleText, chapterNumber, colors, styleName);
       case 'technical_programming':
-        return this.generateTechnicalProgrammingHeader(titleText, chapterNumber, colors);
+        return await this.generateTechnicalProgrammingHeader(titleText, chapterNumber, colors, styleName);
       case 'magazine_style':
-        return this.generateMagazineStyleHeader(titleText, chapterNumber, colors);
+        return await this.generateMagazineStyleHeader(titleText, chapterNumber, colors, styleName);
       case 'luxury_fashion':
-        return this.generateLuxuryFashionHeader(titleText, chapterNumber, colors);
+        return await this.generateLuxuryFashionHeader(titleText, chapterNumber, colors, styleName);
       case 'standard':
       default:
-        return this.generateStandardHeader(titleText, chapterNumber, colors);
+        return await this.generateStandardHeader(titleText, chapterNumber, colors, styleName);
     }
   }
 
@@ -116,10 +130,10 @@ class TitleStyleProcessor {
   }
 
   // SAFE METHOD: Generate LaTeX without template literals and handle titlefont
-  wrapLatex(content, includeTitleFont = false, styleName = 'standard') {
+  async wrapLatex(content, includeTitleFont = false, styleName = 'standard') {
     // Check if content uses \titlefont and define it if needed
     if (content.includes('\\titlefont')) {
-      const fontConfig = this.fontManager.getFontConfigForStyle(styleName);
+      const fontConfig = await this.fontManager.getFontConfigForStyle(styleName);
       const titleFontDef = '\\newfontfamily\\titlefont{' + fontConfig.title + '}';
       return '```{=latex}\n' + titleFontDef + '\n' + content + '\n```\n\n';
     }
@@ -127,7 +141,7 @@ class TitleStyleProcessor {
   }
 
   // All title generation methods use safe string concatenation
-  generateClassicLiteratureHeader(titleText, chapterNumber, colors, styleName = 'classic_literature') {
+  async generateClassicLiteratureHeader(titleText, chapterNumber, colors, styleName = 'classic_literature') {
     const latex = [
       '\\vspace{2em}',
       '\\begin{center}',
@@ -142,10 +156,10 @@ class TitleStyleProcessor {
       '\\end{center}',
       '\\vspace{2em}'
     ].join('\n');
-    return this.wrapLatex(latex, true, styleName);
+    return await this.wrapLatex(latex, true, styleName);
   }
 
-  generateModernMinimalistHeader(titleText, chapterNumber, colors, styleName = 'modern_minimalist') {
+  async generateModernMinimalistHeader(titleText, chapterNumber, colors, styleName = 'modern_minimalist') {
     const latex = [
       '\\vspace{2em}',
       '\\begin{center}',
@@ -156,10 +170,10 @@ class TitleStyleProcessor {
       '\\end{center}',
       '\\vspace{2em}'
     ].join('\n');
-    return this.wrapLatex(latex, true, styleName);
+    return await this.wrapLatex(latex, true, styleName);
   }
 
-  generateAcademicPressHeader(titleText, chapterNumber, colors, styleName = 'academic_press') {
+  async generateAcademicPressHeader(titleText, chapterNumber, colors, styleName = 'academic_press') {
     const latex = [
       '\\vspace{2em}',
       '\\noindent\\textcolor[HTML]{' + colors.primary.replace('#', '') + '}{\\rule{\\textwidth}{1pt}}',
@@ -174,10 +188,10 @@ class TitleStyleProcessor {
       '\\noindent\\textcolor[HTML]{' + colors.primary.replace('#', '') + '}{\\rule{\\textwidth}{1pt}}',
       '\\vspace{2em}'
     ].join('\n');
-    return this.wrapLatex(latex, true, styleName);
+    return await this.wrapLatex(latex, true, styleName);
   }
 
-  generateClassicalOrnateHeader(titleText, chapterNumber, colors, styleName = 'classical_ornate') {
+  async generateClassicalOrnateHeader(titleText, chapterNumber, colors, styleName = 'classical_ornate') {
     const romanNumeral = this.toRomanNumeral(chapterNumber);
     const latex = [
       '\\vspace{2em}',
@@ -193,10 +207,10 @@ class TitleStyleProcessor {
       '\\end{center}',
       '\\vspace{2em}'
     ].join('\n');
-    return this.wrapLatex(latex, true, styleName);
+    return await this.wrapLatex(latex, true, styleName);
   }
 
-  generateTechnicalProgrammingHeader(titleText, chapterNumber, colors, styleName = 'technical_programming') {
+  async generateTechnicalProgrammingHeader(titleText, chapterNumber, colors, styleName = 'technical_programming') {
     const latex = [
       '\\vspace{1em}',
       '\\noindent\\colorbox[HTML]{' + colors.accent.replace('#', '') + '}{%',
@@ -211,10 +225,10 @@ class TitleStyleProcessor {
       '}',
       '\\vspace{1em}'
     ].join('\n');
-    return this.wrapLatex(latex, true, styleName);
+    return await this.wrapLatex(latex, true, styleName);
   }
 
-  generateMagazineStyleHeader(titleText, chapterNumber, colors, styleName = 'magazine_style') {
+  async generateMagazineStyleHeader(titleText, chapterNumber, colors, styleName = 'magazine_style') {
     const latex = [
       '\\vspace{2em}',
       '\\begin{flushleft}',
@@ -225,10 +239,10 @@ class TitleStyleProcessor {
       '\\end{flushleft}',
       '\\vspace{2em}'
     ].join('\n');
-    return this.wrapLatex(latex, true, styleName);
+    return await this.wrapLatex(latex, true, styleName);
   }
 
-  generateLuxuryFashionHeader(titleText, chapterNumber, colors, styleName = 'luxury_fashion') {
+  async generateLuxuryFashionHeader(titleText, chapterNumber, colors, styleName = 'luxury_fashion') {
     const latex = [
       '\\vspace{3em}',
       '\\begin{center}',
@@ -243,10 +257,10 @@ class TitleStyleProcessor {
       '\\end{center}',
       '\\vspace{3em}'
     ].join('\n');
-    return this.wrapLatex(latex, true, styleName);
+    return await this.wrapLatex(latex, true, styleName);
   }
 
-  generateStandardHeader(titleText, chapterNumber, colors, styleName = 'standard') {
+  async generateStandardHeader(titleText, chapterNumber, colors, styleName = 'standard') {
     const latex = [
       '\\vspace{2em}',
       '\\begin{center}',
@@ -257,7 +271,7 @@ class TitleStyleProcessor {
       '\\end{center}',
       '\\vspace{2em}'
     ].join('\n');
-    return this.wrapLatex(latex, true, styleName);
+    return await this.wrapLatex(latex, true, styleName);
   }
 
   applyDropCaps(content, dropCapStyle = 'traditional') {
@@ -453,7 +467,7 @@ class TitleStyleProcessor {
    * @param {string} titleStyle - Title style to apply
    * @returns {string} Processed markdown with styled headers
    */
-  convertMarkdownHeaders(markdown, titleStyle = 'classic_literature') {
+  async convertMarkdownHeaders(markdown, titleStyle = 'classic_literature') {
     if (!markdown || markdown.length === 0) {
       return markdown;
     }
@@ -461,7 +475,7 @@ class TitleStyleProcessor {
     console.log("[TITLE PROCESSOR] Converting markdown headers with style: " + titleStyle);
     
     // Use the existing processChapterContent method which handles header conversion
-    return this.processChapterContent(markdown, titleStyle);
+    return await this.processChapterContent(markdown, titleStyle, 'none');
   }
 }
 
