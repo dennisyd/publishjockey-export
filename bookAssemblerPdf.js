@@ -4,6 +4,7 @@ const { assembleBookPlain } = require('./assembleBookPlain');
 const { getTocTitle } = require('./translations');
 const { identifySpecialSections } = require('./utils/bookStructureLocalization');
 const { BibliographyDetector } = require('./BibliographyDetector');
+const { XeLaTeXUrlProcessor } = require('./XeLaTeXUrlProcessor');
 // Image processing now handled by exportPdf.js
 
 /**
@@ -146,6 +147,23 @@ function assembleBookPdf(sections, options = {}) {
   console.log(`[assembleBookPdf] Converted to numeric: ${numericTocDepth}`);
   console.log(`[assembleBookPdf] Type of original: ${typeof tocDepth}, Type after conversion: ${typeof numericTocDepth}`);
 
+  // STEP 1: Apply document-wide XeLaTeX URL processing FIRST (before section processing)
+  console.log(`[XELATEX URL PROCESSING] Applying document-wide URL processing before section assembly...`);
+  const urlProcessor = new XeLaTeXUrlProcessor({
+    maxUrlLength: 50,  // Process URLs longer than 50 chars
+    enableCloudinaryBreaks: true,
+    enableRegularBreaks: true,
+    enableBareUrlWrapping: true
+  });
+
+  // Process all section content for URLs before assembly
+  const processedSections = sections.map(section => ({
+    ...section,
+    content: urlProcessor.processMarkdown(section.content || '')
+  }));
+  
+  console.log(`[XELATEX URL PROCESSING] ✓ Processed ${sections.length} sections for URL overflow`);
+
   let output = '';
 
   // Add YAML metadata block if present
@@ -171,13 +189,13 @@ function assembleBookPdf(sections, options = {}) {
   output += '  \\newcommand{\\frontmatterchapter}[1]{\\oldchapter*{#1}\\markboth{#1}{}}\n';
   output += '---\n\n';
 
-  // Find special sections and split by matter
-  const { titlePageSection, copyrightSection } = identifySpecialSections(sections);
+  // Find special sections and split by matter (now using processed sections)
+  const { titlePageSection, copyrightSection } = identifySpecialSections(processedSections);
   const frontMatterSections = [];
   const mainMatterSections = [];
   const backMatterSections = [];
 
-  for (const section of sections) {
+  for (const section of processedSections) {
     if (!section.content || !section.content.trim()) continue;
     
     // Skip title page and copyright sections as they're handled separately
@@ -267,8 +285,7 @@ function assembleBookPdf(sections, options = {}) {
         continue;
       }
       
-      // Process URLs before other content processing
-      content = processUrlsForLatex(content);
+      // URLs already processed document-wide, no additional processing needed
     
     // Debug: Log what we're processing
     console.log(`[Front Matter] Processing section: ${section.title}, tocDepth: ${numericTocDepth}`);
@@ -320,8 +337,7 @@ function assembleBookPdf(sections, options = {}) {
         continue;
       }
       
-      // Process URLs before other content processing
-      content = processUrlsForLatex(content);
+      // URLs already processed document-wide, no additional processing needed
       
       // Check if this section is a Part divider
       const isPartDivider = section.title && /^Part [IVXLCDM]+:/.test(section.title);
@@ -379,47 +395,33 @@ function assembleBookPdf(sections, options = {}) {
     output += '\\backmatter\n';
     output += '```\n\n';
     
-    // Step 1: Initialize bibliography detector with book-friendly settings
-    console.log(`[BACK MATTER] Starting advanced bibliography detection for ${backMatterSections.length} sections...`);
+    // Initialize bibliography detector for logging/identification purposes
+    console.log(`[BACK MATTER] Processing ${backMatterSections.length} sections (URLs already processed document-wide)...`);
     const detector = new BibliographyDetector({
-      minScore: 0.5,           // Lowered for book bibliographies
-      urlDensity: 0.1,         // Much lower for book-heavy references  
-      avgLineLength: 60        // Lower for varied citation lengths
+      minScore: 0.5,
+      urlDensity: 0.1,
+      avgLineLength: 60
     });
     
-    // Step 2: Process each section individually (simpler and more reliable)
+    // Process each back matter section (URLs already handled by XeLaTeX processor)
     for (const section of backMatterSections) {
       let content = safeTrim(section.content);
       
-      // Skip empty sections - no content, no headings
+      // Skip empty sections
       if (!content) {
         console.log(`[Back Matter] Skipping empty section: ${section.title}`);
         continue;
       }
       
-      // STEP 1: Quick title-based check first (most common case)
-      let isBibliography = detector.isBibliographyByTitle(section.title);
-      
-      // STEP 2: If not detected by title, use content analysis as fallback
-      if (!isBibliography) {
-        const sectionWithHeader = `# ${section.title}\n\n${content}`;
-        const bibliographySections = detector.detectBibliographySections(sectionWithHeader);
-        
-        if (bibliographySections.length > 0 && bibliographySections[0].score >= 0.5) {
-          console.log(`[Back Matter] Bibliography detected for "${section.title}" (content analysis, score: ${bibliographySections[0].score.toFixed(3)})`);
-          isBibliography = true;
-        }
-      }
-      
+      // Identify section type for logging (URLs already processed)
+      const isBibliography = detector.isBibliographyByTitle(section.title);
       if (isBibliography) {
-        console.log(`[Back Matter] Bibliography section "${section.title}" → applying advanced URL processing`);
-        // Apply advanced URL processing for detected bibliography
-        content = detector.processUrlsInSection(content);
+        console.log(`[Back Matter] Bibliography section "${section.title}" ✓ (URLs processed document-wide)`);
       } else {
-        console.log(`[Back Matter] Regular section: "${section.title}" → applying standard URL processing`);
-        // Apply regular URL processing only for non-bibliography sections
-        content = processUrlsForLatex(content);
+        console.log(`[Back Matter] Regular section: "${section.title}" ✓ (URLs processed document-wide)`);
       }
+      
+      // No additional URL processing needed - already handled by XeLaTeX processor
       
       // Debug: Log what we're processing
       console.log(`[Back Matter] Finalizing LaTeX structure for: ${section.title}, tocDepth: ${numericTocDepth}`);
