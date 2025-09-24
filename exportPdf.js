@@ -1528,9 +1528,6 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
 \\floatplacement{figure}{!htbp}
 \\floatplacement{table}{!htbp}
 
-% --- Drop cap support for fancy titles ---
-\\usepackage{lettrine}
-
 % Disable figure numbering - show only caption text
 \\usepackage{caption}
 \\captionsetup[figure]{labelformat=empty}
@@ -1564,6 +1561,10 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
 \\newcommand{\\safeinclude}[1]{%
   \\IfFileExists{#1}{\\includegraphics{#1}}{\\textit{[Image: #1 not found]}}%
 }
+
+% --- Drop cap support for fancy titles ---
+% Load lettrine after all other packages are loaded
+\\usepackage{lettrine}
 
 % --- Form field support for underscore conversion ---
 % Using standard LaTeX \\rule command - no additional packages needed
