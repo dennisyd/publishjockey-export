@@ -356,6 +356,63 @@ class TitleStyleProcessor {
       language: this.userLanguage
     };
   }
+
+  /**
+   * Get human-readable language name from language code
+   * @param {string} languageCode - ISO language code (e.g., 'en', 'fr')
+   * @returns {string} Human-readable language name
+   */
+  getLanguageName(languageCode) {
+    const languageNames = {
+      'en': 'English',
+      'fr': 'French', 
+      'it': 'Italian',
+      'es': 'Spanish',
+      'pt': 'Portuguese',
+      'de': 'German',
+      'zh': 'Chinese',
+      'ja': 'Japanese',
+      'ko': 'Korean',
+      'ar': 'Arabic',
+      'hi': 'Hindi',
+      'bn': 'Bengali',
+      'ru': 'Russian',
+      'th': 'Thai',
+      'vi': 'Vietnamese',
+      'tr': 'Turkish',
+      'pl': 'Polish',
+      'nl': 'Dutch',
+      'sv': 'Swedish',
+      'da': 'Danish',
+      'no': 'Norwegian',
+      'fi': 'Finnish',
+      'cs': 'Czech',
+      'hu': 'Hungarian',
+      'ro': 'Romanian',
+      'bg': 'Bulgarian',
+      'hr': 'Croatian',
+      'sk': 'Slovak',
+      'sl': 'Slovenian',
+      'et': 'Estonian',
+      'lv': 'Latvian',
+      'lt': 'Lithuanian',
+      'el': 'Greek',
+      'he': 'Hebrew',
+      'fa': 'Persian',
+      'ur': 'Urdu',
+      'ta': 'Tamil',
+      'te': 'Telugu',
+      'gu': 'Gujarati',
+      'kn': 'Kannada',
+      'ml': 'Malayalam',
+      'pa': 'Punjabi',
+      'or': 'Odia',
+      'mr': 'Marathi',
+      'as': 'Assamese'
+    };
+
+    return languageNames[languageCode] || languageCode.toUpperCase();
+  }
 }
 
 module.exports = { TitleStyleProcessor };
