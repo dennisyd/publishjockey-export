@@ -132,9 +132,10 @@ class TitleStyleProcessor {
   // SAFE METHOD: Generate LaTeX without template literals and handle titlefont
   async wrapLatex(content, includeTitleFont = false, styleName = 'standard') {
     // Check if content uses \titlefont and define it if needed
+    // Use \providecommand to prevent "already defined" errors
     if (content.includes('\\titlefont')) {
       const fontConfig = await this.fontManager.getFontConfigForStyle(styleName);
-      const titleFontDef = '\\newfontfamily\\titlefont{' + fontConfig.title + '}';
+      const titleFontDef = '\\providecommand\\titlefont{}\\renewcommand\\titlefont{' + fontConfig.title + '}';
       return '```{=latex}\n' + titleFontDef + '\n' + content + '\n```\n\n';
     }
     return '```{=latex}\n' + content + '\n```\n\n';
@@ -147,11 +148,11 @@ class TitleStyleProcessor {
       '\\begin{center}',
       '  \\titlefont',
       '  \\textcolor[HTML]{' + colors.primary.replace('#', '') + '}{\\rule{0.3\\textwidth}{0.4pt}}',
-      '  \\\\[0.5em]',
+      '  \\vspace{0.5em}',
       '  {\\Large\\scshape Chapter ' + chapterNumber + '}',
       '  \\\\[0.3em]',
       '  {\\huge\\textbf{' + titleText + '}}',
-      '  \\\\[0.5em]',
+      '  \\vspace{0.5em}',
       '  \\textcolor[HTML]{' + colors.primary.replace('#', '') + '}{\\rule{0.3\\textwidth}{0.4pt}}',
       '\\end{center}',
       '\\vspace{2em}'
@@ -165,7 +166,7 @@ class TitleStyleProcessor {
       '\\begin{center}',
       '  \\sffamily',
       '  {\\fontsize{120}{120}\\selectfont\\textcolor{lightgray}{' + chapterNumber + '}}',
-      '  \\\\[-2em]',
+      '  \\vspace{-2em}',
       '  {\\Huge\\bfseries\\textcolor[HTML]{' + colors.primary.replace('#', '') + '}{' + titleText + '}}',
       '\\end{center}',
       '\\vspace{2em}'
@@ -181,7 +182,7 @@ class TitleStyleProcessor {
       '\\begin{center}',
       '  \\titlefont',
       '  {\\large\\scshape Chapter ' + chapterNumber + '}',
-      '  \\\\[0.3em]',
+      '  \\vspace{0.3em}',
       '  {\\Large\\bfseries ' + titleText + '}',
       '\\end{center}',
       '\\vspace{0.5em}',
@@ -198,11 +199,11 @@ class TitleStyleProcessor {
       '\\begin{center}',
       '  \\titlefont',
       '  {\\large ❦ ❦ ❦}',
-      '  \\\\[0.5em]',
+      '  \\vspace{0.5em}',
       '  {\\Large\\scshape Chapter ' + romanNumeral + '}',
-      '  \\\\[0.3em]',
+      '  \\vspace{0.3em}',
       '  {\\huge\\textit{' + titleText + '}}',
-      '  \\\\[0.5em]',
+      '  \\vspace{0.5em}',
       '  {\\large ❦ ❦ ❦}',
       '\\end{center}',
       '\\vspace{2em}'
@@ -218,7 +219,7 @@ class TitleStyleProcessor {
       '    \\vspace{0.5em}',
       '    \\centering\\sffamily\\color{white}',
       '    {\\large\\bfseries Chapter ' + chapterNumber + '}',
-      '    \\\\[0.3em]',
+      '    \\vspace{0.3em}',
       '    {\\Large\\bfseries ' + titleText + '}',
       '    \\vspace{0.5em}',
       '  }%',
@@ -234,7 +235,7 @@ class TitleStyleProcessor {
       '\\begin{flushleft}',
       '  \\sffamily',
       '  {\\fontsize{72}{72}\\selectfont\\bfseries\\textcolor[HTML]{' + colors.accent.replace('#', '') + '}{' + chapterNumber + '}}',
-      '  \\\\[-1em]',
+      '  \\vspace{-1em}',
       '  {\\Huge\\bfseries\\textcolor[HTML]{' + colors.primary.replace('#', '') + '}{' + titleText.toUpperCase() + '}}',
       '\\end{flushleft}',
       '\\vspace{2em}'
@@ -248,11 +249,11 @@ class TitleStyleProcessor {
       '\\begin{center}',
       '  \\titlefont',
       '  {\\color[HTML]{B8860B}\\large ◊ ◊ ◊ ◊ ◊}',
-      '  \\\\[1em]',
+      '  \\vspace{1em}',
       '  {\\Large\\scshape\\textcolor[HTML]{' + colors.primary.replace('#', '') + '}{Chapter ' + chapterNumber + '}}',
-      '  \\\\[0.5em]',
+      '  \\vspace{0.5em}',
       '  {\\huge\\textit{\\textcolor[HTML]{' + colors.primary.replace('#', '') + '}{' + titleText + '}}}',
-      '  \\\\[1em]',
+      '  \\vspace{1em}',
       '  {\\color[HTML]{B8860B}\\large ◊ ◊ ◊ ◊ ◊}',
       '\\end{center}',
       '\\vspace{3em}'
@@ -266,7 +267,7 @@ class TitleStyleProcessor {
       '\\begin{center}',
       '  \\titlefont',
       '  {\\Large Chapter ' + chapterNumber + '}',
-      '  \\\\[0.5em]',
+      '  \\vspace{0.5em}',
       '  {\\huge\\bfseries ' + titleText + '}',
       '\\end{center}',
       '\\vspace{2em}'
