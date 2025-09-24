@@ -401,16 +401,17 @@ function assembleBookPdf(sections, options = {}) {
       const sectionWithHeader = `# ${section.title}\n\n${content}`;
       const bibliographySections = detector.detectBibliographySections(sectionWithHeader);
       
+      let isBibliography = false;
       if (bibliographySections.length > 0 && bibliographySections[0].score >= 0.5) {
         console.log(`[Back Matter] Bibliography detected for "${section.title}" (score: ${bibliographySections[0].score.toFixed(3)})`);
         // Apply advanced URL processing for detected bibliography
         content = detector.processUrlsInSection(content);
+        isBibliography = true;
       } else {
         console.log(`[Back Matter] Regular section: "${section.title}"`);
+        // Apply regular URL processing only for non-bibliography sections
+        content = processUrlsForLatex(content);
       }
-      
-      // Apply regular URL processing (but skip Cloudinary URLs to avoid conflicts)
-      content = processUrlsForLatex(content);
       
       // Debug: Log what we're processing
       console.log(`[Back Matter] Finalizing LaTeX structure for: ${section.title}, tocDepth: ${numericTocDepth}`);
