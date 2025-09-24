@@ -293,6 +293,20 @@ class FontManager {
     
     return commands;
   }
+
+  /**
+   * Get font configuration for a style (compatibility method)
+   * @param {string} styleName - Name of the title style
+   * @returns {Promise<Object>} Font configuration object with title property
+   */
+  async getFontConfigForStyle(styleName) {
+    const fontConfig = await this.findBestFontForStyle(styleName);
+    // Add title property for compatibility with TitleStyleProcessor
+    return {
+      ...fontConfig,
+      title: fontConfig.primary
+    };
+  }
 }
 
 module.exports = { FontManager };

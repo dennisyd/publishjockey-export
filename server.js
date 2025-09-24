@@ -611,7 +611,7 @@ app.post('/export/pdf', rateLimiting.export, authenticateJWT, async (req, res) =
         const userId = exportOptions.userId || req.body.userId || 'defaultUser';
         const projectId = exportOptions.projectId || req.body.projectId || 'defaultProject';
         console.log(`[IMAGE COPY] Copying local uploaded images for userId: ${userId}, projectId: ${projectId}`);
-        copyImagesForExport(finalMarkdown, userId, projectId, tempDir);
+        copyImagesForExport(cleanMarkdown, userId, projectId, tempDir);
         console.log(`[IMAGE COPY] Image preparation completed for userId: ${userId}, projectId: ${projectId}`);
       } catch (err) {
         console.error('Error writing markdown file for PDF processing:', err);
