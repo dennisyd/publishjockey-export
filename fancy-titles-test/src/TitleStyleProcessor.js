@@ -337,6 +337,7 @@ class TitleStyleProcessor {
 
   getStyleInfo(styleName) {
     const colors = this.colorSchemes[styleName] || this.colorSchemes.standard;
+    
     const descriptions = {
       classic_literature: 'Penguin Classics inspired - elegant rules and traditional typography',
       modern_minimalist: 'Apple/Design books inspired - large background numbers, clean sans-serif',
@@ -348,9 +349,33 @@ class TitleStyleProcessor {
       standard: 'Improved LaTeX default - clean and reliable'
     };
 
+    const inspirations = {
+      classic_literature: 'Penguin Classics',
+      modern_minimalist: 'Apple/Design books',
+      academic_press: 'University Press publications',
+      classical_ornate: 'Norton Classics',
+      technical_programming: 'O\'Reilly Media',
+      magazine_style: 'Wired/National Geographic',
+      luxury_fashion: 'High-end fashion books',
+      standard: 'Traditional LaTeX styling'
+    };
+
+    const features = {
+      classic_literature: ['elegant horizontal rules', 'traditional typography', 'centered layout'],
+      modern_minimalist: ['large background numbers', 'clean sans-serif', 'overlaid text'],
+      academic_press: ['horizontal divider rules', 'professional appearance', 'formal layout'],
+      classical_ornate: ['decorative ornaments', 'Roman numerals', 'italicized titles'],
+      technical_programming: ['colored background boxes', 'monospace elements', 'technical styling'],
+      magazine_style: ['dynamic large numbers', 'bold typography', 'left-aligned layout'],
+      luxury_fashion: ['diamond ornaments', 'premium typography', 'gold accents'],
+      standard: ['balanced spacing', 'reliable fonts', 'clean presentation']
+    };
+
     return {
       name: styleName,
       description: descriptions[styleName] || 'Unknown style',
+      inspiration: inspirations[styleName] || 'Classic publishing',
+      features: features[styleName] || ['professional typography'],
       colors: colors,
       dropCapsSupported: this.isDropCapSupported(),
       language: this.userLanguage

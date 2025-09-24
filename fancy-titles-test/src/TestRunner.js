@@ -280,7 +280,7 @@ class TestRunner {
     
     for (let i = 0; i < styles.length; i++) {
       const styleName = styles[i];
-      const styleInfo = this.titleProcessor.getAvailableStyles().styles[styleName];
+      const styleInfo = this.titleProcessor.getStyleInfo(styleName);
       
       allStylesContent.push(`**Style ${i + 1}: ${styleInfo.name}**`);
       allStylesContent.push(`*Inspired by: ${styleInfo.inspiration}*`);
