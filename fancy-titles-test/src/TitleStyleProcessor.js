@@ -413,6 +413,24 @@ class TitleStyleProcessor {
 
     return languageNames[languageCode] || languageCode.toUpperCase();
   }
+
+  /**
+   * Convert markdown headers to styled chapter titles
+   * This is used by the test system to generate sample documents
+   * @param {string} markdown - Markdown content with headers
+   * @param {string} titleStyle - Title style to apply
+   * @returns {string} Processed markdown with styled headers
+   */
+  convertMarkdownHeaders(markdown, titleStyle = 'classic_literature') {
+    if (!markdown || markdown.length === 0) {
+      return markdown;
+    }
+
+    console.log("[TITLE PROCESSOR] Converting markdown headers with style: " + titleStyle);
+    
+    // Use the existing processChapterContent method which handles header conversion
+    return this.processChapterContent(markdown, titleStyle);
+  }
 }
 
 module.exports = { TitleStyleProcessor };
