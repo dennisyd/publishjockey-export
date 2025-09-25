@@ -14,7 +14,7 @@ class TitleStyleProcessor {
     // Only 6 languages support drop caps for cultural appropriateness
     this.dropCapSupportedLanguages = new Set(['en', 'fr', 'it', 'es', 'pt', 'de']);
     
-    // 8 publisher-inspired title styles
+    // 10 publisher-inspired title styles
     this.titleStyles = [
       'classic_literature',    // Penguin Classics inspired
       'modern_minimalist',     // Apple/Design books
@@ -23,6 +23,8 @@ class TitleStyleProcessor {
       'technical_programming', // O'Reilly
       'magazine_style',        // Wired/National Geographic
       'luxury_fashion',        // High-end books
+      'small_caps_elegance',   // Professional small caps (missing in Atticus/Vellum)
+      'decorative_script',     // Elegant script headers (unique differentiator)
       'standard'               // Improved LaTeX default
     ];
 
@@ -35,6 +37,8 @@ class TitleStyleProcessor {
       technical_programming: { primary: '#117A65', accent: '#52C4B0' },
       magazine_style: { primary: '#D35400', accent: '#F39C12' },
       luxury_fashion: { primary: '#8B4513', accent: '#DAA520' },
+      small_caps_elegance: { primary: '#1A1A1A', accent: '#8B4513' },
+      decorative_script: { primary: '#2F4F4F', accent: '#CD853F' },
       standard: { primary: '#2C3E50', accent: '#3498DB' }
     };
 
@@ -106,6 +110,10 @@ class TitleStyleProcessor {
         return await this.generateMagazineStyleHeader(titleText, chapterNumber, colors, styleName);
       case 'luxury_fashion':
         return await this.generateLuxuryFashionHeader(titleText, chapterNumber, colors, styleName);
+      case 'small_caps_elegance':
+        return await this.generateSmallCapsEleganceHeader(titleText, chapterNumber, colors, styleName);
+      case 'decorative_script':
+        return await this.generateDecorativeScriptHeader(titleText, chapterNumber, colors, styleName);
       case 'standard':
       default:
         return await this.generateStandardHeader(titleText, chapterNumber, colors, styleName);
@@ -259,6 +267,40 @@ class TitleStyleProcessor {
     return await this.wrapLatex(latex, true, styleName);
   }
 
+  async generateSmallCapsEleganceHeader(titleText, chapterNumber, colors, styleName = 'small_caps_elegance') {
+    const latex = [
+      '\\clearpage',
+      '\\vspace{4em}',
+      '\\begin{center}',
+      '  \\titlefont',
+      '  {\\color[HTML]{' + colors.accent.replace('#', '') + '}\\rule{0.2\\textwidth}{0.5pt}}',
+      '  \\vspace{1em}',
+      '  {\\Large\\textsc{' + titleText.toLowerCase() + '}}',
+      '  \\vspace{1em}',
+      '  {\\color[HTML]{' + colors.accent.replace('#', '') + '}\\rule{0.2\\textwidth}{0.5pt}}',
+      '\\end{center}',
+      '\\vspace{3em}'
+    ].join('\n');
+    return await this.wrapLatex(latex, true, styleName);
+  }
+
+  async generateDecorativeScriptHeader(titleText, chapterNumber, colors, styleName = 'decorative_script') {
+    const latex = [
+      '\\clearpage',
+      '\\vspace{3em}',
+      '\\begin{center}',
+      '  {\\color[HTML]{' + colors.accent.replace('#', '') + '}\\Large ❦}',
+      '  \\vspace{1em}',
+      '  \\titlefont',
+      '  {\\fontspec{Liberation Serif}\\itshape\\Huge ' + titleText + '}',
+      '  \\vspace{1em}',
+      '  {\\color[HTML]{' + colors.accent.replace('#', '') + '}\\Large ❦}',
+      '\\end{center}',
+      '\\vspace{2em}'
+    ].join('\n');
+    return await this.wrapLatex(latex, true, styleName);
+  }
+
   async generateStandardHeader(titleText, chapterNumber, colors, styleName = 'standard') {
     const latex = [
       '\\clearpage',
@@ -396,6 +438,8 @@ class TitleStyleProcessor {
       technical_programming: 'O\'Reilly inspired - colored boxes, technical appearance',
       magazine_style: 'Wired/National Geographic inspired - dynamic layout, bold typography',
       luxury_fashion: 'High-end books inspired - ornate decorations, premium feel',
+      small_caps_elegance: 'Professional small caps - refined typography missing in Atticus/Vellum',
+      decorative_script: 'Elegant script headers - calligraphic styling with serif body text',
       standard: 'Improved LaTeX default - clean and reliable'
     };
 
@@ -407,6 +451,8 @@ class TitleStyleProcessor {
       technical_programming: 'O\'Reilly Media',
       magazine_style: 'Wired/National Geographic',
       luxury_fashion: 'High-end fashion books',
+      small_caps_elegance: 'Professional publishing (missing in Atticus/Vellum)',
+      decorative_script: 'Calligraphic manuscripts & premium books',
       standard: 'Traditional LaTeX styling'
     };
 
@@ -418,6 +464,8 @@ class TitleStyleProcessor {
       technical_programming: ['colored background boxes', 'monospace elements', 'technical styling'],
       magazine_style: ['dynamic large numbers', 'bold typography', 'left-aligned layout'],
       luxury_fashion: ['diamond ornaments', 'premium typography', 'gold accents'],
+      small_caps_elegance: ['professional small caps', 'subtle rules', 'refined typography'],
+      decorative_script: ['calligraphic styling', 'ornamental flourishes', 'script-serif hybrid'],
       standard: ['balanced spacing', 'reliable fonts', 'clean presentation']
     };
 
