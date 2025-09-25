@@ -300,32 +300,53 @@ class TitleStyleProcessor {
   generateDropCap(paragraph, style = 'traditional') {
     if (!paragraph || paragraph.length === 0) return paragraph;
     
-    const firstChar = paragraph.charAt(0);
-    const rest = paragraph.substring(1);
+    // Clean the paragraph - remove any leading/trailing whitespace and line breaks
+    const cleanParagraph = paragraph.trim().replace(/\n/g, ' ').replace(/\s+/g, ' ');
     
-    // Ensure we have enough text for the drop cap
+    if (cleanParagraph.length < 4) {
+      return paragraph; // Not enough text for drop cap
+    }
+    
+    const firstChar = cleanParagraph.charAt(0);
+    const rest = cleanParagraph.substring(1);
+    
+    // Ensure we have enough text for the small caps part
     if (rest.length < 3) {
       return paragraph; // Not enough text for drop cap
     }
     
+    // Get the small caps part (next 2-3 characters) and remaining text
+    const smallCaps = rest.substring(0, 2); // Use only 2 chars for small caps to be safe
+    const remainingText = rest.substring(2);
+    
+    // Escape any special LaTeX characters in the text parts
+    const escapeLatex = (text) => {
+      return text.replace(/[{}]/g, '\\$&').replace(/[%$&#^_~]/g, '\\$&');
+    };
+    
+    const safeFirstChar = escapeLatex(firstChar);
+    const safeSmallCaps = escapeLatex(smallCaps);
+    const safeRemaining = escapeLatex(remainingText);
+    
     let latexContent = '';
     switch (style) {
       case 'traditional':
-        latexContent = '\\lettrine{' + firstChar + '}{' + rest.substring(0, 3) + '}' + rest.substring(3);
+        latexContent = '\\lettrine{' + safeFirstChar + '}{' + safeSmallCaps + '}' + safeRemaining;
         break;
       case 'raised':
-        latexContent = '\\lettrine[nindent=0pt,slope=0pt]{' + firstChar + '}{' + rest.substring(0, 3) + '}' + rest.substring(3);
+        latexContent = '\\lettrine[nindent=0pt,slope=0pt]{' + safeFirstChar + '}{' + safeSmallCaps + '}' + safeRemaining;
         break;
       case 'decorated':
-        latexContent = '\\lettrine[nindent=0pt,findent=2pt]{\\fbox{' + firstChar + '}}{' + rest.substring(0, 3) + '}' + rest.substring(3);
+        latexContent = '\\lettrine[nindent=0pt,findent=2pt]{\\fbox{' + safeFirstChar + '}}{' + safeSmallCaps + '}' + safeRemaining;
         break;
       default:
         return paragraph;
     }
     
-    // Debug: Log the generated LaTeX to see what's wrong
+    // Debug: Log the generated LaTeX
+    console.log('[DROP CAP DEBUG] Original paragraph:', paragraph.substring(0, 50) + '...');
     console.log('[DROP CAP DEBUG] Generated LaTeX:', latexContent);
-    console.log('[DROP CAP DEBUG] First char:', firstChar, 'Rest:', rest.substring(0, 10) + '...');
+    console.log('[DROP CAP DEBUG] First char: "' + safeFirstChar + '", Small caps: "' + safeSmallCaps + '"');
     
     // Return LaTeX directly wrapped in markdown code blocks
     return '```{=latex}\n' + latexContent + '\n```\n\n';
