@@ -11,8 +11,8 @@ class TitleStyleProcessor {
     this.dropCapStyle = 'traditional'; // Default, will be overridden in processChapterContent
     this.fontManager = fontManager; // Store the fontManager instance
     
-    // Only 6 languages support drop caps for cultural appropriateness
-    this.dropCapSupportedLanguages = new Set(['en', 'fr', 'it', 'es', 'pt', 'de']);
+    // Only English supports drop caps (avoids Unicode/accented character issues)
+    this.dropCapSupportedLanguages = new Set(['en']);
     
     // 10 publisher-inspired title styles
     this.titleStyles = [
