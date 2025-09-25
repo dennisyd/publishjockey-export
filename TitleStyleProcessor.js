@@ -70,10 +70,13 @@ class TitleStyleProcessor {
     }
     
     // Apply replacements in reverse order to preserve indices
+    // IMPORTANT: Keep original markdown header for TOC + add styled version
     let result = content;
     for (let i = replacements.length - 1; i >= 0; i--) {
       const { original, replacement, index } = replacements[i];
-      result = result.slice(0, index) + replacement + result.slice(index + original.length);
+      // Keep the original markdown header for TOC, add styling after it
+      const combinedReplacement = original + '\n\n' + replacement;
+      result = result.slice(0, index) + combinedReplacement + result.slice(index + original.length);
     }
 
     if (this.isDropCapSupported() && dropCapStyle !== 'none') {
