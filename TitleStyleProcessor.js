@@ -303,6 +303,11 @@ class TitleStyleProcessor {
     const firstChar = paragraph.charAt(0);
     const rest = paragraph.substring(1);
     
+    // Ensure we have enough text for the drop cap
+    if (rest.length < 3) {
+      return paragraph; // Not enough text for drop cap
+    }
+    
     let latexContent = '';
     switch (style) {
       case 'traditional':
@@ -317,6 +322,10 @@ class TitleStyleProcessor {
       default:
         return paragraph;
     }
+    
+    // Debug: Log the generated LaTeX to see what's wrong
+    console.log('[DROP CAP DEBUG] Generated LaTeX:', latexContent);
+    console.log('[DROP CAP DEBUG] First char:', firstChar, 'Rest:', rest.substring(0, 10) + '...');
     
     // Return LaTeX directly wrapped in markdown code blocks
     return '```{=latex}\n' + latexContent + '\n```\n\n';
