@@ -46,7 +46,9 @@ class TitleStyleProcessor {
   }
 
   isDropCapSupported() {
-    return this.dropCapSupportedLanguages.has(this.userLanguage);
+    // Extract base language code (e.g., 'es-ES' -> 'es', 'pt-BR' -> 'pt')
+    const baseLanguage = this.userLanguage.split('-')[0];
+    return this.dropCapSupportedLanguages.has(baseLanguage);
   }
 
   async processChapterContent(content, titleStyle = 'standard', dropCapStyle = 'none') {
