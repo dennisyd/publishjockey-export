@@ -1,5 +1,6 @@
 FROM ubuntu:22.04
 
+# Force cache refresh - $(date)
 # Install Node.js and LaTeX with proper fonts and language support
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
     curl \
