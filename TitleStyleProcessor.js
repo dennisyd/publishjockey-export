@@ -70,15 +70,15 @@ class TitleStyleProcessor {
     }
     
     // Apply replacements in reverse order to preserve indices
-    // IMPORTANT: Keep original markdown header for TOC but make it invisible
+    // REPLACE original header with fancy version but preserve TOC functionality
     let result = content;
     for (let i = replacements.length - 1; i >= 0; i--) {
       const { original, replacement, index } = replacements[i];
-      // Make the original header invisible in PDF but keep it for TOC
-      // Use LaTeX to hide it: make font size 0 and no space
-      const invisibleOriginal = '```{=latex}\n{\\fontsize{0pt}{0pt}\\selectfont\n```\n' + original + '\n```{=latex}\n}\n```';
-      const combinedReplacement = invisibleOriginal + '\n\n' + replacement;
-      result = result.slice(0, index) + combinedReplacement + result.slice(index + original.length);
+      // Extract just the title text for TOC metadata
+      const titleText = original.replace(/^#+\s+/, '').trim();
+      // Create a fancy replacement that includes TOC metadata
+      const fancyWithTOC = replacement + '\n```{=latex}\n\\addcontentsline{toc}{chapter}{' + titleText + '}\n```';
+      result = result.slice(0, index) + fancyWithTOC + result.slice(index + original.length);
     }
 
     if (this.isDropCapSupported() && dropCapStyle !== 'none') {
