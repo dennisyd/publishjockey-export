@@ -70,12 +70,14 @@ class TitleStyleProcessor {
     }
     
     // Apply replacements in reverse order to preserve indices
-    // IMPORTANT: Keep original markdown header for TOC + add styled version
+    // IMPORTANT: Keep original markdown header for TOC but make it invisible
     let result = content;
     for (let i = replacements.length - 1; i >= 0; i--) {
       const { original, replacement, index } = replacements[i];
-      // Keep the original markdown header for TOC, add styling after it
-      const combinedReplacement = original + '\n\n' + replacement;
+      // Make the original header invisible in PDF but keep it for TOC
+      // Use LaTeX to hide it: make font size 0 and no space
+      const invisibleOriginal = '```{=latex}\n{\\fontsize{0pt}{0pt}\\selectfont\n```\n' + original + '\n```{=latex}\n}\n```';
+      const combinedReplacement = invisibleOriginal + '\n\n' + replacement;
       result = result.slice(0, index) + combinedReplacement + result.slice(index + original.length);
     }
 
