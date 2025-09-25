@@ -322,16 +322,6 @@ class TitleStyleProcessor {
       return content;
     }
 
-    // Skip drop caps for paragraphs that start with special syntax
-    // This prevents LaTeX errors when paragraphs start with {{IMAGE:}} or other special markup
-    const skipPatterns = [
-      /^\s*\{\{IMAGE:/m,  // {{IMAGE: syntax
-      /^\s*\{\{/,         // {{ anything
-      /^\s*!\[.*\]\(/,    // ![alt](url) markdown images
-      /^\s*\\includegraphics/, // LaTeX images
-      /^\s*\\begin\{/,    // LaTeX environments
-    ];
-
     // Simple drop cap application - find paragraphs after LaTeX headers
     const latexPattern = /```\{=latex\}[\s\S]*?```/g;
     const sections = content.split(latexPattern);
@@ -340,22 +330,18 @@ class TitleStyleProcessor {
     let result = sections[0];
     for (let i = 1; i < sections.length; i++) {
       const section = sections[i];
-      const paragraphs = section.split('\n\n').filter(p => {
-        const trimmed = p.trim();
-        // Skip paragraphs that start with special syntax
-        for (const pattern of skipPatterns) {
-          if (pattern.test(trimmed)) {
-            return false;
-          }
-        }
-        return trimmed.length > 50;
-      });
+      const paragraphs = section.split('\n\n').filter(p => p.trim().length > 50);
 
       if (paragraphs.length > 0) {
         const firstPara = paragraphs[0].trim();
         const dropCapPara = this.generateDropCap(firstPara, dropCapStyle);
-        const modifiedSection = section.replace(firstPara, dropCapPara);
-        result += headers[i-1] + modifiedSection;
+        // Only replace if we actually generated a drop cap (not the original paragraph)
+        if (dropCapPara !== firstPara) {
+          const modifiedSection = section.replace(firstPara, dropCapPara);
+          result += headers[i-1] + modifiedSection;
+        } else {
+          result += headers[i-1] + section;
+        }
       } else {
         result += headers[i-1] + section;
       }
@@ -364,55 +350,45 @@ class TitleStyleProcessor {
     return result;
   }
 
-  // CORRECTED VERSION: Drop cap without template literals
+  // SIMPLIFIED VERSION: Drop cap only for letters
   generateDropCap(paragraph, style = 'traditional') {
     if (!paragraph || paragraph.length === 0) return paragraph;
 
-    // Skip drop caps for paragraphs that start with special syntax
-    // This prevents LaTeX errors when paragraphs start with {{IMAGE:}} or other special markup
-    const skipPatterns = [
-      /^\s*\{\{IMAGE:/m,  // {{IMAGE: syntax
-      /^\s*\{\{/,         // {{ anything
-      /^\s*!\[.*\]\(/,    // ![alt](url) markdown images
-      /^\s*\\includegraphics/, // LaTeX images
-      /^\s*\\begin\{/,    // LaTeX environments
-    ];
-
-    const cleanParagraph = paragraph.trim();
-    for (const pattern of skipPatterns) {
-      if (pattern.test(cleanParagraph)) {
-        return paragraph; // Return original paragraph without drop cap
-      }
-    }
-
     // Clean the paragraph - remove any leading/trailing whitespace and line breaks
-    const normalizedParagraph = cleanParagraph.replace(/\n/g, ' ').replace(/\s+/g, ' ');
-    
-    if (normalizedParagraph.length < 4) {
+    const cleanParagraph = paragraph.trim().replace(/\n/g, ' ').replace(/\s+/g, ' ');
+
+    if (cleanParagraph.length < 4) {
       return paragraph; // Not enough text for drop cap
     }
 
-    const firstChar = normalizedParagraph.charAt(0);
-    const rest = normalizedParagraph.substring(1);
-    
+    const firstChar = cleanParagraph.charAt(0);
+
+    // Only apply drop caps if the first character is a letter (a-z, A-Z)
+    // This avoids LaTeX errors with special characters, images, etc.
+    if (!/^[a-zA-Z]$/.test(firstChar)) {
+      return paragraph; // Skip drop cap for non-letter characters
+    }
+
+    const rest = cleanParagraph.substring(1);
+
     // Ensure we have enough text for the small caps part
     if (rest.length < 3) {
       return paragraph; // Not enough text for drop cap
     }
-    
+
     // Get the small caps part (next 2-3 characters) and remaining text
     const smallCaps = rest.substring(0, 2); // Use only 2 chars for small caps to be safe
     const remainingText = rest.substring(2);
-    
+
     // Escape any special LaTeX characters in the text parts
     const escapeLatex = (text) => {
       return text.replace(/[{}]/g, '\\$&').replace(/[%$&#^_~]/g, '\\$&');
     };
-    
+
     const safeFirstChar = escapeLatex(firstChar);
     const safeSmallCaps = escapeLatex(smallCaps);
     const safeRemaining = escapeLatex(remainingText);
-    
+
     let latexContent = '';
     switch (style) {
       case 'traditional':
@@ -427,11 +403,11 @@ class TitleStyleProcessor {
       default:
         return paragraph;
     }
-    
+
     // Logger.debug('[DROP CAP DEBUG] Original paragraph:', paragraph.substring(0, 50) + '...');
     // Logger.debug('[DROP CAP DEBUG] Generated LaTeX:', latexContent);
     // Logger.debug('[DROP CAP DEBUG] First char: "' + safeFirstChar + '", Small caps: "' + safeSmallCaps + '"');
-    
+
     // Return LaTeX directly wrapped in markdown code blocks
     return '```{=latex}\n' + latexContent + '\n```\n\n';
   }
