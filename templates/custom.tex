@@ -36,8 +36,17 @@ $endif$
     \usepackage{fontspec}
   \fi
   \defaultfontfeatures{Ligatures=TeX,Scale=MatchLowercase}
-  % Load lettrine package for drop caps support
+  % Load packages for enhanced drop caps support
   \usepackage{lettrine}
+  \usepackage{xcolor}
+  % Enhanced lettrine configuration for better drop cap rendering
+  \renewcommand{\LettrineFontHook}{\fontsize{42}{48}\selectfont\color{black}\bfseries}
+  \renewcommand{\LettrineTextFont}{\scshape}
+  \setcounter{DefaultLines}{3}
+  \setcounter{DefaultDepth}{0}
+  % Additional lettrine styling options
+  \renewcommand{\DefaultLhang}{0.3}
+  \renewcommand{\DefaultLoversize}{0.15}
 $for(fontfamilies)$
   \newfontfamily{$fontfamilies.name$}[$fontfamilies.options$]{$fontfamilies.font$}
 $endfor$
