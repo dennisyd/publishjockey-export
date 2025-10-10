@@ -21,7 +21,15 @@ function exportEpub(assembledPath, outputPath, options = {}) {
   const cssFile = path.join(__dirname, 'epub-style.css');
 
   // Read the CSS and inject the selected font-family
+  // Ensure UTF-8 encoding for EPUB3 compliance
   let css = fs.readFileSync(cssFile, 'utf8');
+  console.log(`CSS file read, length: ${css.length} characters`);
+
+  // Clean up any potential BOM or encoding artifacts
+  css = css.replace(/^\uFEFF/, ''); // Remove BOM if present
+  css = css.replace(/\u0000/g, ''); // Remove any null bytes
+
+  console.log(`CSS processed for EPUB3, final length: ${css.length}`);
   let fontFamily = options.fontFamily;
   if (!fontFamily) {
     const platform = os.platform();
@@ -31,9 +39,10 @@ function exportEpub(assembledPath, outputPath, options = {}) {
   // Replace the body font-family in the CSS
   css = css.replace(/font-family:[^;]+;/, `font-family: ${fontFamily}, serif;`);
 
-  // Write the temp CSS file
+  // Write the temp CSS file with explicit UTF-8 encoding
   const tempCssFile = path.join(__dirname, `epub-style-${Date.now()}.css`);
   fs.writeFileSync(tempCssFile, css, 'utf8');
+  console.log(`CSS file written as UTF-8: ${tempCssFile}`);
 
   const baseArgs = [
     assembledPath,
@@ -51,7 +60,9 @@ function exportEpub(assembledPath, outputPath, options = {}) {
     '--variable=graphics:true',
     '--variable=document-css:true',
     // Force UTF-8 encoding for EPUB3 compliance
-    '--metadata', 'encoding=utf-8'
+    '--metadata', 'encoding=utf-8',
+    // Ensure CSS is treated as UTF-8
+    '--css-encoding=utf-8'
   ];
 
   if (options.title) baseArgs.push('--metadata', `title=${options.title}`);
