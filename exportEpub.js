@@ -37,7 +37,8 @@ function exportEpub(assembledPath, outputPath, options = {}) {
 
   const baseArgs = [
     assembledPath,
-    '-f', 'markdown',
+    '-f', 'markdown+utf8',
+    '-t', 'epub3',
     '-o', outputPath,
     '--toc',
     '--toc-depth=2',
@@ -48,7 +49,9 @@ function exportEpub(assembledPath, outputPath, options = {}) {
     '--top-level-division=chapter',
     // Enhanced image handling for better EPUB compatibility
     '--variable=graphics:true',
-    '--variable=document-css:true'
+    '--variable=document-css:true',
+    // Force UTF-8 encoding for EPUB3 compliance
+    '--metadata', 'encoding=utf-8'
   ];
 
   if (options.title) baseArgs.push('--metadata', `title=${options.title}`);
