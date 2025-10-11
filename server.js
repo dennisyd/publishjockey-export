@@ -856,10 +856,21 @@ app.post('/export/epub', rateLimiting.export, authenticateJWT, async (req, res) 
     // Debug language for TOC translation
     console.log(`[EPUB EXPORT] Language from exportOptions: "${exportOptions?.language}"`);
     console.log(`[EPUB EXPORT] TOC title will be: "${getTocTitle(exportOptions?.language || 'en')}"`);
-    // Yancy Dennis - Added debugging for TOC translation
     
-    // Note: toc-title is now set in YAML metadata block, not as command line argument
-    args.push('--toc-depth=2'); // Always use depth 2 for EPUB
+    // Add metadata via Pandoc command-line arguments (not YAML in content to prevent visible rendering)
+    const bookTitle = exportOptions?.metadata?.title || title || 'Untitled Document';
+    const bookAuthor = exportOptions?.metadata?.author || exportOptions?.author || 'Anonymous';
+    const tocTitle = getTocTitle(exportOptions?.language || 'en');
+    
+    // Escape metadata for command-line (simple escaping for Pandoc)
+    args.push(`--metadata=title:${bookTitle}`);
+    args.push(`--metadata=author:${bookAuthor}`);
+    args.push(`--metadata=toc-title:${tocTitle}`);
+    console.log(`[EPUB EXPORT] Passing metadata via Pandoc CLI: title="${bookTitle}", author="${bookAuthor}", toc-title="${tocTitle}"`);
+    
+    // Use tocDepth from options, default to 2
+    const tocDepth = exportOptions?.tocDepth || epubMetadata?.tocDepth || 2;
+    args.push(`--toc-depth=${tocDepth}`);
 
     // Add number-sections flag based on numberedHeadings setting
     if (exportOptions?.numberedHeadings) {

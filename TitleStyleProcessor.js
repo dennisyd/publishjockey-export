@@ -392,16 +392,16 @@ class TitleStyleProcessor {
     let latexContent = '';
     switch (style) {
       case 'traditional':
-        // Traditional drop cap: large letter with 3-line height
-        latexContent = '\\lettrine[lines=3,nindent=0pt]{' + safeFirstChar + '}{' + safeSmallCaps + '}' + safeRemaining;
+        // Traditional drop cap: large letter with 3-line height, no left hang
+        latexContent = '\\lettrine[lines=3,lhang=0,nindent=0pt,findent=0pt]{' + safeFirstChar + '}{' + safeSmallCaps + '}' + safeRemaining;
         break;
       case 'raised':
-        // Raised drop cap: slightly elevated above baseline
-        latexContent = '\\lettrine[lines=3,nindent=0pt,slope=0.2em]{' + safeFirstChar + '}{' + safeSmallCaps + '}' + safeRemaining;
+        // Raised drop cap: slightly elevated above baseline, no left hang
+        latexContent = '\\lettrine[lines=3,lhang=0,nindent=0pt,findent=0pt,slope=0.2em]{' + safeFirstChar + '}{' + safeSmallCaps + '}' + safeRemaining;
         break;
       case 'decorated':
-        // Decorated drop cap: with ornamental frame and enhanced styling
-        latexContent = '\\lettrine[lines=3,nindent=0pt,findent=3pt]{\\fcolorbox{red}{yellow!20}{\\textbf{\\sffamily ' + safeFirstChar + '}}}{' + safeSmallCaps + '}' + safeRemaining;
+        // Decorated drop cap: with ornamental frame and enhanced styling, no left hang
+        latexContent = '\\lettrine[lines=3,lhang=0,nindent=0pt,findent=3pt]{\\fcolorbox{red}{yellow!20}{\\textbf{\\sffamily ' + safeFirstChar + '}}}{' + safeSmallCaps + '}' + safeRemaining;
         break;
       default:
         return paragraph;

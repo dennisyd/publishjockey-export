@@ -10,40 +10,15 @@ function assembleBookEpub(sections, options = {}) {
     metadata = {},
   } = options;
 
-  // Add YAML metadata block if present
+  // NOTE: For EPUB, we don't add YAML frontmatter to the content because:
+  // 1. When HTML follows YAML, Pandoc treats YAML as content (renders it visibly)
+  // 2. Metadata is passed via Pandoc command-line arguments instead (--metadata title="...")
+  // This prevents the YAML block from appearing as visible text in the EPUB
+  
   let output = '';
-  const hasCustomMetadata = metadata && (metadata.title || metadata.tocTitle || metadata.tocDepth || metadata.numberSections !== undefined);
-  if (hasCustomMetadata) {
-    // Debug: Log the raw metadata
-    console.log('[EPUB YAML] Raw metadata:', JSON.stringify(metadata, null, 2));
-    
-    output += '---\n';
-    // Properly escape YAML string values using single quotes (safer for YAML)
-    // In single-quoted strings, only single quotes need escaping (by doubling them)
-    const escapeYAMLSingle = (str) => {
-      if (!str) return '';
-      // Single quotes in YAML: escape single quotes by doubling them
-      // Also handle any newlines/carriage returns by converting to spaces
-      return str
-        .replace(/\r?\n/g, ' ')   // Convert newlines to spaces
-        .replace(/'/g, "''");      // Escape single quotes by doubling
-    };
-    
-    if (metadata.title) {
-      const escapedTitle = escapeYAMLSingle(metadata.title);
-      console.log(`[EPUB YAML] Original title: "${metadata.title}"`);
-      console.log(`[EPUB YAML] Escaped title: "${escapedTitle}"`);
-      output += `title: '${escapedTitle}'\n`;
-    }
-    if (metadata.tocTitle) output += `toc-title: '${escapeYAMLSingle(metadata.tocTitle)}'\n`;
-    if (metadata.tocDepth) output += `toc-depth: ${metadata.tocDepth}\n`;
-    if (metadata.numberSections !== undefined) output += `numbersections: ${metadata.numberSections}\n`;
-    output += '---\n\n';  // Add extra newline after YAML block for clarity
-    
-    // Debug: Log the complete YAML block
-    console.log('[EPUB YAML] Generated YAML block:');
-    console.log(output.substring(0, output.indexOf('---\n\n') + 5));
-  }
+  
+  // Debug: Log the metadata being used (passed to Pandoc via CLI, not in content)
+  console.log('[EPUB METADATA] Metadata will be passed via Pandoc CLI arguments:', JSON.stringify(metadata, null, 2));
 
   // Find and extract copyright and title page sections
   const { titlePageSection, copyrightSection } = identifySpecialSections(sections);
