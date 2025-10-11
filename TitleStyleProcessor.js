@@ -392,16 +392,28 @@ class TitleStyleProcessor {
     let latexContent = '';
     switch (style) {
       case 'traditional':
-        // Traditional drop cap: large letter with 3-line height, no left hang
+        // Traditional drop cap: 3 lines, classic serif style
         latexContent = '\\lettrine[lines=3,lhang=0,nindent=0pt,findent=0pt]{' + safeFirstChar + '}{' + safeSmallCaps + '}' + safeRemaining;
         break;
       case 'raised':
-        // Raised drop cap: slightly elevated above baseline, no left hang
-        latexContent = '\\lettrine[lines=3,lhang=0,nindent=0pt,findent=0pt,slope=0.2em]{' + safeFirstChar + '}{' + safeSmallCaps + '}' + safeRemaining;
+        // Raised drop cap: 2 lines, smaller and elevated above baseline
+        latexContent = '\\lettrine[lines=2,lhang=0,nindent=0pt,findent=0pt,ante=\\raisebox{0.5em}]{' + safeFirstChar + '}{' + safeSmallCaps + '}' + safeRemaining;
+        break;
+      case 'large':
+        // Large dramatic drop cap: 4 lines, bold, spans more height
+        latexContent = '\\lettrine[lines=4,lhang=0,nindent=0pt,findent=0pt]{\\textbf{' + safeFirstChar + '}}{' + safeSmallCaps + '}' + safeRemaining;
+        break;
+      case 'elegant':
+        // Elegant drop cap: 3 lines with subtle gray color and small caps emphasis
+        latexContent = '\\lettrine[lines=3,lhang=0,nindent=0pt,findent=2pt]{\\textcolor{gray}{' + safeFirstChar + '}}{\\textsc{' + safeSmallCaps + '}}' + safeRemaining;
+        break;
+      case 'bold':
+        // Bold drop cap: 3 lines, heavy weight, strong presence
+        latexContent = '\\lettrine[lines=3,lhang=0,nindent=0pt,findent=0pt]{\\textbf{\\sffamily ' + safeFirstChar + '}}{\\textbf{' + safeSmallCaps + '}}' + safeRemaining;
         break;
       case 'decorated':
-        // Decorated drop cap: with ornamental frame and enhanced styling, no left hang
-        latexContent = '\\lettrine[lines=3,lhang=0,nindent=0pt,findent=3pt]{\\fcolorbox{red}{yellow!20}{\\textbf{\\sffamily ' + safeFirstChar + '}}}{' + safeSmallCaps + '}' + safeRemaining;
+        // Decorated drop cap: with ornamental border, colored background
+        latexContent = '\\lettrine[lines=3,lhang=0,nindent=0pt,findent=3pt]{\\fcolorbox{black}{gray!15}{\\textbf{' + safeFirstChar + '}}}{' + safeSmallCaps + '}' + safeRemaining;
         break;
       default:
         return paragraph;
