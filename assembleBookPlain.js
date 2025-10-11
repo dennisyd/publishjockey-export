@@ -29,23 +29,22 @@ function assembleBookPlain(sections, options = {}) {
 
   let output = '';
 
-  // Properly escape YAML string values
-  const escapeYAML = (str) => {
+  // Properly escape YAML string values using single quotes (safer for YAML)
+  const escapeYAMLSingle = (str) => {
     if (!str) return '';
+    // In single-quoted YAML strings, only single quotes need escaping (by doubling)
     return str
-      .replace(/\\/g, '\\\\')  // Escape backslashes first
-      .replace(/"/g, '\\"')     // Escape double quotes
-      .replace(/\n/g, '\\n')    // Escape newlines
-      .replace(/\r/g, '\\r');   // Escape carriage returns
+      .replace(/\r?\n/g, ' ')   // Convert newlines to spaces
+      .replace(/'/g, "''");      // Escape single quotes by doubling
   };
   
   // Add YAML metadata block if present
   if (metadata && (metadata.title || metadata.author || metadata.subtitle)) {
     output += '---\n';
-    if (metadata.title) output += `title: "${escapeYAML(metadata.title)}"\n`;
-    if (metadata.author) output += `author: "${escapeYAML(metadata.author)}"\n`;
-    if (metadata.subtitle) output += `subtitle: "${escapeYAML(metadata.subtitle)}"\n`;
-    output += `toc-title: "${escapeYAML(getTocTitle(language))}"\n`;
+    if (metadata.title) output += `title: '${escapeYAMLSingle(metadata.title)}'\n`;
+    if (metadata.author) output += `author: '${escapeYAMLSingle(metadata.author)}'\n`;
+    if (metadata.subtitle) output += `subtitle: '${escapeYAMLSingle(metadata.subtitle)}'\n`;
+    output += `toc-title: '${escapeYAMLSingle(getTocTitle(language))}'\n`;
     output += '---\n\n';
   }
 

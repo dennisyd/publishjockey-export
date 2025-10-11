@@ -892,11 +892,11 @@ app.post('/export/epub', rateLimiting.export, authenticateJWT, async (req, res) 
       coverPath = path.join(__dirname, 'uploads', 'default_cover.png');
     }
     
-    // Check file size (limit to 10 MB) and existence
+    // Check file size (limit to 15 MB) and existence
     try {
       const stats = fs.statSync(coverPath);
-      if (stats.size > 10 * 1024 * 1024) { // 10 MB
-        return res.status(400).json({ error: 'Cover image exceeds 10 MB size limit.' });
+      if (stats.size > 15 * 1024 * 1024) { // 15 MB
+        return res.status(400).json({ error: 'Cover image exceeds 15 MB size limit.' });
       }
       // Copy the cover image to the temp directory with a unique name
       const coverExt = path.extname(coverPath);
@@ -1125,25 +1125,24 @@ app.post('/export/docx', rateLimiting.export, authenticateJWT, async (req, res) 
     
     const subtitle = exportOptions?.subtitle || '';
     
-    // Properly escape YAML string values
-    const escapeYAML = (str) => {
+    // Properly escape YAML string values using single quotes (safer for YAML)
+    const escapeYAMLSingle = (str) => {
       if (!str) return '';
+      // In single-quoted YAML strings, only single quotes need escaping (by doubling)
       return str
-        .replace(/\\/g, '\\\\')  // Escape backslashes first
-        .replace(/"/g, '\\"')     // Escape double quotes
-        .replace(/\n/g, '\\n')    // Escape newlines
-        .replace(/\r/g, '\\r');   // Escape carriage returns
+        .replace(/\r?\n/g, ' ')   // Convert newlines to spaces
+        .replace(/'/g, "''");      // Escape single quotes by doubling
     };
     
     let metadataBlock = '---\n';
-    metadataBlock += `title: "${escapeYAML(bookTitle)}"\n`;
-    metadataBlock += `author: "${escapeYAML(author)}"\n`;
-    if (subtitle) metadataBlock += `subtitle: "${escapeYAML(subtitle)}"\n`;
+    metadataBlock += `title: '${escapeYAMLSingle(bookTitle)}'\n`;
+    metadataBlock += `author: '${escapeYAMLSingle(author)}'\n`;
+    if (subtitle) metadataBlock += `subtitle: '${escapeYAMLSingle(subtitle)}'\n`;
     // Debug language for TOC translation in DOCX
     console.log(`[DOCX EXPORT] Language from exportOptions: "${exportOptions?.language}"`);
     console.log(`[DOCX EXPORT] TOC title will be: "${getTocTitle(exportOptions?.language || 'en')}"`);
     
-    metadataBlock += `toc-title: "${escapeYAML(getTocTitle(exportOptions?.language || 'en'))}"\n`;
+    metadataBlock += `toc-title: '${escapeYAMLSingle(getTocTitle(exportOptions?.language || 'en'))}'\n`;
     metadataBlock += '---\n\n';
 
     // Prepend metadata block to assembledMarkdown

@@ -15,21 +15,22 @@ function assembleBookEpub(sections, options = {}) {
   const hasCustomMetadata = metadata && (metadata.title || metadata.tocTitle || metadata.tocDepth || metadata.numberSections !== undefined);
   if (hasCustomMetadata) {
     output += '---\n';
-    // Properly escape YAML string values - escape backslashes first, then quotes
-    const escapeYAML = (str) => {
+    // Properly escape YAML string values using single quotes (safer for YAML)
+    // In single-quoted strings, only single quotes need escaping (by doubling them)
+    const escapeYAMLSingle = (str) => {
       if (!str) return '';
+      // Single quotes in YAML: escape single quotes by doubling them
+      // Also handle any newlines/carriage returns by converting to spaces
       return str
-        .replace(/\\/g, '\\\\')  // Escape backslashes first
-        .replace(/"/g, '\\"')     // Escape double quotes
-        .replace(/\n/g, '\\n')    // Escape newlines
-        .replace(/\r/g, '\\r');   // Escape carriage returns
+        .replace(/\r?\n/g, ' ')   // Convert newlines to spaces
+        .replace(/'/g, "''");      // Escape single quotes by doubling
     };
     
-    if (metadata.title) output += `title: "${escapeYAML(metadata.title)}"\n`;
-    if (metadata.tocTitle) output += `toc-title: "${escapeYAML(metadata.tocTitle)}"\n`;
+    if (metadata.title) output += `title: '${escapeYAMLSingle(metadata.title)}'\n`;
+    if (metadata.tocTitle) output += `toc-title: '${escapeYAMLSingle(metadata.tocTitle)}'\n`;
     if (metadata.tocDepth) output += `toc-depth: ${metadata.tocDepth}\n`;
     if (metadata.numberSections !== undefined) output += `numbersections: ${metadata.numberSections}\n`;
-    output += '---\n';
+    output += '---\n\n';  // Add extra newline after YAML block for clarity
   }
 
   // Find and extract copyright and title page sections
