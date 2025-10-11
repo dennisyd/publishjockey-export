@@ -4,11 +4,295 @@ const path = require('path');
 const os = require('os');
 const { v4: uuidv4 } = require('uuid');
 const { getTocTitle } = require('./translations');
+const AdmZip = require('adm-zip');
 
 // Use custom Pandoc version if available, fallback to system pandoc
 // Handle Windows vs Linux defaults properly
-const PANDOC_PATH = process.env.PANDOC_PATH || 
+const PANDOC_PATH = process.env.PANDOC_PATH ||
   (process.platform === 'win32' ? 'pandoc' : '/root/.cache/pandoc-3.6.4');
+
+/**
+ * Sanitizes XHTML files in the EPUB text directory for EPUB 3.3 compliance
+ * @param {string} epubTextDir - Path to the EPUB text directory containing XHTML files
+ */
+function sanitizeXhtmlFiles(epubTextDir) {
+  console.log(`[EPUB Sanitization] Scanning XHTML files in: ${epubTextDir}`);
+
+  if (!fs.existsSync(epubTextDir)) {
+    console.log(`[EPUB Sanitization] Text directory not found: ${epubTextDir}`);
+    return;
+  }
+
+  // Recursively find all .xhtml files
+  const xhtmlFiles = getAllXhtmlFiles(epubTextDir);
+  console.log(`[EPUB Sanitization] Found ${xhtmlFiles.length} XHTML files to sanitize`);
+
+  xhtmlFiles.forEach(filePath => {
+    console.log(`[EPUB Sanitization] Processing: ${path.relative(epubTextDir, filePath)}`);
+
+    let content = fs.readFileSync(filePath, 'utf8');
+    const originalContent = content;
+
+    // Fix malformed <img> tags
+    content = fixImgTags(content);
+
+    // Fix other potential markup issues
+    content = fixMarkupIssues(content);
+
+    // Only write if content changed
+    if (content !== originalContent) {
+      fs.writeFileSync(filePath, content, 'utf8');
+      console.log(`[EPUB Sanitization] Fixed markup in: ${path.relative(epubTextDir, filePath)}`);
+    }
+  });
+
+  console.log(`[EPUB Sanitization] XHTML sanitization complete`);
+}
+
+/**
+ * Recursively finds all .xhtml files in a directory
+ * @param {string} dir - Directory to search
+ * @returns {string[]} Array of file paths
+ */
+function getAllXhtmlFiles(dir) {
+  const files = [];
+
+  function scanDirectory(currentDir) {
+    const items = fs.readdirSync(currentDir);
+
+    items.forEach(item => {
+      const fullPath = path.join(currentDir, item);
+      const stat = fs.statSync(fullPath);
+
+      if (stat.isDirectory()) {
+        scanDirectory(fullPath);
+      } else if (item.endsWith('.xhtml')) {
+        files.push(fullPath);
+      }
+    });
+  }
+
+  scanDirectory(dir);
+  return files;
+}
+
+/**
+ * Fixes malformed <img> tags and other markup issues
+ * @param {string} content - XHTML content to fix
+ * @returns {string} Fixed content
+ */
+function fixImgTags(content) {
+  return content
+    // Fix missing equals sign in alt attribute: alt"Cover" → alt="Cover"
+    .replace(/<img([^>]*)\salt"([^"]*)"([^>]*?)>/gi, (match, before, altValue, after) => {
+      return `<img${before} alt="${altValue}"${after}>`;
+    })
+
+    // Fix missing equals sign in other attributes
+    .replace(/<img([^>]*)\s(\w+)"([^"]*)"([^>]*?)>/gi, (match, before, attr, value, after) => {
+      return `<img${before} ${attr}="${value}"${after}>`;
+    })
+
+    // Ensure all <img> tags are self-closing
+    .replace(/<img([^>]*)(?<!\/)>/gi, '<img$1 />')
+
+    // Add alt attribute if missing
+    .replace(/<img([^>]*?)(?!\salt=)([^>]*?)\/?>/gi, (match, attrs, end) => {
+      return `<img${attrs} alt=""${end}>`;
+    });
+}
+
+/**
+ * Fixes other potential markup issues in XHTML
+ * @param {string} content - XHTML content to fix
+ * @returns {string} Fixed content
+ */
+function fixMarkupIssues(content) {
+  return content
+    // Ensure <meta> tags are self-closing
+    .replace(/<meta([^>]*)(?<!\/)>/gi, '<meta$1 />')
+
+    // Ensure <link> tags are self-closing
+    .replace(/<link([^>]*)(?<!\/)>/gi, '<link$1 />')
+
+    // Fix unquoted attributes (basic cases)
+    .replace(/<(\w+)([^>]*)\s(\w+)=([^"\s>]+)([^>]*?)>/gi, (match, tag, before, attr, value, after) => {
+      // Only fix simple cases to avoid breaking complex attributes
+      if (!value.includes(' ') && !value.includes('=')) {
+        return `<${tag}${before} ${attr}="${value}"${after}>`;
+      }
+      return match;
+    });
+}
+
+/**
+ * Ensures a file is UTF-8 encoded
+ * @param {string} filePath - Path to the file to check/fix
+ */
+function ensureUtf8Encoding(filePath) {
+  if (!fs.existsSync(filePath)) {
+    return;
+  }
+
+  const content = fs.readFileSync(filePath);
+  let encoding = 'utf8';
+
+  // Detect encoding by checking BOM
+  if (content.length >= 3) {
+    if (content[0] === 0xEF && content[1] === 0xBB && content[2] === 0xBF) {
+      // UTF-8 BOM
+      encoding = 'utf8';
+    } else if (content[0] === 0xFF && content[1] === 0xFE) {
+      // UTF-16 LE BOM
+      encoding = 'utf16le';
+    } else if (content[0] === 0xFE && content[1] === 0xFF) {
+      // UTF-16 BE BOM
+      encoding = 'utf16be';
+    }
+  }
+
+  if (encoding !== 'utf8') {
+    console.log(`[EPUB Encoding] Converting ${filePath} from ${encoding} to UTF-8`);
+    const utf8Content = content.toString('utf8');
+    fs.writeFileSync(filePath, utf8Content, 'utf8');
+  } else {
+    // Ensure it's properly written as UTF-8 even if it was already UTF-8
+    const utf8Content = content.toString('utf8');
+    fs.writeFileSync(filePath, utf8Content, 'utf8');
+  }
+}
+
+/**
+ * Sanitizes a generated EPUB file for EPUB 3.3 compliance
+ * Extracts the EPUB, sanitizes XHTML files, ensures UTF-8 encoding, and repackages
+ * @param {string} epubPath - Path to the generated EPUB file
+ */
+async function sanitizeGeneratedEpub(epubPath) {
+  console.log(`[EPUB Sanitization] Starting EPUB sanitization for: ${epubPath}`);
+
+  if (!fs.existsSync(epubPath)) {
+    console.log(`[EPUB Sanitization] EPUB file not found: ${epubPath}`);
+    return;
+  }
+
+  const tempDir = path.join(os.tmpdir(), `epub-sanitization-${uuidv4()}`);
+  const epubDir = path.join(tempDir, 'epub');
+
+  try {
+    // Create temporary directory
+    fs.mkdirSync(epubDir, { recursive: true });
+    console.log(`[EPUB Sanitization] Created temp directory: ${epubDir}`);
+
+    // Extract EPUB contents
+    console.log(`[EPUB Sanitization] Extracting EPUB to: ${epubDir}`);
+    const zip = new AdmZip(epubPath);
+    zip.extractAllTo(epubDir, true);
+
+    // Find and sanitize XHTML files in /EPUB/text/ directory
+    const textDir = path.join(epubDir, 'EPUB', 'text');
+    if (fs.existsSync(textDir)) {
+      sanitizeXhtmlFiles(textDir);
+    }
+
+    // Ensure UTF-8 encoding for all files in the EPUB
+    ensureUtf8EncodingForAllFiles(epubDir);
+
+    // Repackage the EPUB
+    console.log(`[EPUB Sanitization] Repackaging EPUB: ${epubPath}`);
+    const sanitizedZip = new AdmZip();
+    addDirectoryToZip(sanitizedZip, epubDir, '');
+    sanitizedZip.writeZip(epubPath);
+
+    console.log(`[EPUB Sanitization] EPUB sanitization completed successfully`);
+
+  } catch (error) {
+    console.error(`[EPUB Sanitization] Error during sanitization:`, error);
+    throw error;
+  } finally {
+    // Clean up temporary directory
+    if (fs.existsSync(tempDir)) {
+      // Use fs.rm if available (Node 14+), fallback to recursive deletion
+      try {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+      } catch (rmError) {
+        // Fallback for older Node.js versions
+        deleteFolderRecursive(tempDir);
+      }
+      console.log(`[EPUB Sanitization] Cleaned up temp directory: ${tempDir}`);
+    }
+  }
+}
+
+/**
+ * Ensures UTF-8 encoding for all files in the EPUB directory
+ * @param {string} epubDir - Path to the extracted EPUB directory
+ */
+function ensureUtf8EncodingForAllFiles(epubDir) {
+  console.log(`[EPUB Encoding] Ensuring UTF-8 encoding for all files in: ${epubDir}`);
+
+  function processDirectory(dir) {
+    const items = fs.readdirSync(dir);
+
+    items.forEach(item => {
+      const fullPath = path.join(dir, item);
+      const stat = fs.statSync(fullPath);
+
+      if (stat.isDirectory()) {
+        processDirectory(fullPath);
+      } else {
+        // Skip binary files (images, fonts, etc.)
+        const ext = path.extname(item).toLowerCase();
+        if (!['.jpg', '.jpeg', '.png', '.gif', '.svg', '.woff', '.woff2', '.ttf', '.otf'].includes(ext)) {
+          ensureUtf8Encoding(fullPath);
+        }
+      }
+    });
+  }
+
+  processDirectory(epubDir);
+  console.log(`[EPUB Encoding] UTF-8 encoding check completed`);
+}
+
+/**
+ * Recursively adds a directory to a ZIP archive
+ * @param {AdmZip} zip - The ZIP archive to add to
+ * @param {string} dirPath - Path to the directory to add
+ * @param {string} zipPath - Path within the ZIP archive
+ */
+function addDirectoryToZip(zip, dirPath, zipPath) {
+  const items = fs.readdirSync(dirPath);
+
+  items.forEach(item => {
+    const fullPath = path.join(dirPath, item);
+    const stat = fs.statSync(fullPath);
+
+    if (stat.isDirectory()) {
+      const subZipPath = path.join(zipPath, item).replace(/\\/g, '/');
+      addDirectoryToZip(zip, fullPath, subZipPath);
+    } else {
+      const entryPath = path.join(zipPath, item).replace(/\\/g, '/');
+      zip.addLocalFile(fullPath, path.dirname(entryPath));
+    }
+  });
+}
+
+/**
+ * Recursively deletes a folder and all its contents (fallback for older Node.js)
+ * @param {string} dirPath - Path to the directory to delete
+ */
+function deleteFolderRecursive(dirPath) {
+  if (fs.existsSync(dirPath)) {
+    fs.readdirSync(dirPath).forEach(file => {
+      const curPath = path.join(dirPath, file);
+      if (fs.lstatSync(curPath).isDirectory()) {
+        deleteFolderRecursive(curPath);
+      } else {
+        fs.unlinkSync(curPath);
+      }
+    });
+    fs.rmdirSync(dirPath);
+  }
+}
 
 /**
  * Exports an EPUB using Pandoc.
@@ -71,6 +355,11 @@ function exportEpub(assembledPath, outputPath, options = {}) {
   try {
     execFileSync(PANDOC_PATH, baseArgs, { stdio: 'inherit' });
     console.log(`EPUB successfully created at ${outputPath}`);
+
+    // Sanitize the generated EPUB for EPUB 3.3 compliance
+    await sanitizeGeneratedEpub(outputPath);
+
+    console.log(`EPUB sanitization completed for ${outputPath}`);
   } catch (error) {
     console.error('EPUB generation error:', error);
     throw error;

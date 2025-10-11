@@ -12,6 +12,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "adm-zip": "^0.5.10",
     "axios": "^1.8.4",
     "bcryptjs": "^3.0.2",
     "cheerio": "^1.0.0",
