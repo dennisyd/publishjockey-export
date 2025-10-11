@@ -15,7 +15,7 @@ const cheerio = require('cheerio');
 const { assembleBookPlain } = require('./assembleBookPlain');
 const marked = require('marked');
 const { exportBook } = require('./exportBook');
-const { exportEpub } = require('./exportEpub');
+const { exportEpub, sanitizeGeneratedEpub } = require('./exportEpub');
 const os = require('os');
 const { v4: uuidv4 } = require('uuid');
 const { exportPdf } = require('./exportPdf');
@@ -1008,7 +1008,7 @@ app.post('/export/epub', rateLimiting.export, authenticateJWT, async (req, res) 
     };
 
     // Run Pandoc to generate EPUB
-    execFile(PANDOC_PATH, args, (err, stdout, stderr) => {
+    execFile(PANDOC_PATH, args, async (err, stdout, stderr) => {
       if (err) {
         console.error('Pandoc EPUB error:', err);
         console.error('Pandoc stderr:', stderr);
@@ -1026,7 +1026,16 @@ app.post('/export/epub', rateLimiting.export, authenticateJWT, async (req, res) 
         
         return res.status(500).send('EPUB generation failed: ' + err.message);
       }
-      
+
+      // Sanitize the generated EPUB for EPUB 3.3 compliance
+      try {
+        await sanitizeGeneratedEpub(tempOutputFile);
+        console.log(`[EPUB Sanitization] EPUB sanitization completed for ${tempOutputFile}`);
+      } catch (sanitizeError) {
+        console.error(`[EPUB Sanitization] Sanitization failed for ${tempOutputFile}:`, sanitizeError);
+        // Don't fail the export if sanitization fails, just log the error
+      }
+
       handleEpubSuccess();
     });
   } catch (err) {
@@ -1864,7 +1873,7 @@ app.post('/export-epub', rateLimiting.export, authenticateJWT, async (req, res) 
 
     // Export with Pandoc (EPUB)
     const outputPath = path.join(__dirname, 'final.epub');
-    exportEpub(
+    await exportEpub(
       assembledPath,
       outputPath,
       { title, author, tocDepth: 2, language: exportOptions?.language || 'en' }

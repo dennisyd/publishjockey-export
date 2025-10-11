@@ -300,7 +300,7 @@ function deleteFolderRecursive(dirPath) {
  * @param {string} outputPath - Path to output the .epub file.
  * @param {Object} options - { title, author, tocDepth, language }
  */
-function exportEpub(assembledPath, outputPath, options = {}) {
+async function exportEpub(assembledPath, outputPath, options = {}) {
   // Use the persistent epub-style.css file
   const cssFile = path.join(__dirname, 'epub-style.css');
 
@@ -369,4 +369,4 @@ function exportEpub(assembledPath, outputPath, options = {}) {
   }
 }
 
-module.exports = { exportEpub }; 
+module.exports = { exportEpub, sanitizeGeneratedEpub }; 
