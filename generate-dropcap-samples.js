@@ -98,7 +98,7 @@ This document showcases all available drop cap styles in PublishJockey. Each sty
     '--from=markdown+raw_tex',
     '--to=latex',
     '--variable', 'mainfont=Linux Libertine O',
-    '--variable', 'documentclass=article',
+    '--variable', 'documentclass=book',
     '--variable', 'fontsize=11pt',
     '--variable', 'geometry:margin=1in',
     '--standalone'

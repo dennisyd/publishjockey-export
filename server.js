@@ -270,6 +270,9 @@ app.use(express.json({ limit: '100mb' }));
 // Serve static files from uploads directory
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// Serve sample PDFs (style previews)
+app.use('/samples', express.static(path.join(__dirname, 'public', 'samples')));
+
 // Temporary file tracking for cleanup
 const tempExportFiles = new Map();
 
