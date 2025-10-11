@@ -15,8 +15,18 @@ function assembleBookEpub(sections, options = {}) {
   const hasCustomMetadata = metadata && (metadata.title || metadata.tocTitle || metadata.tocDepth || metadata.numberSections !== undefined);
   if (hasCustomMetadata) {
     output += '---\n';
-    if (metadata.title) output += `title: "${metadata.title.replace(/"/g, '\"')}"\n`;
-    if (metadata.tocTitle) output += `toc-title: "${metadata.tocTitle.replace(/"/g, '\"')}"\n`;
+    // Properly escape YAML string values - escape backslashes first, then quotes
+    const escapeYAML = (str) => {
+      if (!str) return '';
+      return str
+        .replace(/\\/g, '\\\\')  // Escape backslashes first
+        .replace(/"/g, '\\"')     // Escape double quotes
+        .replace(/\n/g, '\\n')    // Escape newlines
+        .replace(/\r/g, '\\r');   // Escape carriage returns
+    };
+    
+    if (metadata.title) output += `title: "${escapeYAML(metadata.title)}"\n`;
+    if (metadata.tocTitle) output += `toc-title: "${escapeYAML(metadata.tocTitle)}"\n`;
     if (metadata.tocDepth) output += `toc-depth: ${metadata.tocDepth}\n`;
     if (metadata.numberSections !== undefined) output += `numbersections: ${metadata.numberSections}\n`;
     output += '---\n';

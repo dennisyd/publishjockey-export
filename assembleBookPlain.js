@@ -29,13 +29,23 @@ function assembleBookPlain(sections, options = {}) {
 
   let output = '';
 
+  // Properly escape YAML string values
+  const escapeYAML = (str) => {
+    if (!str) return '';
+    return str
+      .replace(/\\/g, '\\\\')  // Escape backslashes first
+      .replace(/"/g, '\\"')     // Escape double quotes
+      .replace(/\n/g, '\\n')    // Escape newlines
+      .replace(/\r/g, '\\r');   // Escape carriage returns
+  };
+  
   // Add YAML metadata block if present
   if (metadata && (metadata.title || metadata.author || metadata.subtitle)) {
     output += '---\n';
-    if (metadata.title) output += `title: "${metadata.title.replace(/"/g, '\"')}"\n`;
-    if (metadata.author) output += `author: "${metadata.author.replace(/"/g, '\"')}"\n`;
-    if (metadata.subtitle) output += `subtitle: "${metadata.subtitle.replace(/"/g, '\"')}"\n`;
-    output += `toc-title: "${getTocTitle(language)}"\n`;
+    if (metadata.title) output += `title: "${escapeYAML(metadata.title)}"\n`;
+    if (metadata.author) output += `author: "${escapeYAML(metadata.author)}"\n`;
+    if (metadata.subtitle) output += `subtitle: "${escapeYAML(metadata.subtitle)}"\n`;
+    output += `toc-title: "${escapeYAML(getTocTitle(language))}"\n`;
     output += '---\n\n';
   }
 

@@ -1125,15 +1125,25 @@ app.post('/export/docx', rateLimiting.export, authenticateJWT, async (req, res) 
     
     const subtitle = exportOptions?.subtitle || '';
     
+    // Properly escape YAML string values
+    const escapeYAML = (str) => {
+      if (!str) return '';
+      return str
+        .replace(/\\/g, '\\\\')  // Escape backslashes first
+        .replace(/"/g, '\\"')     // Escape double quotes
+        .replace(/\n/g, '\\n')    // Escape newlines
+        .replace(/\r/g, '\\r');   // Escape carriage returns
+    };
+    
     let metadataBlock = '---\n';
-    metadataBlock += `title: "${bookTitle.replace(/"/g, '\"')}"\n`;
-    metadataBlock += `author: "${author.replace(/"/g, '\"')}"\n`;
-    if (subtitle) metadataBlock += `subtitle: "${subtitle.replace(/"/g, '\"')}"\n`;
+    metadataBlock += `title: "${escapeYAML(bookTitle)}"\n`;
+    metadataBlock += `author: "${escapeYAML(author)}"\n`;
+    if (subtitle) metadataBlock += `subtitle: "${escapeYAML(subtitle)}"\n`;
     // Debug language for TOC translation in DOCX
     console.log(`[DOCX EXPORT] Language from exportOptions: "${exportOptions?.language}"`);
     console.log(`[DOCX EXPORT] TOC title will be: "${getTocTitle(exportOptions?.language || 'en')}"`);
     
-    metadataBlock += `toc-title: "${getTocTitle(exportOptions?.language || 'en')}"\n`;
+    metadataBlock += `toc-title: "${escapeYAML(getTocTitle(exportOptions?.language || 'en'))}"\n`;
     metadataBlock += '---\n\n';
 
     // Prepend metadata block to assembledMarkdown

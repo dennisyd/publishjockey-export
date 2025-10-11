@@ -28,21 +28,26 @@ function sanitizeXhtmlFiles(epubTextDir) {
   console.log(`[EPUB Sanitization] Found ${xhtmlFiles.length} XHTML files to sanitize`);
 
   xhtmlFiles.forEach(filePath => {
-    console.log(`[EPUB Sanitization] Processing: ${path.relative(epubTextDir, filePath)}`);
+    try {
+      console.log(`[EPUB Sanitization] Processing: ${path.relative(epubTextDir, filePath)}`);
 
-    let content = fs.readFileSync(filePath, 'utf8');
-    const originalContent = content;
+      let content = fs.readFileSync(filePath, 'utf8');
+      const originalContent = content;
 
-    // Fix malformed <img> tags
-    content = fixImgTags(content);
+      // Fix malformed <img> tags
+      content = fixImgTags(content);
 
-    // Fix other potential markup issues
-    content = fixMarkupIssues(content);
+      // Fix other potential markup issues
+      content = fixMarkupIssues(content);
 
-    // Only write if content changed
-    if (content !== originalContent) {
-      fs.writeFileSync(filePath, content, 'utf8');
-      console.log(`[EPUB Sanitization] Fixed markup in: ${path.relative(epubTextDir, filePath)}`);
+      // Only write if content changed
+      if (content !== originalContent) {
+        fs.writeFileSync(filePath, content, 'utf8');
+        console.log(`[EPUB Sanitization] Fixed markup in: ${path.relative(epubTextDir, filePath)}`);
+      }
+    } catch (fileError) {
+      console.error(`[EPUB Sanitization] Error processing file ${filePath}:`, fileError);
+      // Continue with other files instead of crashing
     }
   });
 
@@ -179,7 +184,7 @@ async function sanitizeGeneratedEpub(epubPath) {
   console.log(`[EPUB Sanitization] Starting EPUB sanitization for: ${epubPath}`);
 
   if (!fs.existsSync(epubPath)) {
-    console.log(`[EPUB Sanitization] EPUB file not found: ${epubPath}`);
+    console.error(`[EPUB Sanitization] EPUB file not found: ${epubPath}`);
     return;
   }
 
@@ -193,8 +198,14 @@ async function sanitizeGeneratedEpub(epubPath) {
 
     // Extract EPUB contents
     console.log(`[EPUB Sanitization] Extracting EPUB to: ${epubDir}`);
-    const zip = new AdmZip(epubPath);
-    zip.extractAllTo(epubDir, true);
+    try {
+      const zip = new AdmZip(epubPath);
+      zip.extractAllTo(epubDir, true);
+      console.log(`[EPUB Sanitization] Extraction completed successfully`);
+    } catch (extractError) {
+      console.error(`[EPUB Sanitization] Failed to extract EPUB:`, extractError);
+      throw extractError;
+    }
 
     // Find and sanitize XHTML files in /EPUB/text/ directory
     const textDir = path.join(epubDir, 'EPUB', 'text');
@@ -207,21 +218,31 @@ async function sanitizeGeneratedEpub(epubPath) {
 
     // Repackage the EPUB with proper mimetype handling
     console.log(`[EPUB Sanitization] Repackaging EPUB: ${epubPath}`);
-    const sanitizedZip = new AdmZip();
-    
-    // CRITICAL: Add mimetype file FIRST without compression (EPUB requirement)
-    const mimetypePath = path.join(epubDir, 'mimetype');
-    if (fs.existsSync(mimetypePath)) {
-      const mimetypeContent = fs.readFileSync(mimetypePath);
-      sanitizedZip.addFile('mimetype', mimetypeContent, '', 0); // 0 = no compression
-      console.log(`[EPUB Sanitization] Added mimetype as first entry (uncompressed)`);
+    try {
+      const sanitizedZip = new AdmZip();
+      
+      // CRITICAL: Add mimetype file FIRST without compression (EPUB requirement)
+      const mimetypePath = path.join(epubDir, 'mimetype');
+      if (fs.existsSync(mimetypePath)) {
+        const mimetypeContent = fs.readFileSync(mimetypePath);
+        sanitizedZip.addFile('mimetype', mimetypeContent, '', 0); // 0 = no compression
+        console.log(`[EPUB Sanitization] Added mimetype as first entry (uncompressed)`);
+      } else {
+        console.warn(`[EPUB Sanitization] Warning: mimetype file not found at ${mimetypePath}`);
+      }
+      
+      // Add all other files and directories
+      console.log(`[EPUB Sanitization] Adding remaining files to ZIP...`);
+      addDirectoryToZip(sanitizedZip, epubDir, '', true); // true = skip mimetype
+      
+      console.log(`[EPUB Sanitization] Writing sanitized EPUB to ${epubPath}...`);
+      sanitizedZip.writeZip(epubPath);
+      
+      console.log(`[EPUB Sanitization] EPUB sanitization completed successfully`);
+    } catch (repackError) {
+      console.error(`[EPUB Sanitization] Failed to repackage EPUB:`, repackError);
+      throw repackError;
     }
-    
-    // Add all other files and directories
-    addDirectoryToZip(sanitizedZip, epubDir, '', true); // true = skip mimetype
-    sanitizedZip.writeZip(epubPath);
-
-    console.log(`[EPUB Sanitization] EPUB sanitization completed successfully`);
 
   } catch (error) {
     console.error(`[EPUB Sanitization] Error during sanitization:`, error);
