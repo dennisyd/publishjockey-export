@@ -29,7 +29,11 @@ const dropCapStyles = [
   { name: 'Large', value: 'large', description: '4 lines, bold and dramatic' },
   { name: 'Elegant', value: 'elegant', description: '3 lines with small caps' },
   { name: 'Bold', value: 'bold', description: '3 lines, sans-serif heavy weight' },
-  { name: 'Decorated', value: 'decorated', description: '3 lines, bold with indentation' }
+  { name: 'Decorated', value: 'decorated', description: '3 lines, bold with indentation' },
+  { name: 'Ornament', value: 'ornament', description: 'Illuminated manuscript with background' },
+  { name: 'Colorized', value: 'colorized', description: 'Two-tone blue color' },
+  { name: 'Boxed', value: 'boxed', description: 'Magazine style with black box' },
+  { name: 'Old-Style', value: 'oldstyle', description: 'Vintage baseline-aligned' }
 ];
 
 async function generateSamples() {

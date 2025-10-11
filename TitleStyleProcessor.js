@@ -14,7 +14,7 @@ class TitleStyleProcessor {
     // Only English supports drop caps (avoids Unicode/accented character issues)
     this.dropCapSupportedLanguages = new Set(['en']);
     
-    // 10 publisher-inspired title styles
+    // 12 publisher-inspired title styles
     this.titleStyles = [
       'classic_literature',    // Penguin Classics inspired
       'modern_minimalist',     // Apple/Design books
@@ -25,6 +25,8 @@ class TitleStyleProcessor {
       'luxury_fashion',        // High-end books
       'small_caps_elegance',   // Professional small caps (missing in Atticus/Vellum)
       'decorative_script',     // Elegant script headers (unique differentiator)
+      'thriller_noir',         // Dark, dramatic, high contrast
+      'romance_soft',          // Soft, elegant, flowing
       'standard'               // Improved LaTeX default
     ];
 
@@ -39,6 +41,8 @@ class TitleStyleProcessor {
       luxury_fashion: { primary: '#8B4513', accent: '#DAA520' },
       small_caps_elegance: { primary: '#1A1A1A', accent: '#8B4513' },
       decorative_script: { primary: '#2F4F4F', accent: '#CD853F' },
+      thriller_noir: { primary: '#000000', accent: '#8B0000' },
+      romance_soft: { primary: '#C71585', accent: '#FFB6C1' },
       standard: { primary: '#2C3E50', accent: '#3498DB' }
     };
 
@@ -116,6 +120,10 @@ class TitleStyleProcessor {
         return await this.generateSmallCapsEleganceHeader(titleText, chapterNumber, colors, styleName);
       case 'decorative_script':
         return await this.generateDecorativeScriptHeader(titleText, chapterNumber, colors, styleName);
+      case 'thriller_noir':
+        return await this.generateThrillerNoirHeader(titleText, chapterNumber, colors, styleName);
+      case 'romance_soft':
+        return await this.generateRomanceSoftHeader(titleText, chapterNumber, colors, styleName);
       case 'standard':
       default:
         return await this.generateStandardHeader(titleText, chapterNumber, colors, styleName);
@@ -316,6 +324,47 @@ class TitleStyleProcessor {
     return await this.wrapLatex(latex, true, styleName);
   }
 
+  async generateThrillerNoirHeader(titleText, chapterNumber, colors, styleName = 'thriller_noir') {
+    const latex = [
+      '\\clearpage',
+      '\\vspace{2em}',
+      '\\noindent\\colorbox{black}{%',
+      '  \\parbox{\\textwidth}{%',
+      '    \\vspace{1em}',
+      '    \\centering\\sffamily\\color{white}',
+      '    {\\Huge\\bfseries ' + titleText.toUpperCase() + '}',
+      '    \\vspace{0.3em}',
+      '    \\\\',
+      '    \\color[HTML]{' + colors.accent.replace('#', '') + '}',
+      '    {\\large $\\blacksquare$ $\\blacksquare$ $\\blacksquare$}',
+      '    \\vspace{1em}',
+      '  }%',
+      '}',
+      '\\vspace{2em}'
+    ].join('\n');
+    return await this.wrapLatex(latex, true, styleName);
+  }
+
+  async generateRomanceSoftHeader(titleText, chapterNumber, colors, styleName = 'romance_soft') {
+    const latex = [
+      '\\clearpage',
+      '\\vspace{4em}',
+      '\\begin{center}',
+      '  \\titlefont',
+      '  {\\color[HTML]{' + colors.accent.replace('#', '') + '}\\Large $\\heartsuit$}',
+      '  \\vspace{1em}',
+      '  {\\fontspec{Liberation Serif}\\itshape\\LARGE\\color[HTML]{' + colors.primary.replace('#', '') + '}{' + titleText + '}}',
+      '  \\vspace{0.5em}',
+      '  \\\\',
+      '  {\\color[HTML]{' + colors.accent.replace('#', '') + '}\\rule{0.3\\textwidth}{0.5pt}}',
+      '  \\vspace{1em}',
+      '  {\\color[HTML]{' + colors.accent.replace('#', '') + '}\\Large $\\heartsuit$}',
+      '\\end{center}',
+      '\\vspace{3em}'
+    ].join('\n');
+    return await this.wrapLatex(latex, true, styleName);
+  }
+
   applyDropCaps(content, dropCapStyle = 'traditional') {
     if (!this.isDropCapSupported()) {
       // Logger.debug("[TITLE PROCESSOR] Drop caps disabled for language: " + this.userLanguage);
@@ -415,6 +464,22 @@ class TitleStyleProcessor {
         // Decorated drop cap: with shadow effect and bold styling
         latexContent = '\\lettrine[lines=3,lhang=0,nindent=0pt,findent=3pt]{\\textbf{' + safeFirstChar + '}}{\\textbf{' + safeSmallCaps + '}}' + safeRemaining;
         break;
+      case 'ornament':
+        // Drop cap with ornament: illuminated manuscript style with decorative background
+        latexContent = '\\lettrine[lines=3,lhang=0,nindent=0pt,findent=3pt]{\\colorbox{gray!10}{\\textcolor{brown}{\\textbf{' + safeFirstChar + '}}}}{\\textsc{' + safeSmallCaps + '}}' + safeRemaining;
+        break;
+      case 'colorized':
+        // Colorized drop cap: two-tone with royal blue color
+        latexContent = '\\lettrine[lines=3,lhang=0,nindent=0pt,findent=2pt]{\\textcolor{blue!70!black}{\\textbf{' + safeFirstChar + '}}}{\\textsc{' + safeSmallCaps + '}}' + safeRemaining;
+        break;
+      case 'boxed':
+        // Drop cap in box: letter in colored rectangle (magazine style)
+        latexContent = '\\lettrine[lines=3,lhang=0,nindent=0pt,findent=3pt]{\\colorbox{black}{\\textcolor{white}{\\textbf{\\textsf{' + safeFirstChar + '}}}}}{' + safeSmallCaps + '}' + safeRemaining;
+        break;
+      case 'oldstyle':
+        // Old-style baseline drop cap: aligns to baseline, vintage 19th-century style
+        latexContent = '\\lettrine[lines=2,lhang=0,nindent=0pt,findent=0pt,ante={\\vspace{-0.3em}}]{' + safeFirstChar + '}{' + safeSmallCaps + '}' + safeRemaining;
+        break;
       default:
         return paragraph;
     }
@@ -468,6 +533,8 @@ class TitleStyleProcessor {
       luxury_fashion: 'High-end books inspired - ornate decorations, premium feel',
       small_caps_elegance: 'Professional small caps - refined typography missing in Atticus/Vellum',
       decorative_script: 'Elegant script headers - calligraphic styling with serif body text',
+      thriller_noir: 'Dark, dramatic styling - black background, white text, high contrast',
+      romance_soft: 'Soft literary styling - elegant hearts, flowing script, pastel colors',
       standard: 'Improved LaTeX default - clean and reliable'
     };
 
@@ -481,6 +548,8 @@ class TitleStyleProcessor {
       luxury_fashion: 'High-end fashion books',
       small_caps_elegance: 'Professional publishing (missing in Atticus/Vellum)',
       decorative_script: 'Calligraphic manuscripts & premium books',
+      thriller_noir: 'Mystery/Thriller novels',
+      romance_soft: 'Romance/Literary fiction',
       standard: 'Traditional LaTeX styling'
     };
 
@@ -494,6 +563,8 @@ class TitleStyleProcessor {
       luxury_fashion: ['diamond ornaments', 'premium typography', 'gold accents'],
       small_caps_elegance: ['professional small caps', 'subtle rules', 'refined typography'],
       decorative_script: ['calligraphic styling', 'ornamental flourishes', 'script-serif hybrid'],
+      thriller_noir: ['black background box', 'white uppercase text', 'dark red accents'],
+      romance_soft: ['heart ornaments', 'flowing italic script', 'soft pink/magenta colors'],
       standard: ['balanced spacing', 'reliable fonts', 'clean presentation']
     };
 

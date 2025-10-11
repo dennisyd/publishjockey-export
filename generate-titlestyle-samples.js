@@ -1,7 +1,7 @@
 /**
  * Generate Title Style Samples PDF
  * 
- * Creates a PDF showing all 10 title styles side-by-side for easy comparison.
+ * Creates a PDF showing all 12 title styles side-by-side for easy comparison.
  * Output: titlestyles.pdf
  * 
  * Run: node generate-titlestyle-samples.js
@@ -32,7 +32,9 @@ const titleStyles = [
   { name: 'Magazine Style', value: 'magazine_style', description: 'Left-aligned, uppercase, bold' },
   { name: 'Luxury Fashion', value: 'luxury_fashion', description: 'Diamond ornaments, italic' },
   { name: 'Small Caps Elegance', value: 'small_caps_elegance', description: 'Small caps with rules' },
-  { name: 'Decorative Script', value: 'decorative_script', description: 'Club suit ornament, script' }
+  { name: 'Decorative Script', value: 'decorative_script', description: 'Club suit ornament, script' },
+  { name: 'Thriller/Noir', value: 'thriller_noir', description: 'Black background, white uppercase' },
+  { name: 'Romance/Soft Literary', value: 'romance_soft', description: 'Heart ornaments, flowing italic' }
 ];
 
 async function generateSamples() {
