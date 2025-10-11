@@ -14,6 +14,9 @@ function assembleBookEpub(sections, options = {}) {
   let output = '';
   const hasCustomMetadata = metadata && (metadata.title || metadata.tocTitle || metadata.tocDepth || metadata.numberSections !== undefined);
   if (hasCustomMetadata) {
+    // Debug: Log the raw metadata
+    console.log('[EPUB YAML] Raw metadata:', JSON.stringify(metadata, null, 2));
+    
     output += '---\n';
     // Properly escape YAML string values using single quotes (safer for YAML)
     // In single-quoted strings, only single quotes need escaping (by doubling them)
@@ -26,11 +29,20 @@ function assembleBookEpub(sections, options = {}) {
         .replace(/'/g, "''");      // Escape single quotes by doubling
     };
     
-    if (metadata.title) output += `title: '${escapeYAMLSingle(metadata.title)}'\n`;
+    if (metadata.title) {
+      const escapedTitle = escapeYAMLSingle(metadata.title);
+      console.log(`[EPUB YAML] Original title: "${metadata.title}"`);
+      console.log(`[EPUB YAML] Escaped title: "${escapedTitle}"`);
+      output += `title: '${escapedTitle}'\n`;
+    }
     if (metadata.tocTitle) output += `toc-title: '${escapeYAMLSingle(metadata.tocTitle)}'\n`;
     if (metadata.tocDepth) output += `toc-depth: ${metadata.tocDepth}\n`;
     if (metadata.numberSections !== undefined) output += `numbersections: ${metadata.numberSections}\n`;
     output += '---\n\n';  // Add extra newline after YAML block for clarity
+    
+    // Debug: Log the complete YAML block
+    console.log('[EPUB YAML] Generated YAML block:');
+    console.log(output.substring(0, output.indexOf('---\n\n') + 5));
   }
 
   // Find and extract copyright and title page sections
@@ -51,6 +63,10 @@ function assembleBookEpub(sections, options = {}) {
     // SANITIZE: Remove scale comments from EPUB content
     centeredContent = centeredContent.replace(/<!--\s*scale:[^>]*-->/gi, '');
     centeredContent = centeredContent.replace(/&lt;!--\s*scale:[^&]*--&gt;/gi, '');
+    
+    // CRITICAL: Escape standalone --- lines that Pandoc interprets as YAML delimiters
+    // This prevents YAML parsing errors when content has horizontal rules or separators
+    centeredContent = centeredContent.replace(/^---$/gm, '---<!-- -->');
     
     otherSections.push({ ...section, content: centeredContent });
   }
@@ -74,6 +90,8 @@ function assembleBookEpub(sections, options = {}) {
     // SANITIZE: Remove scale comments from copyright content
     copyrightContent = copyrightContent.replace(/<!--\s*scale:[^>]*-->/gi, '');
     copyrightContent = copyrightContent.replace(/&lt;!--\s*scale:[^&]*--&gt;/gi, '');
+    // Escape standalone --- lines to prevent YAML parsing errors
+    copyrightContent = copyrightContent.replace(/^---$/gm, '---<!-- -->');
     
     output += `<div style="page-break-before: always; break-before: page;">
 ${copyrightContent}
@@ -205,6 +223,12 @@ ${copyrightContent}
   finalOutput = finalOutput.replace(/<!--\s*scale:[^>]*-->/gi, '');
   finalOutput = finalOutput.replace(/&lt;!--\s*scale:[^&]*--&gt;/gi, '');
   console.log('[EPUB SANITIZE] Final scale comment cleanup completed');
+  
+  // CRITICAL: Escape standalone --- lines that Pandoc might interpret as YAML delimiters
+  // This prevents "mapping values are not allowed" errors when content has horizontal rules
+  // Replace standalone --- with escaped version (using HTML comment to break the pattern)
+  finalOutput = finalOutput.replace(/^---$/gm, '---<!-- -->');
+  console.log('[EPUB SANITIZE] Escaped YAML delimiter sequences');
 
   // Write the HTML output to a temp file for debugging
   try {
