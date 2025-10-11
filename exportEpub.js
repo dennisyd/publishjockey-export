@@ -82,24 +82,32 @@ function getAllXhtmlFiles(dir) {
  * @returns {string} Fixed content
  */
 function fixImgTags(content) {
-  return content
-    // Fix missing equals sign in alt attribute: alt"Cover" → alt="Cover"
-    .replace(/<img([^>]*)\salt"([^"]*)"([^>]*?)>/gi, (match, before, altValue, after) => {
-      return `<img${before} alt="${altValue}"${after}>`;
-    })
+  let fixed = content;
 
-    // Fix missing equals sign in other attributes
-    .replace(/<img([^>]*)\s(\w+)"([^"]*)"([^>]*?)>/gi, (match, before, attr, value, after) => {
-      return `<img${before} ${attr}="${value}"${after}>`;
-    })
+  // Fix missing equals sign in alt attribute: alt"Cover" → alt="Cover"
+  // This catches: <img ... alt"value" ...>
+  fixed = fixed.replace(/<img([^>]*?)\s+alt"([^"]*)"([^>]*?)>/gi, (match, before, altValue, after) => {
+    console.log(`[EPUB Sanitization] Fixed alt attribute without =: alt"${altValue}"`);
+    return `<img${before} alt="${altValue}"${after}>`;
+  });
 
-    // Ensure all <img> tags are self-closing
-    .replace(/<img([^>]*)(?<!\/)>/gi, '<img$1 />')
+  // Fix missing equals sign for any attribute directly followed by quote
+  // This catches: <img ... src"value" ...> or any other attribute
+  fixed = fixed.replace(/<img([^>]*?)\s+(\w+)"([^"]*)"([^>]*?)>/gi, (match, before, attr, value, after) => {
+    console.log(`[EPUB Sanitization] Fixed ${attr} attribute without =: ${attr}"${value}"`);
+    return `<img${before} ${attr}="${value}"${after}>`;
+  });
 
-    // Add alt attribute if missing
-    .replace(/<img([^>]*?)(?!\salt=)([^>]*?)\/?>/gi, (match, attrs, end) => {
-      return `<img${attrs} alt=""${end}>`;
-    });
+  // Ensure all <img> tags are self-closing
+  fixed = fixed.replace(/<img([^>]*?)(?<!\/)>/gi, '<img$1 />');
+
+  // Add alt attribute if missing
+  fixed = fixed.replace(/<img(?![^>]*\salt\s*=)([^>]*?)\/?>/gi, (match, attrs) => {
+    console.log(`[EPUB Sanitization] Added missing alt attribute`);
+    return `<img alt=""${attrs} />`;
+  });
+
+  return fixed;
 }
 
 /**
@@ -197,10 +205,20 @@ async function sanitizeGeneratedEpub(epubPath) {
     // Ensure UTF-8 encoding for all files in the EPUB
     ensureUtf8EncodingForAllFiles(epubDir);
 
-    // Repackage the EPUB
+    // Repackage the EPUB with proper mimetype handling
     console.log(`[EPUB Sanitization] Repackaging EPUB: ${epubPath}`);
     const sanitizedZip = new AdmZip();
-    addDirectoryToZip(sanitizedZip, epubDir, '');
+    
+    // CRITICAL: Add mimetype file FIRST without compression (EPUB requirement)
+    const mimetypePath = path.join(epubDir, 'mimetype');
+    if (fs.existsSync(mimetypePath)) {
+      const mimetypeContent = fs.readFileSync(mimetypePath);
+      sanitizedZip.addFile('mimetype', mimetypeContent, '', 0); // 0 = no compression
+      console.log(`[EPUB Sanitization] Added mimetype as first entry (uncompressed)`);
+    }
+    
+    // Add all other files and directories
+    addDirectoryToZip(sanitizedZip, epubDir, '', true); // true = skip mimetype
     sanitizedZip.writeZip(epubPath);
 
     console.log(`[EPUB Sanitization] EPUB sanitization completed successfully`);
@@ -258,20 +276,28 @@ function ensureUtf8EncodingForAllFiles(epubDir) {
  * @param {AdmZip} zip - The ZIP archive to add to
  * @param {string} dirPath - Path to the directory to add
  * @param {string} zipPath - Path within the ZIP archive
+ * @param {boolean} skipMimetype - Whether to skip the mimetype file (already added)
  */
-function addDirectoryToZip(zip, dirPath, zipPath) {
+function addDirectoryToZip(zip, dirPath, zipPath, skipMimetype = false) {
   const items = fs.readdirSync(dirPath);
 
   items.forEach(item => {
     const fullPath = path.join(dirPath, item);
     const stat = fs.statSync(fullPath);
 
+    // Skip mimetype file if flag is set (it was already added first)
+    if (skipMimetype && item === 'mimetype' && zipPath === '') {
+      console.log(`[EPUB Sanitization] Skipping mimetype file (already added as first entry)`);
+      return;
+    }
+
     if (stat.isDirectory()) {
       const subZipPath = path.join(zipPath, item).replace(/\\/g, '/');
-      addDirectoryToZip(zip, fullPath, subZipPath);
+      addDirectoryToZip(zip, fullPath, subZipPath, skipMimetype);
     } else {
       const entryPath = path.join(zipPath, item).replace(/\\/g, '/');
-      zip.addLocalFile(fullPath, path.dirname(entryPath));
+      const zipDir = path.dirname(entryPath);
+      zip.addLocalFile(fullPath, zipDir === '.' ? '' : zipDir);
     }
   });
 }
