@@ -1,4 +1,4 @@
-require('dotenv').config(); // Yancy D Dennis
+require('dotenv').config(); // Yancy Dennis
 const express = require('express');
 const cors = require('cors');
 const Logger = require('./utils/logger');
