@@ -211,11 +211,11 @@ class TitleStyleProcessor {
       '\\vspace{3em}',
       '\\begin{center}',
       '  \\titlefont',
-      '  {\\large ❦ ❦ ❦}',
+      '  {\\large $\\ast$ $\\ast$ $\\ast$}',
       '  \\vspace{0.5em}',
       '  {\\huge\\textit{' + titleText + '}}',
       '  \\vspace{0.5em}',
-      '  {\\large ❦ ❦ ❦}',
+      '  {\\large $\\ast$ $\\ast$ $\\ast$}',
       '\\end{center}',
       '\\vspace{2em}'
     ].join('\n');
@@ -258,11 +258,11 @@ class TitleStyleProcessor {
       '\\vspace{3em}',
       '\\begin{center}',
       '  \\titlefont',
-      '  {\\color[HTML]{B8860B}\\large ◊ ◊ ◊ ◊ ◊}',
+      '  {\\color[HTML]{B8860B}\\large $\\diamond$ $\\diamond$ $\\diamond$ $\\diamond$ $\\diamond$}',
       '  \\vspace{1em}',
       '  {\\huge\\textit{\\textcolor[HTML]{' + colors.primary.replace('#', '') + '}{' + titleText + '}}}',
       '  \\vspace{1em}',
-      '  {\\color[HTML]{B8860B}\\large ◊ ◊ ◊ ◊ ◊}',
+      '  {\\color[HTML]{B8860B}\\large $\\diamond$ $\\diamond$ $\\diamond$ $\\diamond$ $\\diamond$}',
       '\\end{center}',
       '\\vspace{3em}'
     ].join('\n');
@@ -291,12 +291,12 @@ class TitleStyleProcessor {
       '\\clearpage',
       '\\vspace{3em}',
       '\\begin{center}',
-      '  {\\color[HTML]{' + colors.accent.replace('#', '') + '}\\Large ❦}',
+      '  {\\color[HTML]{' + colors.accent.replace('#', '') + '}\\Large $\\clubsuit$}',
       '  \\vspace{1em}',
       '  \\titlefont',
       '  {\\fontspec{Liberation Serif}\\itshape\\Huge ' + titleText + '}',
       '  \\vspace{1em}',
-      '  {\\color[HTML]{' + colors.accent.replace('#', '') + '}\\Large ❦}',
+      '  {\\color[HTML]{' + colors.accent.replace('#', '') + '}\\Large $\\clubsuit$}',
       '\\end{center}',
       '\\vspace{2em}'
     ].join('\n');
@@ -396,24 +396,24 @@ class TitleStyleProcessor {
         latexContent = '\\lettrine[lines=3,lhang=0,nindent=0pt,findent=0pt]{' + safeFirstChar + '}{' + safeSmallCaps + '}' + safeRemaining;
         break;
       case 'raised':
-        // Raised drop cap: 2 lines, smaller and elevated above baseline
-        latexContent = '\\lettrine[lines=2,lhang=0,nindent=0pt,findent=0pt,ante=\\raisebox{0.5em}]{' + safeFirstChar + '}{' + safeSmallCaps + '}' + safeRemaining;
+        // Raised drop cap: 2 lines, smaller and more subtle
+        latexContent = '\\lettrine[lines=2,lhang=0,nindent=0pt,findent=0pt]{' + safeFirstChar + '}{' + safeSmallCaps + '}' + safeRemaining;
         break;
       case 'large':
         // Large dramatic drop cap: 4 lines, bold, spans more height
         latexContent = '\\lettrine[lines=4,lhang=0,nindent=0pt,findent=0pt]{\\textbf{' + safeFirstChar + '}}{' + safeSmallCaps + '}' + safeRemaining;
         break;
       case 'elegant':
-        // Elegant drop cap: 3 lines with subtle gray color and small caps emphasis
-        latexContent = '\\lettrine[lines=3,lhang=0,nindent=0pt,findent=2pt]{\\textcolor{gray}{' + safeFirstChar + '}}{\\textsc{' + safeSmallCaps + '}}' + safeRemaining;
+        // Elegant drop cap: 3 lines with subtle color
+        latexContent = '\\lettrine[lines=3,lhang=0,nindent=0pt,findent=2pt]{' + safeFirstChar + '}{\\textsc{' + safeSmallCaps + '}}' + safeRemaining;
         break;
       case 'bold':
-        // Bold drop cap: 3 lines, heavy weight, strong presence
-        latexContent = '\\lettrine[lines=3,lhang=0,nindent=0pt,findent=0pt]{\\textbf{\\sffamily ' + safeFirstChar + '}}{\\textbf{' + safeSmallCaps + '}}' + safeRemaining;
+        // Bold drop cap: 3 lines, heavy weight sans-serif
+        latexContent = '\\lettrine[lines=3,lhang=0,nindent=0pt,findent=0pt]{\\textbf{\\textsf{' + safeFirstChar + '}}}{\\textbf{' + safeSmallCaps + '}}' + safeRemaining;
         break;
       case 'decorated':
-        // Decorated drop cap: with ornamental border, colored background
-        latexContent = '\\lettrine[lines=3,lhang=0,nindent=0pt,findent=3pt]{\\fcolorbox{black}{gray!15}{\\textbf{' + safeFirstChar + '}}}{' + safeSmallCaps + '}' + safeRemaining;
+        // Decorated drop cap: with shadow effect and bold styling
+        latexContent = '\\lettrine[lines=3,lhang=0,nindent=0pt,findent=3pt]{\\textbf{' + safeFirstChar + '}}{\\textbf{' + safeSmallCaps + '}}' + safeRemaining;
         break;
       default:
         return paragraph;
