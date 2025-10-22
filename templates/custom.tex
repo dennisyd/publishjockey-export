@@ -223,6 +223,33 @@ $endif$
 \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
 }{}
 
+% Russian-specific typography optimization
+\ifxetex
+  % Russian language support with optimized spacing
+  \usepackage{polyglossia}
+  \setdefaultlanguage{english}
+  \setotherlanguage{russian}
+  
+  % Russian-specific font configuration
+  \newfontfamily\cyrillicfont[Script=Cyrillic]{Times New Roman}
+  \newfontfamily\cyrillicfontsf[Script=Cyrillic]{Arial}
+  \newfontfamily\cyrillicfonttt[Script=Cyrillic]{Courier New}
+  
+  % Russian-specific microtype settings for tighter spacing
+  \IfFileExists{microtype.sty}{%
+    \microtypesetup{
+      protrusion=true,
+      expansion=true,
+      tracking=smallcaps,
+      kerning=true,
+      spacing=true,
+      factor=1200,  % Slightly more aggressive expansion for Russian
+      stretch=15,   % More stretch tolerance for Cyrillic
+      shrink=15    % More shrink tolerance for Cyrillic
+    }
+  }{}
+\fi
+
 % RTL language setup (simplified - no polyglossia for now)
 $if(dir)$
 \ifxetex
@@ -336,6 +363,25 @@ $endif$
 \hyphenpenalty=50
 \exhyphenpenalty=50
 \adjdemerits=10000
+
+% Russian-specific spacing optimization
+\ifxetex
+  % Tighter spacing for Russian text
+  \usepackage{hyphenat}
+  \hyphenation{рус-ский-я-зык}
+  
+  % Russian-specific line breaking
+  \tolerance=1500  % Tighter tolerance for Russian
+  \pretolerance=50
+  \hyphenpenalty=30  % More aggressive hyphenation for Russian
+  \exhyphenpenalty=30
+  \doublehyphendemerits=10000
+  \finalhyphendemerits=5000
+  
+  % Russian word spacing optimization
+  \spaceskip=0.3em plus 0.2em minus 0.1em
+  \xspaceskip=0.3em plus 0.2em minus 0.1em
+\fi
 
 % Better paragraph spacing
 \raggedbottom
