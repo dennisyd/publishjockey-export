@@ -217,9 +217,9 @@ $endif$
 
 % use upquote if available, for straight quotes in verbatim environments
 \IfFileExists{upquote.sty}{\usepackage{upquote}}{}
-% Enhanced microtype package for professional typography
+% Enhanced microtype package for professional typography (XeLaTeX compatible)
 \IfFileExists{microtype.sty}{%
-\usepackage[final,tracking=true,kerning=true,spacing=true,factor=1100,stretch=10,shrink=10]{microtype}
+\usepackage[final,kerning=true,spacing=true,factor=1100,stretch=10,shrink=10]{microtype}
 \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
 \UseMicrotypeSet[expansion]{alltext} % enable font expansion for better justification
 }{}
