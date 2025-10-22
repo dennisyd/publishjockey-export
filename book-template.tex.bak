@@ -88,24 +88,13 @@ $endif$
 \typeout{DEBUG - Margin: $if(margin)$$margin$$else$1in$endif$}
 \typeout{DEBUG - Binding type: $if(binding)$$binding$$else$paperback$endif$}
 
-% --- Enhanced hyphenation and justification ---
+% --- Hyphenation and justification ---
 $if(babel-lang)$
 \usepackage[$babel-lang$]{babel}
 $else$
 \usepackage[english]{babel}
 $endif$
-
-% Enhanced microtype package for professional typography
-\usepackage[final,tracking=true,kerning=true,spacing=true,factor=1100,stretch=10,shrink=10]{microtype}
-\UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
-\UseMicrotypeSet[expansion]{alltext} % enable font expansion for better justification
-
-% Enhanced line breaking and justification
-\tolerance=2000
-\pretolerance=100
-\hyphenpenalty=50
-\exhyphenpenalty=50
-\adjdemerits=10000
+\usepackage{microtype}
 \sloppy
 
 % --- Pandoc tightlist fix ---
@@ -204,24 +193,12 @@ $endif$
 \setlength{\parindent}{1.5em}
 \setlength{\parskip}{0.5em}
 
-% --- Enhanced typography and spacing control ---
+% --- Fix excessive vertical space ---
 \raggedbottom
 \usepackage{nowidow}
-
-% Widow/orphan control
 \widowpenalty=10000
 \clubpenalty=10000
-\displaywidowpenalty=10000
-
-% Emergency stretch for better justification
-\emergencystretch=3em
-
-% Additional line breaking improvements
-\tolerance=2000
-\pretolerance=100
-\hyphenpenalty=50
-\exhyphenpenalty=50
-\adjdemerits=10000
+\setlength{\emergencystretch}{3em}
 
 % --- Header/footer style ---
 \pagestyle{fancy}

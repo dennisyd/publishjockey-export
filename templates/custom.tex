@@ -217,10 +217,11 @@ $endif$
 
 % use upquote if available, for straight quotes in verbatim environments
 \IfFileExists{upquote.sty}{\usepackage{upquote}}{}
-% use microtype if available
+% Enhanced microtype package for professional typography
 \IfFileExists{microtype.sty}{%
-\usepackage[$for(microtypeoptions)$$microtypeoptions$$sep$,$endfor$]{microtype}
+\usepackage[final,tracking=true,kerning=true,spacing=true,factor=1100,stretch=10,shrink=10]{microtype}
 \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+\UseMicrotypeSet[expansion]{alltext} % enable font expansion for better justification
 }{}
 
 % RTL language setup (simplified - no polyglossia for now)
@@ -321,12 +322,25 @@ $endif$
 % --- List formatting ---
 \setlist{nolistsep}
 
-% --- Widow/orphan control ---
+% --- Enhanced typography and spacing control ---
+% Widow/orphan control
 \widowpenalty=10000
 \clubpenalty=10000
+\displaywidowpenalty=10000
 
-% --- Emergency stretch for better justification ---
+% Emergency stretch for better justification
 \emergencystretch=3em
+
+% Line breaking tolerance and penalties
+\tolerance=2000
+\pretolerance=100
+\hyphenpenalty=50
+\exhyphenpenalty=50
+\adjdemerits=10000
+
+% Better paragraph spacing
+\raggedbottom
+\sloppy
 
 % --- Pandoc tightlist environment ---
 \providecommand{\tightlist}{%
