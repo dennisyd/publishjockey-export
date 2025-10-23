@@ -58,37 +58,6 @@ $endif$
   \fi\fi
   % =================================
   
-  % ==== Safe no-ops for optional script transition macros ====
-  \makeatletter
-  \@ifundefined{setTransitionsForCyrillic}{%
-    \providecommand{\setTransitionsForCyrillic}[2]{}%
-  }{}
-  \@ifundefined{setTransitionsForGreek}{%
-    \providecommand{\setTransitionsForGreek}[2]{}%
-  }{}
-  \@ifundefined{setTransitionsForLatin}{%
-    \providecommand{\setTransitionsForLatin}[2]{}%
-  }{}
-  \@ifundefined{setTransitionsForDevanagari}{%
-    \providecommand{\setTransitionsForDevanagari}[2]{}%
-  }{}
-  \@ifundefined{setTransitionsForTamil}{%
-    \providecommand{\setTransitionsForTamil}[2]{}%
-  }{}
-  \@ifundefined{setTransitionsForBengali}{%
-    \providecommand{\setTransitionsForBengali}[2]{}%
-  }{}
-  \@ifundefined{setTransitionsForGurmukhi}{%
-    \providecommand{\setTransitionsForGurmukhi}[2]{}%
-  }{}
-  \@ifundefined{setTransitionsForArabic}{%
-    \providecommand{\setTransitionsForArabic}[2]{}%
-  }{}
-  \@ifundefined{setTransitionsForHebrew}{%
-    \providecommand{\setTransitionsForHebrew}[2]{}%
-  }{}
-  \makeatother
-  % ===========================================================
   
   % Load packages for enhanced drop caps support
   \usepackage{lettrine}
@@ -111,8 +80,21 @@ $endif$
 % --- MODULAR MULTI-SCRIPT FONT SETUP (FIXED) ---
 % Clean, reliable font configuration for all supported scripts
 \ifxetex
-  % Load ucharclasses for automatic script switching
-  \usepackage{ucharclasses}
+  % Try to load ucharclasses for automatic script switching (may not be available)
+  \IfFileExists{ucharclasses.sty}{%
+    \usepackage{ucharclasses}
+  }{%
+    % ucharclasses not available - define no-op transition commands
+    \providecommand{\setTransitionsForLatin}[2]{}%
+    \providecommand{\setTransitionsForCyrillic}[2]{}%
+    \providecommand{\setTransitionsForGreek}[2]{}%
+    \providecommand{\setTransitionsForDevanagari}[2]{}%
+    \providecommand{\setTransitionsForTamil}[2]{}%
+    \providecommand{\setTransitionsForBengali}[2]{}%
+    \providecommand{\setTransitionsForGurmukhi}[2]{}%
+    \providecommand{\setTransitionsForArabic}[2]{}%
+    \providecommand{\setTransitionsForHebrew}[2]{}%
+  }
   
   % English/Latin font for transitions (default for most documents)
   \newfontfamily\englishfont{Liberation Serif}[Ligatures=TeX,Scale=MatchLowercase]
