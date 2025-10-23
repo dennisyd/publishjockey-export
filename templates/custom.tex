@@ -32,6 +32,7 @@ $endif$
 \else % if luatex or xelatex
   \ifxetex
     \usepackage{mathspec}
+    \usepackage{ucharclasses}
   \else
     \usepackage{fontspec}
   \fi
@@ -57,8 +58,6 @@ $endif$
 % --- MODULAR MULTI-SCRIPT FONT SETUP (FIXED) ---
 % Clean, reliable font configuration for all supported scripts
 \ifxetex
-  \usepackage{ucharclasses}
-
   % English/Latin font for transitions (default for most documents)
   \newfontfamily\englishfont{Liberation Serif}[Ligatures=TeX,Scale=MatchLowercase]
 
