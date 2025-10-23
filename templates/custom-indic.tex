@@ -38,14 +38,38 @@
   
   % Define fonts for different Indic scripts (for fallback/switching if needed)
   % Using Serif variants to match user's available fonts
-  \newfontfamily\devanagarifont{Noto Serif Devanagari}[
-    Script=Devanagari,
-    Renderer=HarfBuzz,
-    Ligatures=TeX,
-    Language=Hindi,
-    Scale=1.0,
-    WordSpace=1.2
-  ]
+  % Devanagari fonts (Hindi, Nepali, Marathi, Sanskrit)
+  % Multiple definitions to support all available Devanagari fonts
+  \IfFontExistsTF{Noto Serif Devanagari}{
+    \newfontfamily\devanagarifont{Noto Serif Devanagari}[
+      Script=Devanagari,
+      Renderer=HarfBuzz,
+      Ligatures=TeX,
+      Language=Hindi,
+      Scale=1.0,
+      WordSpace=1.2
+    ]
+  }{
+    \IfFontExistsTF{Noto Sans Devanagari UI}{
+      \newfontfamily\devanagarifont{Noto Sans Devanagari UI}[
+        Script=Devanagari,
+        Renderer=HarfBuzz,
+        Ligatures=TeX,
+        Language=Hindi,
+        Scale=1.0,
+        WordSpace=1.2
+      ]
+    }{
+      \newfontfamily\devanagarifont{FreeSerif}[
+        Script=Devanagari,
+        Renderer=HarfBuzz,
+        Ligatures=TeX,
+        Language=Hindi,
+        Scale=1.0,
+        WordSpace=1.2
+      ]
+    }
+  }
   
   \newfontfamily\tamilfont{Noto Serif Tamil}[
     Script=Tamil,

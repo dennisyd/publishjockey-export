@@ -969,16 +969,17 @@ function getPandocVariables(options) {
   console.log(`[TOC TRANSLATION] TOC title translation handled in bookAssemblerPdf.js for language "${language}"`);
   
   // Script-based languages that need ucharclasses font switching
+  // NOTE: These default fonts match what's available on the system and in the frontend
   const scriptSwitchingLanguages = {
-    'hi': { font: 'Noto Sans Devanagari', script: 'Devanagari', language: 'Hindi' },
-    'ta': { font: 'Noto Sans Tamil', script: 'Tamil', language: 'Tamil' },
-    'bn': { font: 'Noto Sans Bengali', script: 'Bengali', language: 'Bengali' },
-    'gu': { font: 'Noto Sans Gujarati', script: 'Gujarati', language: 'Gujarati' },
-    'te': { font: 'Noto Sans Telugu', script: 'Telugu', language: 'Telugu' },
-    'kn': { font: 'Noto Sans Kannada', script: 'Kannada', language: 'Kannada' },
-    'ml': { font: 'Noto Sans Malayalam', script: 'Malayalam', language: 'Malayalam' },
-    'pa': { font: 'Noto Sans Gurmukhi', script: 'Gurmukhi', language: 'Punjabi' },
-    'or': { font: 'Noto Sans Oriya', script: 'Oriya', language: 'Oriya' }
+    'hi': { font: 'Noto Serif Devanagari', script: 'Devanagari', language: 'Hindi' },
+    'ta': { font: 'Noto Serif Tamil', script: 'Tamil', language: 'Tamil' },
+    'bn': { font: 'Noto Serif Bengali', script: 'Bengali', language: 'Bengali' },
+    'gu': { font: 'Noto Serif Gujarati', script: 'Gujarati', language: 'Gujarati' },
+    'te': { font: 'Noto Serif Telugu', script: 'Telugu', language: 'Telugu' },
+    'kn': { font: 'Noto Serif Kannada', script: 'Kannada', language: 'Kannada' },
+    'ml': { font: 'Noto Serif Malayalam', script: 'Malayalam', language: 'Malayalam' },
+    'pa': { font: 'Noto Serif Gurmukhi', script: 'Gurmukhi', language: 'Punjabi' },
+    'or': { font: 'Noto Serif Oriya', script: 'Oriya', language: 'Oriya' }
     // Note: Arabic (ar) uses its own template (arabic-enhanced.tex)
   };
   
@@ -1040,12 +1041,12 @@ function getPandocVariables(options) {
     console.log(`[FONT] Script-switching setup for ${language}: ${scriptInfo.font} + Liberation Serif fallback`);
   } else if (isDevanagari) {
     // Legacy Hindi support - keeping for backward compatibility
-    defaultFont = 'Noto Sans Devanagari';
+    defaultFont = 'Noto Serif Devanagari';
     vars.push('polyglossia=true');
     vars.push('lang=hi');
     vars.push('sansfont=Liberation Serif');
     vars.push('hyperref-unicode=true');
-    console.log('[FONT] Legacy Hindi setup: Noto Sans Devanagari + Liberation Serif fallback');
+    console.log('[FONT] Legacy Hindi setup: Noto Serif Devanagari + Liberation Serif fallback');
   }
   
   // Ensure font names match exactly what's available on the system
