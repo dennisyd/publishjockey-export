@@ -21,59 +21,69 @@
 % XeLaTeX-specific setup for Indic scripts
 \ifxetex
   \usepackage{fontspec}
-  \usepackage{polyglossia}
+  \usepackage{ucharclasses}
   
-  % Set main language based on document
-  \setdefaultlanguage{english}
-  
-  % Load other languages as needed
-  \setotherlanguage{hindi}
-  \setotherlanguage{tamil}
-  \setotherlanguage{bengali}
-  
-  % Main font with HarfBuzz renderer for complex scripts
+  % Set Indic script as the main font based on document language
+  % This makes the Indic font the default for the entire document
   $if(mainfont)$
   \setmainfont{$mainfont$}[
     Renderer=HarfBuzz,
-    Script=Devanagari,
-    Language=Hindi
+    Ligatures=TeX,
+    Scale=MatchLowercase
   ]
   $else$
-  \setmainfont{Noto Sans Devanagari}[
+  % Default to Noto Sans Tamil (can be overridden by script-switching)
+  \setmainfont{Noto Sans Tamil}[
+    Script=Tamil,
     Renderer=HarfBuzz,
-    Script=Devanagari,
-    Language=Hindi
+    Ligatures=TeX,
+    Scale=MatchLowercase,
+    Language=Tamil
   ]
   $endif$
   
-  % Define script-specific fonts
+  % Define fonts for different Indic scripts
   \newfontfamily\devanagarifont{Noto Sans Devanagari}[
     Script=Devanagari,
     Renderer=HarfBuzz,
-    Ligatures=Required,
+    Ligatures=TeX,
     Language=Hindi
   ]
   
   \newfontfamily\tamilfont{Noto Sans Tamil}[
     Script=Tamil,
     Renderer=HarfBuzz,
-    Ligatures=Required,
+    Ligatures=TeX,
     Language=Tamil
   ]
   
   \newfontfamily\bengalifont{Noto Sans Bengali}[
     Script=Bengali,
     Renderer=HarfBuzz,
-    Ligatures=Required,
+    Ligatures=TeX,
     Language=Bengali
   ]
   
   \newfontfamily\gurmukhifont{Noto Sans Gurmukhi}[
     Script=Gurmukhi,
     Renderer=HarfBuzz,
-    Ligatures=Required,
+    Ligatures=TeX,
     Language=Punjabi
   ]
+  
+  % Define English/Latin font for automatic switching
+  \newfontfamily\englishfont{Liberation Serif}[
+    Ligatures=TeX,
+    Scale=MatchLowercase
+  ]
+  
+  % CRITICAL: Automatic font switching based on Unicode script
+  % When Latin characters appear: Switch to English font
+  \setTransitionsForLatin{
+    \begingroup\englishfont
+  }{
+    \endgroup
+  }
   
   % Disable microtype for XeLaTeX (not fully supported)
   \usepackage{microtype}

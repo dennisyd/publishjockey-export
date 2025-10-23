@@ -972,6 +972,23 @@ function getPandocVariables(options) {
     if (isIndicScript) {
       options.template = 'templates/custom-indic.tex';
       console.log(`[PDF EXPORT] Using Indic-optimized template for language: ${language}`);
+      
+      // Set the appropriate Indic font as main font if not already set
+      if (!options.fontFamily) {
+        const indicFontMap = {
+          'hi': 'Noto Sans Devanagari',
+          'ta': 'Noto Sans Tamil',
+          'bn': 'Noto Sans Bengali',
+          'gu': 'Noto Sans Gujarati',
+          'te': 'Noto Sans Telugu',
+          'kn': 'Noto Sans Kannada',
+          'ml': 'Noto Sans Malayalam',
+          'pa': 'Noto Sans Gurmukhi',
+          'or': 'Noto Sans Oriya'
+        };
+        options.fontFamily = indicFontMap[language] || 'Noto Sans Tamil';
+        console.log(`[PDF EXPORT] Set main font to: ${options.fontFamily}`);
+      }
     } else {
       options.template = 'templates/custom.tex';
       console.log(`[PDF EXPORT] Using standard template for language: ${language}`);
