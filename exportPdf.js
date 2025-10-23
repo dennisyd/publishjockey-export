@@ -1082,12 +1082,10 @@ function getPandocVariables(options) {
   console.log(`[FONT] Font family from options: ${options.fontFamily}`);
   console.log(`[FONT] Default font: ${defaultFont}`);
   
-  // For script-switching languages, don't set mainfont - let the template handle it
-  if (!requiresScriptSwitching && !isDevanagari) {
-    vars.push(`mainfont=${options.fontFamily || defaultFont}`);
-  } else {
-    console.log(`[FONT] Skipping mainfont for ${language} - template will handle script-based font switching`);
-  }
+  // CRITICAL: Pass mainfont for ALL languages including Indic scripts
+  // The custom-indic.tex template uses $mainfont$ to set the main font
+  vars.push(`mainfont=${options.fontFamily || defaultFont}`);
+  console.log(`[FONT] Setting mainfont=${options.fontFamily || defaultFont} for language: ${language}`);
   
 
   
