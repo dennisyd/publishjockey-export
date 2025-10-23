@@ -54,61 +54,79 @@ $if(euro)$
   \newcommand{\euro}{€}
 $endif$
 
-% --- Additional font setup for RTL languages and Hindi ---
-$if(dir)$
+% --- MODULAR MULTI-SCRIPT FONT SETUP ---
+% Clean, reliable font configuration for all supported scripts
 \ifxetex
-  % Ensure proper font loading for RTL languages
+  \usepackage{ucharclasses}
+
+  % Define fonts for different scripts
   $if(mainfont)$
-  \setmainfont{$mainfont$}
+  \setmainfont{$mainfont$}[Ligatures=TeX,Scale=MatchLowercase]
   $endif$
-  % Additional font features for RTL languages
-  \defaultfontfeatures{Ligatures=TeX,Scale=MatchLowercase}
-  % Explicit font loading for RTL languages
-  \newfontfamily\arabicfont[Script=Arabic]{Noto Sans Arabic}
-  \newfontfamily\hebrewfont[Script=Hebrew]{Noto Sans Hebrew}
+
+  % English/Latin font for transitions (default for most documents)
+  \newfontfamily\englishfont{Liberation Serif}[Ligatures=TeX,Scale=MatchLowercase]
+
+  % Script-specific font definitions (modular approach)
+  \newfontfamily\cyrillicfont[Script=Cyrillic]{Liberation Serif}[Ligatures=TeX,Scale=MatchLowercase]
+  \newfontfamily\greekfont[Script=Greek]{Liberation Serif}[Ligatures=TeX,Scale=MatchLowercase]
+
+  % Hindi/Devanagari font
+  \newfontfamily\devanagarifont[Script=Devanagari]{Noto Sans Devanagari}[
+    Renderer=HarfBuzz,
+    Ligatures=TeX,
+    Scale=MatchLowercase,
+    Language=Hindi
+  ]
+
+  % Tamil font
+  \newfontfamily\tamilfont[Script=Tamil]{Noto Sans Tamil}[
+    Renderer=HarfBuzz,
+    Ligatures=TeX,
+    Scale=MatchLowercase,
+    Language=Tamil
+  ]
+
+  % Other South Asian scripts
+  \newfontfamily\bengalifont[Script=Bengali]{Noto Sans Bengali}[
+    Renderer=HarfBuzz,
+    Ligatures=TeX,
+    Scale=MatchLowercase,
+    Language=Bengali
+  ]
+
+  \newfontfamily\gurmukhifont[Script=Gurmukhi]{Noto Sans Gurmukhi}[
+    Renderer=HarfBuzz,
+    Ligatures=TeX,
+    Scale=MatchLowercase,
+    Language=Punjabi
+  ]
+
+  % RTL languages
+  \newfontfamily\arabicfont[Script=Arabic]{Noto Sans Arabic}[
+    Renderer=HarfBuzz,
+    Ligatures=TeX,
+    Scale=MatchLowercase,
+    Language=Arabic
+  ]
+
+  \newfontfamily\hebrewfont[Script=Hebrew]{Noto Sans Hebrew}[
+    Renderer=HarfBuzz,
+    Ligatures=TeX,
+    Scale=MatchLowercase,
+    Language=Hebrew
+  ]
+
+  % Automatic font switching based on Unicode script
+  % When Latin characters appear in non-Latin documents: switch to English font
+  \setTransitionsForLatin{
+    \begingroup\englishfont
+  }{
+    \endgroup
+  }
 \fi
-$endif$
 
-
-
-% --- FONT SETUP ---
-$if(script-switching)$
-% NEW: Script-based font switching for Hindi, Tamil, etc.
-\usepackage{ucharclasses}
-
-% Set the script font as main font (default for all text)
-\setmainfont{$script-font$}[
-  Script=$script-name$,
-  Renderer=HarfBuzz,
-  Ligatures=TeX,
-  Scale=MatchLowercase$if(script-language)$,
-  Language=$script-language$$endif$,
-  WordSpace=1.0,
-  PunctuationSpace=1.0
-]
-
-% Define Latin font for automatic switching
-\newfontfamily\englishfont{$if(sansfont)$$sansfont$$else$Liberation Serif$endif$}[
-  Ligatures=TeX,
-  Scale=MatchLowercase
-]
-
-% Automatic font switching: Switch to English font for Latin characters
-% Fixed spacing for Tamil script
-\setTransitionsForLatin{
-  \begingroup\englishfont%
-}{
-  \endgroup%
-}
-
-% Tamil-specific spacing fixes
-$if(script-name)$
-$if(mainfont)$
-% Additional Tamil script spacing optimization
-\newcommand{\tamilspace}{\hspace{0pt}}
-\XeTeXinterchartoks 255 0 = {\tamilspace}
-$endif$
-$endif$
+% --- CLEAN FONT SETUP COMPLETE ---
 
 % Unicode-aware PDF setup
 \usepackage[unicode]{hyperref}
@@ -124,46 +142,9 @@ $endif$
   pdfproducer={PublishJockey.com}
 }
 $else$
-$if(polyglossia)$
-% Hindi language setup with polyglossia
-\ifxetex
-  \usepackage{polyglossia}
+% Standard font setup for non-script-switching languages
   
-  % Set Liberation Serif as the main font for Latin text (this is critical!)
-  \setmainfont{$if(sansfont)$$sansfont$$else$Liberation Serif$endif$}[
-    Ligatures=TeX,
-    Scale=MatchLowercase
-  ]
-  
-  % Set up sans font as well
-  \setsansfont{$if(sansfont)$$sansfont$$else$Liberation Serif$endif$}[
-    Ligatures=TeX,
-    Scale=MatchLowercase$if(sansfontoptions)$,
-    $sansfontoptions$$endif$
-  ]
-  
-  % CRITICAL: Define the Devanagari font for Hindi (this is what polyglossia expects)
-  \newfontfamily\devanagarifont{Noto Sans Devanagari}[
-    Script=Devanagari,
-    Ligatures=TeX,
-    Scale=MatchLowercase,
-    Language=Hindi
-  ]
-  
-  % Configure polyglossia languages AFTER fonts are defined
-  \setdefaultlanguage{hindi}
-  \setotherlanguage{english}
-  
-  % Unicode-aware PDF setup
-  \usepackage[unicode]{hyperref}
-  \hypersetup{
-    pdfencoding=auto,
-    bookmarksopen=true,
-    bookmarksopenlevel=1
-  }
-\fi
-$else$
-% Standard font setup for non-Hindi languages
+% Standard font setup for all languages
 $if(mainfont)$
     $if(mainfontoptions)$
     \setmainfont[$for(mainfontoptions)$$mainfontoptions$$sep$,$endfor$]{$mainfont$}
@@ -177,9 +158,6 @@ $if(sansfont)$
     $else$
     \setsansfont{$sansfont$}
     $endif$
-$endif$
-$if(seriffont)$
-    % Note: fontspec doesn't have \setseriffont, serif fonts are handled by \setmainfont
 $endif$
 
 % Load hyperref for all documents (not just Hindi)
@@ -220,27 +198,7 @@ $endif$
 % Microtype removed due to XeLaTeX compatibility issues
 % Core typography improvements still active below
 
-% Multi-script typography optimization
-\ifxetex
-  % Multi-language support with optimized spacing
-  \usepackage{polyglossia}
-  \setdefaultlanguage{english}
-  \setotherlanguage{russian}
-  \setotherlanguage{greek}
-  
-  % Russian-specific font configuration (using available fonts)
-  \newfontfamily\cyrillicfont[Script=Cyrillic]{Liberation Serif}
-  \newfontfamily\cyrillicfontsf[Script=Cyrillic]{Liberation Sans}
-  \newfontfamily\cyrillicfonttt[Script=Cyrillic]{Liberation Mono}
-  
-  % Greek-specific font configuration (using available fonts)
-  \newfontfamily\greekfont[Script=Greek]{Liberation Serif}
-  \newfontfamily\greekfontsf[Script=Greek]{Liberation Sans}
-  \newfontfamily\greekfonttt[Script=Greek]{Liberation Mono}
-  
-  % Script-specific spacing optimizations (microtype-free)
-  % Using core LaTeX spacing controls for tighter text
-\fi
+% Typography optimizations complete
 
 % RTL language setup (simplified - no polyglossia for now)
 $if(dir)$

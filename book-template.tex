@@ -45,15 +45,7 @@ $endif$
 % --- Additional font features for better rendering ---
 \defaultfontfeatures{Ligatures=TeX,Scale=MatchLowercase}
 
-% --- Enhanced RTL support ---
-$if(dir)$
-\ifxetex
-  % Additional packages for better RTL text rendering
-  \usepackage{polyglossia}
-  % NOTE: For best results with RTL languages (Arabic, Hebrew, Yiddish),
-  % use pure language content only. Mixed content may not display correctly.
-\fi
-$endif$
+% --- Enhanced RTL support (simplified) ---
 
 % --- Language-specific packages ---
 
@@ -98,27 +90,7 @@ $endif$
 % Microtype removed due to XeLaTeX compatibility issues
 % Core typography improvements still active below
 
-% Multi-script typography optimization
-\ifxetex
-  % Multi-language support with optimized spacing
-  \usepackage{polyglossia}
-  \setdefaultlanguage{english}
-  \setotherlanguage{russian}
-  \setotherlanguage{greek}
-  
-  % Russian-specific font configuration (using available fonts)
-  \newfontfamily\cyrillicfont[Script=Cyrillic]{Liberation Serif}
-  \newfontfamily\cyrillicfontsf[Script=Cyrillic]{Liberation Sans}
-  \newfontfamily\cyrillicfonttt[Script=Cyrillic]{Liberation Mono}
-  
-  % Greek-specific font configuration (using available fonts)
-  \newfontfamily\greekfont[Script=Greek]{Liberation Serif}
-  \newfontfamily\greekfontsf[Script=Greek]{Liberation Sans}
-  \newfontfamily\greekfonttt[Script=Greek]{Liberation Mono}
-  
-  % Script-specific spacing optimizations (microtype-free)
-  % Using core LaTeX spacing controls for tighter text
-\fi
+% Typography optimizations complete
 
 % Enhanced line breaking and justification
 \tolerance=2000
