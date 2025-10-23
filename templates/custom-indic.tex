@@ -38,140 +38,49 @@
   
   % Define fonts for different Indic scripts (for fallback/switching if needed)
   % Using Serif variants to match user's available fonts
+  % Note: The main font comes from $mainfont$ (user selection)
+  % These are only used for script switching when mixing scripts
+  
   % Devanagari fonts (Hindi, Nepali, Marathi, Sanskrit)
-  % Multiple definitions to support all available Devanagari fonts
-  \IfFontExistsTF{Noto Serif Devanagari}{
-    \newfontfamily\devanagarifont{Noto Serif Devanagari}[
-      Script=Devanagari,
-      Renderer=HarfBuzz,
-      Ligatures=TeX,
-      Language=Hindi,
-      Scale=1.0,
-      WordSpace=1.2
-    ]
-  }{
-    \IfFontExistsTF{Noto Sans Devanagari UI}{
-      \newfontfamily\devanagarifont{Noto Sans Devanagari UI}[
-        Script=Devanagari,
-        Renderer=HarfBuzz,
-        Ligatures=TeX,
-        Language=Hindi,
-        Scale=1.0,
-        WordSpace=1.2
-      ]
-    }{
-      \newfontfamily\devanagarifont{FreeSerif}[
-        Script=Devanagari,
-        Renderer=HarfBuzz,
-        Ligatures=TeX,
-        Language=Hindi,
-        Scale=1.0,
-        WordSpace=1.2
-      ]
-    }
-  }
+  \newfontfamily\devanagarifont{Noto Serif Devanagari}[
+    Script=Devanagari,
+    Renderer=HarfBuzz,
+    Ligatures=TeX,
+    Language=Hindi,
+    Scale=1.0,
+    WordSpace=1.2
+  ]
   
   % Tamil fonts
-  % Multiple definitions to support all available Tamil fonts
-  \IfFontExistsTF{Noto Serif Tamil}{
-    \newfontfamily\tamilfont{Noto Serif Tamil}[
-      Script=Tamil,
-      Renderer=HarfBuzz,
-      Ligatures=TeX,
-      Language=Tamil,
-      Scale=1.0,
-      WordSpace=1.2,
-      PunctuationSpace=1.5
-    ]
-  }{
-    \IfFontExistsTF{Noto Sans Tamil UI}{
-      \newfontfamily\tamilfont{Noto Sans Tamil UI}[
-        Script=Tamil,
-        Renderer=HarfBuzz,
-        Ligatures=TeX,
-        Language=Tamil,
-        Scale=1.0,
-        WordSpace=1.2,
-        PunctuationSpace=1.5
-      ]
-    }{
-      \newfontfamily\tamilfont{FreeSerif}[
-        Script=Tamil,
-        Renderer=HarfBuzz,
-        Ligatures=TeX,
-        Language=Tamil,
-        Scale=1.0,
-        WordSpace=1.2,
-        PunctuationSpace=1.5
-      ]
-    }
-  }
+  \newfontfamily\tamilfont{Noto Serif Tamil}[
+    Script=Tamil,
+    Renderer=HarfBuzz,
+    Ligatures=TeX,
+    Language=Tamil,
+    Scale=1.0,
+    WordSpace=1.2,
+    PunctuationSpace=1.5
+  ]
   
   % Bengali fonts (Bengali, Assamese)
-  % Multiple definitions to support all available Bengali fonts
-  \IfFontExistsTF{Noto Serif Bengali}{
-    \newfontfamily\bengalifont{Noto Serif Bengali}[
-      Script=Bengali,
-      Renderer=HarfBuzz,
-      Ligatures=TeX,
-      Language=Bengali,
-      Scale=1.0,
-      WordSpace=1.2
-    ]
-  }{
-    \IfFontExistsTF{Noto Sans Bengali UI}{
-      \newfontfamily\bengalifont{Noto Sans Bengali UI}[
-        Script=Bengali,
-        Renderer=HarfBuzz,
-        Ligatures=TeX,
-        Language=Bengali,
-        Scale=1.0,
-        WordSpace=1.2
-      ]
-    }{
-      \newfontfamily\bengalifont{FreeSerif}[
-        Script=Bengali,
-        Renderer=HarfBuzz,
-        Ligatures=TeX,
-        Language=Bengali,
-        Scale=1.0,
-        WordSpace=1.2
-      ]
-    }
-  }
+  \newfontfamily\bengalifont{Noto Serif Bengali}[
+    Script=Bengali,
+    Renderer=HarfBuzz,
+    Ligatures=TeX,
+    Language=Bengali,
+    Scale=1.0,
+    WordSpace=1.2
+  ]
   
   % Gurmukhi fonts (Punjabi)
-  % Multiple definitions to support all available Gurmukhi fonts
-  \IfFontExistsTF{Noto Serif Gurmukhi}{
-    \newfontfamily\gurmukhifont{Noto Serif Gurmukhi}[
-      Script=Gurmukhi,
-      Renderer=HarfBuzz,
-      Ligatures=TeX,
-      Language=Punjabi,
-      Scale=1.0,
-      WordSpace=1.2
-    ]
-  }{
-    \IfFontExistsTF{Noto Sans Gurmukhi UI}{
-      \newfontfamily\gurmukhifont{Noto Sans Gurmukhi UI}[
-        Script=Gurmukhi,
-        Renderer=HarfBuzz,
-        Ligatures=TeX,
-        Language=Punjabi,
-        Scale=1.0,
-        WordSpace=1.2
-      ]
-    }{
-      \newfontfamily\gurmukhifont{FreeSerif}[
-        Script=Gurmukhi,
-        Renderer=HarfBuzz,
-        Ligatures=TeX,
-        Language=Punjabi,
-        Scale=1.0,
-        WordSpace=1.2
-      ]
-    }
-  }
+  \newfontfamily\gurmukhifont{Noto Serif Gurmukhi}[
+    Script=Gurmukhi,
+    Renderer=HarfBuzz,
+    Ligatures=TeX,
+    Language=Punjabi,
+    Scale=1.0,
+    WordSpace=1.2
+  ]
   
   % Define English/Latin font for automatic switching
   \newfontfamily\englishfont{Liberation Serif}[
