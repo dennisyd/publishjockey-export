@@ -88,15 +88,17 @@
   % NO POLYGLOSSIA - Using ucharclasses for automatic font switching
   % This is the modern XeLaTeX approach for multi-script documents
   % ucharclasses detects Unicode script blocks and switches fonts automatically
-  % No language-specific configuration needed!
   
   % CRITICAL: Automatic font switching based on Unicode script
-  % When Latin characters appear: Switch to English font
+  % When Latin characters appear in Indic text: Switch to English font
   \setTransitionsForLatin{
     \begingroup\englishfont
   }{
     \endgroup
   }
+  
+  % Note: The main Indic script uses \setmainfont (set from $mainfont$ variable)
+  % so explicit transitions for the main script aren't needed - it's the default!
   
   % Disable microtype for XeLaTeX (not fully supported)
   \usepackage{microtype}
