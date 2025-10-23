@@ -119,11 +119,7 @@ $endif$
 
   % Automatic font switching based on Unicode script
   % When Latin characters appear in non-Latin documents: switch to English font
-  \setTransitionsForLatin{
-    \begingroup\englishfont
-  }{
-    \endgroup
-  }
+  \setTransitionsForLatin{\englishfont}{}
 \fi
 
 % --- CLEAN FONT SETUP COMPLETE ---
