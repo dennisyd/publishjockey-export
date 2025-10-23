@@ -21,6 +21,7 @@
 % XeLaTeX-specific setup for Indic scripts
 \ifxetex
   \usepackage{fontspec}
+  \usepackage{polyglossia}
   \usepackage{ucharclasses}
   
   % Set Indic script as the main font based on user selection or language default
@@ -29,7 +30,10 @@
   \setmainfont{$if(mainfont)$$mainfont$$else$Noto Serif Tamil$endif$}[
     Renderer=HarfBuzz,
     Ligatures=TeX,
-    Scale=MatchLowercase
+    Scale=1.0,
+    WordSpace=1.2,
+    PunctuationSpace=1.5,
+    Mapping=tex-text
   ]
   
   % Define fonts for different Indic scripts (for fallback/switching if needed)
@@ -38,14 +42,19 @@
     Script=Devanagari,
     Renderer=HarfBuzz,
     Ligatures=TeX,
-    Language=Hindi
+    Language=Hindi,
+    Scale=1.0,
+    WordSpace=1.2
   ]
   
   \newfontfamily\tamilfont{Noto Serif Tamil}[
     Script=Tamil,
     Renderer=HarfBuzz,
     Ligatures=TeX,
-    Language=Tamil
+    Language=Tamil,
+    Scale=1.0,
+    WordSpace=1.2,
+    PunctuationSpace=1.5
   ]
   
   \newfontfamily\bengalifont{Noto Serif Bengali}[
@@ -67,6 +76,19 @@
     Ligatures=TeX,
     Scale=MatchLowercase
   ]
+  
+  % Language-specific settings with polyglossia
+  $if(lang)$
+  $if(script-language)$
+  % Set main language based on document language
+  \setdefaultlanguage{$script-language$}
+  \setotherlanguage{english}
+  $else$
+  \setdefaultlanguage{english}
+  $endif$
+  $else$
+  \setdefaultlanguage{english}
+  $endif$
   
   % CRITICAL: Automatic font switching based on Unicode script
   % When Latin characters appear: Switch to English font
@@ -133,13 +155,22 @@ $if(setspace)$
 $endif$
 
 % Typography optimizations for Indic scripts
-\tolerance=2000
-\pretolerance=100
-\hyphenpenalty=50
-\exhyphenpenalty=50
+% Line spacing improvements
+\linespread{1.15}  % 15% more line spacing for better readability
+\setlength{\parindent}{1.5em}  % Paragraph indentation
+\setlength{\parskip}{0.5em plus 0.3em minus 0.2em}  % Space between paragraphs
+
+% Word and line break optimization
+\tolerance=3000  % More tolerant of loose lines (Indic scripts need this)
+\pretolerance=1000  % Try harder before hyphenating
+\hyphenpenalty=500  % Discourage hyphenation (Indic scripts don't hyphenate well)
+\exhyphenpenalty=500
 \widowpenalty=10000
 \clubpenalty=10000
 \displaywidowpenalty=10000
+
+% Flexible spacing for better justification
+\setlength{\emergencystretch}{3em}  % Allow extra stretch in problem lines
 \raggedbottom
 \sloppy
 
