@@ -54,10 +54,15 @@ $if(euro)$
   \newcommand{\euro}{€}
 $endif$
 
-% --- MODULAR MULTI-SCRIPT FONT SETUP ---
+% --- MODULAR MULTI-SCRIPT FONT SETUP (FIXED) ---
 % Clean, reliable font configuration for all supported scripts
 \ifxetex
   \usepackage{ucharclasses}
+
+  % Define fonts for different scripts
+  $if(mainfont)$
+  \setmainfont{$mainfont$}[Ligatures=TeX,Scale=MatchLowercase]
+  $endif$
 
   % English/Latin font for transitions (default for most documents)
   \newfontfamily\englishfont{Liberation Serif}[Ligatures=TeX,Scale=MatchLowercase]
@@ -66,7 +71,7 @@ $endif$
   \newfontfamily\cyrillicfont[Script=Cyrillic]{Liberation Serif}[Ligatures=TeX,Scale=MatchLowercase]
   \newfontfamily\greekfont[Script=Greek]{Liberation Serif}[Ligatures=TeX,Scale=MatchLowercase]
 
-  % Hindi/Devanagari font (FIXED: proper syntax)
+  % Hindi/Devanagari font (FIXED CONFIGURATION)
   \newfontfamily\devanagarifont{Noto Sans Devanagari}[
     Script=Devanagari,
     Renderer=HarfBuzz,
@@ -74,7 +79,7 @@ $endif$
     Language=Hindi
   ]
 
-  % Tamil font (FIXED: proper syntax)
+  % Tamil font (FIXED CONFIGURATION)
   \newfontfamily\tamilfont{Noto Sans Tamil}[
     Script=Tamil,
     Renderer=HarfBuzz,
@@ -82,7 +87,7 @@ $endif$
     Language=Tamil
   ]
 
-  % Other South Asian scripts (FIXED: proper syntax)
+  % Other South Asian scripts
   \newfontfamily\bengalifont{Noto Sans Bengali}[
     Script=Bengali,
     Renderer=HarfBuzz,
@@ -97,7 +102,7 @@ $endif$
     Language=Punjabi
   ]
 
-  % RTL languages (FIXED: proper syntax)
+  % RTL languages
   \newfontfamily\arabicfont{Noto Sans Arabic}[
     Script=Arabic,
     Renderer=HarfBuzz,
@@ -112,7 +117,18 @@ $endif$
     Language=Hebrew
   ]
 
-
+  % Automatic font switching based on Unicode script
+  % Set up proper transitions for all scripts
+  \setTransitionsForLatin{\englishfont}{}
+  \setTransitionsForCyrillic{\cyrillicfont}{}
+  \setTransitionsForGreek{\greekfont}{}
+  \setTransitionsForDevanagari{\devanagarifont}{}
+  \setTransitionsForTamil{\tamilfont}{}
+  \setTransitionsForBengali{\bengalifont}{}
+  \setTransitionsForGurmukhi{\gurmukhifont}{}
+  \setTransitionsForArabic{\arabicfont}{}
+  \setTransitionsForHebrew{\hebrewfont}{}
+  
 \fi
 
 % --- CLEAN FONT SETUP COMPLETE ---
@@ -161,20 +177,6 @@ $if(mathfont)$
     % Note: \setmathfont requires unicode-math package, which we're not using
     % Math fonts are handled automatically by the main font setup
 $endif$
-
-  % CRITICAL: Automatic font switching based on Unicode script
-  % Set up proper transitions for all scripts (MUST be at end of xelatex/lualatex block)
-  \ifxetex
-    \setTransitionsForLatin{\englishfont}{}
-    \setTransitionsForCyrillic{\cyrillicfont}{}
-    \setTransitionsForGreek{\greekfont}{}
-    \setTransitionsForDevanagari{\devanagarifont}{}
-    \setTransitionsForTamil{\tamilfont}{}
-    \setTransitionsForBengali{\bengalifont}{}
-    \setTransitionsForGurmukhi{\gurmukhifont}{}
-    \setTransitionsForArabic{\arabicfont}{}
-    \setTransitionsForHebrew{\hebrewfont}{}
-  \fi
 
 \fi
 
