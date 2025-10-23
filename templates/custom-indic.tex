@@ -21,7 +21,6 @@
 % XeLaTeX-specific setup for Indic scripts
 \ifxetex
   \usepackage{fontspec}
-  \usepackage{polyglossia}
   \usepackage{ucharclasses}
   
   % Set Indic script as the main font based on user selection or language default
@@ -88,20 +87,10 @@
     Scale=MatchLowercase
   ]
   
-  % Language-specific settings with polyglossia
-  % Set English as default since we're using ucharclasses for script switching
-  % This avoids polyglossia language-specific config issues
-  \setdefaultlanguage{english}
-  
-  % Configure Indic languages as "other" languages with proper settings
-  $if(lang)$
-  $if(script-language)$
-  % Set up the Indic language with proper hyphenation settings
-  \setotherlanguage{$script-language$}
-  % Disable hyphenation for Indic scripts (they don't hyphenate like Latin)
-  \PolyglossiaSetup{$script-language$}{hyphenmins={100,100}}
-  $endif$
-  $endif$
+  % NO POLYGLOSSIA - Using ucharclasses for automatic font switching
+  % This is the modern XeLaTeX approach for multi-script documents
+  % ucharclasses detects Unicode script blocks and switches fonts automatically
+  % No language-specific configuration needed!
   
   % CRITICAL: Automatic font switching based on Unicode script
   % When Latin characters appear: Switch to English font
