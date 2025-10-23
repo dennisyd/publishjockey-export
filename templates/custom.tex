@@ -71,55 +71,72 @@ $endif$
   \newfontfamily\cyrillicfont[Script=Cyrillic]{Liberation Serif}[Ligatures=TeX,Scale=MatchLowercase]
   \newfontfamily\greekfont[Script=Greek]{Liberation Serif}[Ligatures=TeX,Scale=MatchLowercase]
 
-  % Hindi/Devanagari font
-  \newfontfamily\devanagarifont[Script=Devanagari]{Noto Sans Devanagari}[
+  % Hindi/Devanagari font (FIXED: proper syntax)
+  \newfontfamily\devanagarifont{Noto Sans Devanagari}[
+    Script=Devanagari,
     Renderer=HarfBuzz,
-    Ligatures=TeX,
-    Scale=MatchLowercase,
+    Ligatures=Required,
     Language=Hindi
   ]
 
-  % Tamil font
-  \newfontfamily\tamilfont[Script=Tamil]{Noto Sans Tamil}[
+  % Tamil font (FIXED: proper syntax)
+  \newfontfamily\tamilfont{Noto Sans Tamil}[
+    Script=Tamil,
     Renderer=HarfBuzz,
-    Ligatures=TeX,
-    Scale=MatchLowercase,
+    Ligatures=Required,
     Language=Tamil
   ]
 
-  % Other South Asian scripts
-  \newfontfamily\bengalifont[Script=Bengali]{Noto Sans Bengali}[
+  % Other South Asian scripts (FIXED: proper syntax)
+  \newfontfamily\bengalifont{Noto Sans Bengali}[
+    Script=Bengali,
     Renderer=HarfBuzz,
-    Ligatures=TeX,
-    Scale=MatchLowercase,
+    Ligatures=Required,
     Language=Bengali
   ]
 
-  \newfontfamily\gurmukhifont[Script=Gurmukhi]{Noto Sans Gurmukhi}[
+  \newfontfamily\gurmukhifont{Noto Sans Gurmukhi}[
+    Script=Gurmukhi,
     Renderer=HarfBuzz,
-    Ligatures=TeX,
-    Scale=MatchLowercase,
+    Ligatures=Required,
     Language=Punjabi
   ]
 
-  % RTL languages
-  \newfontfamily\arabicfont[Script=Arabic]{Noto Sans Arabic}[
+  % RTL languages (FIXED: proper syntax)
+  \newfontfamily\arabicfont{Noto Sans Arabic}[
+    Script=Arabic,
     Renderer=HarfBuzz,
-    Ligatures=TeX,
-    Scale=MatchLowercase,
+    Ligatures=Required,
     Language=Arabic
   ]
 
-  \newfontfamily\hebrewfont[Script=Hebrew]{Noto Sans Hebrew}[
+  \newfontfamily\hebrewfont{Noto Sans Hebrew}[
+    Script=Hebrew,
     Renderer=HarfBuzz,
-    Ligatures=TeX,
-    Scale=MatchLowercase,
+    Ligatures=Required,
     Language=Hebrew
   ]
 
-  % Automatic font switching based on Unicode script
-  % When Latin characters appear in non-Latin documents: switch to English font
+  % CRITICAL: Automatic font switching based on Unicode script
+  % Set up proper transitions for all scripts
+  
+  % Latin script transitions (fallback)
   \setTransitionsForLatin{\englishfont}{}
+  
+  % Cyrillic and Greek (these were already working)
+  \setTransitionsForCyrillic{\cyrillicfont}{}
+  \setTransitionsForGreek{\greekfont}{}
+  
+  % THE MISSING FIX: Devanagari and Tamil transitions!
+  \setTransitionsForDevanagari{\devanagarifont}{}
+  \setTransitionsForTamil{\tamilfont}{}
+  \setTransitionsForBengali{\bengalifont}{}
+  \setTransitionsForGurmukhi{\gurmukhifont}{}
+  
+  % RTL script transitions
+  \setTransitionsForArabic{\arabicfont}{}
+  \setTransitionsForHebrew{\hebrewfont}{}
+  
 \fi
 
 % --- CLEAN FONT SETUP COMPLETE ---
