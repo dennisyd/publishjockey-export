@@ -98,20 +98,26 @@ $endif$
 % Microtype removed due to XeLaTeX compatibility issues
 % Core typography improvements still active below
 
-% Russian-specific typography optimization
+% Multi-script typography optimization
 \ifxetex
-  % Russian language support with optimized spacing
+  % Multi-language support with optimized spacing
   \usepackage{polyglossia}
   \setdefaultlanguage{english}
   \setotherlanguage{russian}
+  \setotherlanguage{greek}
   
   % Russian-specific font configuration (using available fonts)
   \newfontfamily\cyrillicfont[Script=Cyrillic]{Liberation Serif}
   \newfontfamily\cyrillicfontsf[Script=Cyrillic]{Liberation Sans}
   \newfontfamily\cyrillicfonttt[Script=Cyrillic]{Liberation Mono}
   
-  % Russian-specific spacing optimizations (microtype-free)
-  % Using core LaTeX spacing controls for tighter Russian text
+  % Greek-specific font configuration (using available fonts)
+  \newfontfamily\greekfont[Script=Greek]{Liberation Serif}
+  \newfontfamily\greekfontsf[Script=Greek]{Liberation Sans}
+  \newfontfamily\greekfonttt[Script=Greek]{Liberation Mono}
+  
+  % Script-specific spacing optimizations (microtype-free)
+  % Using core LaTeX spacing controls for tighter text
 \fi
 
 % Enhanced line breaking and justification
@@ -121,21 +127,22 @@ $endif$
 \exhyphenpenalty=50
 \adjdemerits=10000
 
-% Russian-specific spacing optimization
+% Script-specific spacing optimization
 \ifxetex
-  % Tighter spacing for Russian text
+  % Tighter spacing for Russian and Greek text
   \usepackage{hyphenat}
   \hyphenation{рус-ский-я-зык}
+  \hyphenation{ελλην-ικά}
   
-  % Russian-specific line breaking
-  \tolerance=1500  % Tighter tolerance for Russian
+  % Script-specific line breaking (tighter for Cyrillic and Greek)
+  \tolerance=1500  % Tighter tolerance for Russian and Greek
   \pretolerance=50
-  \hyphenpenalty=30  % More aggressive hyphenation for Russian
+  \hyphenpenalty=30  % More aggressive hyphenation for Russian and Greek
   \exhyphenpenalty=30
   \doublehyphendemerits=10000
   \finalhyphendemerits=5000
   
-  % Russian word spacing optimization
+  % Script-specific word spacing optimization
   \spaceskip=0.3em plus 0.2em minus 0.1em
   \xspaceskip=0.3em plus 0.2em minus 0.1em
 \fi
