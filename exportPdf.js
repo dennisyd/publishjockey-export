@@ -962,41 +962,8 @@ function getPandocVariables(options) {
   const isCyrillic = language === 'ru';
   const isDevanagari = language === 'hi'; // Hindi uses Devanagari script
   
-  // === MULTI-TEMPLATE SYSTEM ===
-  // Select appropriate template based on script/language
-  const indicLanguages = ['hi', 'ta', 'bn', 'gu', 'te', 'kn', 'ml', 'pa', 'or'];
-  const isIndicScript = indicLanguages.includes(language);
-  
-  // Set template based on language type
-  if (!options.template) {
-    if (isIndicScript) {
-      options.template = 'templates/custom-indic.tex';
-      console.log(`[PDF EXPORT] Using Indic-optimized template for language: ${language}`);
-      
-      // Set the appropriate Indic font as main font ONLY if user didn't select one
-      if (!options.fontFamily) {
-        const indicFontMap = {
-          'hi': 'Noto Serif Devanagari',
-          'ta': 'Noto Serif Tamil',
-          'bn': 'Noto Serif Bengali',
-          'gu': 'Noto Serif Gujarati',
-          'te': 'Noto Serif Telugu',
-          'kn': 'Noto Serif Kannada',
-          'ml': 'Noto Serif Malayalam',
-          'pa': 'Noto Serif Gurmukhi',
-          'or': 'Noto Serif Oriya'
-        };
-        options.fontFamily = indicFontMap[language] || 'Noto Serif Tamil';
-        console.log(`[PDF EXPORT] No font selected, using default: ${options.fontFamily}`);
-      } else {
-        console.log(`[PDF EXPORT] User selected font: ${options.fontFamily}`);
-      }
-    } else {
-      options.template = 'templates/custom.tex';
-      console.log(`[PDF EXPORT] Using standard template for language: ${language}`);
-    }
-  }
-  // === END MULTI-TEMPLATE SYSTEM ===
+  // NOTE: Template selection now happens BEFORE Pandoc args are built (see line ~1614)
+  // This ensures the correct template is used from the start
   
   // TOC title translation is now handled in bookAssemblerPdf.js
   console.log(`[TOC TRANSLATION] TOC title translation handled in bookAssemblerPdf.js for language "${language}"`);
