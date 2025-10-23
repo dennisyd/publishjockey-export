@@ -1681,9 +1681,12 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
         defaultFont = 'Noto Sans Tamil';
       }
       
-      console.log(`[PDF EXPORT] Template being used: templates/custom.tex`);
+      console.log(`[PDF EXPORT] ===== EXPORT DEBUG INFO =====`);
+      console.log(`[PDF EXPORT] Template being used: ${options.template || 'templates/custom.tex'}`);
       console.log(`[PDF EXPORT] Font being used: ${options.fontFamily || defaultFont}`);
       console.log(`[PDF EXPORT] Language: ${language}, RTL: ${isRTL}`);
+      console.log(`[PDF EXPORT] Indic script: ${['hi','ta','bn','gu','te','kn','ml','pa','or'].includes(language) ? 'YES' : 'NO'}`);
+      console.log(`[PDF EXPORT] ================================`);
   
          execFile(PANDOC_PATH, args, { 
          maxBuffer: 1024 * 1024 * 10, // 10MB buffer
