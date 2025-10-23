@@ -111,16 +111,13 @@ $endif$
   \newfontfamily\cyrillicfontsf[Script=Cyrillic]{Liberation Sans}
   \newfontfamily\cyrillicfonttt[Script=Cyrillic]{Liberation Mono}
   
-  % Russian-specific microtype settings for tighter spacing
+  % Russian-specific microtype settings for tighter spacing (XeLaTeX compatible)
   \microtypesetup{
     protrusion=true,
-    expansion=true,
-    tracking=smallcaps,
+    expansion=false,  % XeLaTeX doesn't support expansion
+    tracking=false,   % XeLaTeX doesn't support tracking
     kerning=true,
-    spacing=true,
-    factor=1200,  % Slightly more aggressive expansion for Russian
-    stretch=15,   % More stretch tolerance for Cyrillic
-    shrink=15     % More shrink tolerance for Cyrillic
+    spacing=true
   }
 \fi
 
