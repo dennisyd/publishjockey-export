@@ -973,21 +973,23 @@ function getPandocVariables(options) {
       options.template = 'templates/custom-indic.tex';
       console.log(`[PDF EXPORT] Using Indic-optimized template for language: ${language}`);
       
-      // Set the appropriate Indic font as main font if not already set
+      // Set the appropriate Indic font as main font ONLY if user didn't select one
       if (!options.fontFamily) {
         const indicFontMap = {
-          'hi': 'Noto Sans Devanagari',
-          'ta': 'Noto Sans Tamil',
-          'bn': 'Noto Sans Bengali',
-          'gu': 'Noto Sans Gujarati',
-          'te': 'Noto Sans Telugu',
-          'kn': 'Noto Sans Kannada',
-          'ml': 'Noto Sans Malayalam',
-          'pa': 'Noto Sans Gurmukhi',
-          'or': 'Noto Sans Oriya'
+          'hi': 'Noto Serif Devanagari',
+          'ta': 'Noto Serif Tamil',
+          'bn': 'Noto Serif Bengali',
+          'gu': 'Noto Serif Gujarati',
+          'te': 'Noto Serif Telugu',
+          'kn': 'Noto Serif Kannada',
+          'ml': 'Noto Serif Malayalam',
+          'pa': 'Noto Serif Gurmukhi',
+          'or': 'Noto Serif Oriya'
         };
-        options.fontFamily = indicFontMap[language] || 'Noto Sans Tamil';
-        console.log(`[PDF EXPORT] Set main font to: ${options.fontFamily}`);
+        options.fontFamily = indicFontMap[language] || 'Noto Serif Tamil';
+        console.log(`[PDF EXPORT] No font selected, using default: ${options.fontFamily}`);
+      } else {
+        console.log(`[PDF EXPORT] User selected font: ${options.fontFamily}`);
       }
     } else {
       options.template = 'templates/custom.tex';

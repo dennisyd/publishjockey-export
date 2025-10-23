@@ -23,48 +23,39 @@
   \usepackage{fontspec}
   \usepackage{ucharclasses}
   
-  % Set Indic script as the main font based on document language
+  % Set Indic script as the main font based on user selection or language default
   % This makes the Indic font the default for the entire document
-  $if(mainfont)$
-  \setmainfont{$mainfont$}[
+  % The font name comes from frontend selection or our defaults
+  \setmainfont{$if(mainfont)$$mainfont$$else$Noto Serif Tamil$endif$}[
     Renderer=HarfBuzz,
     Ligatures=TeX,
     Scale=MatchLowercase
   ]
-  $else$
-  % Default to Noto Sans Tamil (can be overridden by script-switching)
-  \setmainfont{Noto Sans Tamil}[
-    Script=Tamil,
-    Renderer=HarfBuzz,
-    Ligatures=TeX,
-    Scale=MatchLowercase,
-    Language=Tamil
-  ]
-  $endif$
   
-  % Define fonts for different Indic scripts
-  \newfontfamily\devanagarifont{Noto Sans Devanagari}[
+  % Define fonts for different Indic scripts (for fallback/switching if needed)
+  % Using Serif variants to match user's available fonts
+  \newfontfamily\devanagarifont{Noto Serif Devanagari}[
     Script=Devanagari,
     Renderer=HarfBuzz,
     Ligatures=TeX,
     Language=Hindi
   ]
   
-  \newfontfamily\tamilfont{Noto Sans Tamil}[
+  \newfontfamily\tamilfont{Noto Serif Tamil}[
     Script=Tamil,
     Renderer=HarfBuzz,
     Ligatures=TeX,
     Language=Tamil
   ]
   
-  \newfontfamily\bengalifont{Noto Sans Bengali}[
+  \newfontfamily\bengalifont{Noto Serif Bengali}[
     Script=Bengali,
     Renderer=HarfBuzz,
     Ligatures=TeX,
     Language=Bengali
   ]
   
-  \newfontfamily\gurmukhifont{Noto Sans Gurmukhi}[
+  \newfontfamily\gurmukhifont{Noto Serif Gurmukhi}[
     Script=Gurmukhi,
     Renderer=HarfBuzz,
     Ligatures=TeX,
