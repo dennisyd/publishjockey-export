@@ -141,9 +141,7 @@ $endif$
   pdfcreator={PublishJockey.com},
   pdfproducer={PublishJockey.com}
 }
-$else$
-% Standard font setup for non-script-switching languages
-  
+
 % Standard font setup for all languages
 $if(mainfont)$
     $if(mainfontoptions)$
@@ -160,23 +158,7 @@ $if(sansfont)$
     $endif$
 $endif$
 
-% Load hyperref for all documents (not just Hindi)
-\ifxetex
-  \usepackage[unicode]{hyperref}
-  \hypersetup{
-    pdfencoding=auto,
-    bookmarksopen=true,
-    bookmarksopenlevel=1,
-    pdftitle={$if(title-meta)$$title-meta$$else$$if(title)$$title$$else$Document$endif$$endif$},
-    pdfauthor={$if(author-meta)$$author-meta$$else$$if(author)$$author$$else$$endif$$endif$},
-    pdfsubject={$if(subject)$$subject$$else$$if(title)$$title$$else$$endif$$endif$},
-    pdfkeywords={$if(keywords)$$for(keywords)$$keywords$$sep$, $endfor$$endif$},
-    pdfcreator={PublishJockey.com},
-    pdfproducer={PublishJockey.com}
-  }
-\fi
-$endif$
-$endif$
+% Hyperref setup complete
 
 
 $if(monofont)$
