@@ -32,11 +32,64 @@ $endif$
 \else % if luatex or xelatex
   \ifxetex
     \usepackage{mathspec}
-    \usepackage{ucharclasses}
   \else
     \usepackage{fontspec}
   \fi
   \defaultfontfeatures{Ligatures=TeX,Scale=MatchLowercase}
+  
+  % ==== Engine-safe microtype ====
+  \usepackage{iftex}
+  \ifPDFTeX
+    % pdfTeX: full microtype
+    \usepackage[protrusion,expansion,tracking,final]{microtype}
+  \else\ifLuaTeX
+    % LuaLaTeX: full microtype
+    \usepackage[protrusion,expansion,tracking,final]{microtype}
+  \else
+    % XeLaTeX: load microtype but deactivate features that aren't supported
+    \usepackage{microtype}
+    \microtypesetup{
+      activate=false,
+      protrusion=false,
+      expansion=false,
+      spacing=false,
+      tracking=false
+    }
+  \fi\fi
+  % =================================
+  
+  % ==== Safe no-ops for optional script transition macros ====
+  \makeatletter
+  \@ifundefined{setTransitionsForCyrillic}{%
+    \providecommand{\setTransitionsForCyrillic}[2]{}%
+  }{}
+  \@ifundefined{setTransitionsForGreek}{%
+    \providecommand{\setTransitionsForGreek}[2]{}%
+  }{}
+  \@ifundefined{setTransitionsForLatin}{%
+    \providecommand{\setTransitionsForLatin}[2]{}%
+  }{}
+  \@ifundefined{setTransitionsForDevanagari}{%
+    \providecommand{\setTransitionsForDevanagari}[2]{}%
+  }{}
+  \@ifundefined{setTransitionsForTamil}{%
+    \providecommand{\setTransitionsForTamil}[2]{}%
+  }{}
+  \@ifundefined{setTransitionsForBengali}{%
+    \providecommand{\setTransitionsForBengali}[2]{}%
+  }{}
+  \@ifundefined{setTransitionsForGurmukhi}{%
+    \providecommand{\setTransitionsForGurmukhi}[2]{}%
+  }{}
+  \@ifundefined{setTransitionsForArabic}{%
+    \providecommand{\setTransitionsForArabic}[2]{}%
+  }{}
+  \@ifundefined{setTransitionsForHebrew}{%
+    \providecommand{\setTransitionsForHebrew}[2]{}%
+  }{}
+  \makeatother
+  % ===========================================================
+  
   % Load packages for enhanced drop caps support
   \usepackage{lettrine}
   \usepackage{xcolor}
@@ -58,6 +111,9 @@ $endif$
 % --- MODULAR MULTI-SCRIPT FONT SETUP (FIXED) ---
 % Clean, reliable font configuration for all supported scripts
 \ifxetex
+  % Load ucharclasses for automatic script switching
+  \usepackage{ucharclasses}
+  
   % English/Latin font for transitions (default for most documents)
   \newfontfamily\englishfont{Liberation Serif}[Ligatures=TeX,Scale=MatchLowercase]
 
