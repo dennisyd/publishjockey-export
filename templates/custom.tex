@@ -217,11 +217,8 @@ $endif$
 
 % use upquote if available, for straight quotes in verbatim environments
 \IfFileExists{upquote.sty}{\usepackage{upquote}}{}
-% Enhanced microtype package for professional typography (XeLaTeX compatible)
-\IfFileExists{microtype.sty}{%
-\usepackage[protrusion=true,expansion=false,spacing=false]{microtype}
-\UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
-}{}
+% Microtype removed due to XeLaTeX compatibility issues
+% Core typography improvements still active below
 
 % Russian-specific typography optimization
 \ifxetex
@@ -235,16 +232,8 @@ $endif$
   \newfontfamily\cyrillicfontsf[Script=Cyrillic]{Liberation Sans}
   \newfontfamily\cyrillicfonttt[Script=Cyrillic]{Liberation Mono}
   
-  % Russian-specific microtype settings for tighter spacing (XeLaTeX compatible)
-  \IfFileExists{microtype.sty}{%
-    \microtypesetup{
-      protrusion=true,
-      expansion=false,  % XeLaTeX doesn't support expansion
-      tracking=false,   % XeLaTeX doesn't support tracking
-      kerning=true,
-      spacing=true
-    }
-  }{}
+  % Russian-specific spacing optimizations (microtype-free)
+  % Using core LaTeX spacing controls for tighter Russian text
 \fi
 
 % RTL language setup (simplified - no polyglossia for now)
