@@ -112,26 +112,7 @@ $endif$
     Language=Hebrew
   ]
 
-  % CRITICAL: Automatic font switching based on Unicode script
-  % Set up proper transitions for all scripts (MUST be inside \ifxetex block)
-  
-  % Latin script transitions (fallback)
-  \setTransitionsForLatin{\englishfont}{}
-  
-  % Cyrillic and Greek (these were already working)
-  \setTransitionsForCyrillic{\cyrillicfont}{}
-  \setTransitionsForGreek{\greekfont}{}
-  
-  % THE MISSING FIX: Devanagari and Tamil transitions!
-  \setTransitionsForDevanagari{\devanagarifont}{}
-  \setTransitionsForTamil{\tamilfont}{}
-  \setTransitionsForBengali{\bengalifont}{}
-  \setTransitionsForGurmukhi{\gurmukhifont}{}
-  
-  % RTL script transitions
-  \setTransitionsForArabic{\arabicfont}{}
-  \setTransitionsForHebrew{\hebrewfont}{}
-  
+
 \fi
 
 % --- CLEAN FONT SETUP COMPLETE ---
@@ -180,6 +161,20 @@ $if(mathfont)$
     % Note: \setmathfont requires unicode-math package, which we're not using
     % Math fonts are handled automatically by the main font setup
 $endif$
+
+  % CRITICAL: Automatic font switching based on Unicode script
+  % Set up proper transitions for all scripts (MUST be at end of xelatex/lualatex block)
+  \ifxetex
+    \setTransitionsForLatin{\englishfont}{}
+    \setTransitionsForCyrillic{\cyrillicfont}{}
+    \setTransitionsForGreek{\greekfont}{}
+    \setTransitionsForDevanagari{\devanagarifont}{}
+    \setTransitionsForTamil{\tamilfont}{}
+    \setTransitionsForBengali{\bengalifont}{}
+    \setTransitionsForGurmukhi{\gurmukhifont}{}
+    \setTransitionsForArabic{\arabicfont}{}
+    \setTransitionsForHebrew{\hebrewfont}{}
+  \fi
 
 \fi
 
