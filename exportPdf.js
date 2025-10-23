@@ -962,6 +962,23 @@ function getPandocVariables(options) {
   const isCyrillic = language === 'ru';
   const isDevanagari = language === 'hi'; // Hindi uses Devanagari script
   
+  // === MULTI-TEMPLATE SYSTEM ===
+  // Select appropriate template based on script/language
+  const indicLanguages = ['hi', 'ta', 'bn', 'gu', 'te', 'kn', 'ml', 'pa', 'or'];
+  const isIndicScript = indicLanguages.includes(language);
+  
+  // Set template based on language type
+  if (!options.template) {
+    if (isIndicScript) {
+      options.template = 'templates/custom-indic.tex';
+      console.log(`[PDF EXPORT] Using Indic-optimized template for language: ${language}`);
+    } else {
+      options.template = 'templates/custom.tex';
+      console.log(`[PDF EXPORT] Using standard template for language: ${language}`);
+    }
+  }
+  // === END MULTI-TEMPLATE SYSTEM ===
+  
   // TOC title translation is now handled in bookAssemblerPdf.js
   console.log(`[TOC TRANSLATION] TOC title translation handled in bookAssemblerPdf.js for language "${language}"`);
   

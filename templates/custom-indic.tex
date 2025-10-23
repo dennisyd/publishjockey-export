@@ -1,0 +1,202 @@
+% Custom LaTeX template for PublishJockey - INDIC SCRIPTS VERSION
+% Optimized for Hindi, Tamil, Bengali, Gujarati, Telugu, Kannada, Malayalam, Punjabi, Oriya
+% Simplified structure to avoid conditional nesting issues
+
+\documentclass[$if(fontsize)$$fontsize$,$endif$$for(classoption)$$classoption$$sep$,$endfor$]{$documentclass$}
+
+\usepackage{amssymb,amsmath}
+\usepackage{ifxetex,ifluatex}
+\usepackage{fixltx2e}
+
+% Simple page numbering
+\makeatletter
+\def\@oddfoot{\hfil\thepage\hfil}
+\def\@evenfoot{\hfil\thepage\hfil}
+\def\@oddhead{}
+\def\@evenhead{}
+\makeatother
+
+\pagestyle{plain}
+
+% XeLaTeX-specific setup for Indic scripts
+\ifxetex
+  \usepackage{fontspec}
+  \usepackage{polyglossia}
+  
+  % Set main language based on document
+  \setdefaultlanguage{english}
+  
+  % Load other languages as needed
+  \setotherlanguage{hindi}
+  \setotherlanguage{tamil}
+  \setotherlanguage{bengali}
+  
+  % Main font with HarfBuzz renderer for complex scripts
+  $if(mainfont)$
+  \setmainfont{$mainfont$}[
+    Renderer=HarfBuzz,
+    Script=Devanagari,
+    Language=Hindi
+  ]
+  $else$
+  \setmainfont{Noto Sans Devanagari}[
+    Renderer=HarfBuzz,
+    Script=Devanagari,
+    Language=Hindi
+  ]
+  $endif$
+  
+  % Define script-specific fonts
+  \newfontfamily\devanagarifont{Noto Sans Devanagari}[
+    Script=Devanagari,
+    Renderer=HarfBuzz,
+    Ligatures=Required,
+    Language=Hindi
+  ]
+  
+  \newfontfamily\tamilfont{Noto Sans Tamil}[
+    Script=Tamil,
+    Renderer=HarfBuzz,
+    Ligatures=Required,
+    Language=Tamil
+  ]
+  
+  \newfontfamily\bengalifont{Noto Sans Bengali}[
+    Script=Bengali,
+    Renderer=HarfBuzz,
+    Ligatures=Required,
+    Language=Bengali
+  ]
+  
+  \newfontfamily\gurmukhifont{Noto Sans Gurmukhi}[
+    Script=Gurmukhi,
+    Renderer=HarfBuzz,
+    Ligatures=Required,
+    Language=Punjabi
+  ]
+  
+  % Disable microtype for XeLaTeX (not fully supported)
+  \usepackage{microtype}
+  \microtypesetup{
+    activate=false,
+    protrusion=false,
+    expansion=false,
+    spacing=false,
+    tracking=false
+  }
+\fi
+
+% Unicode-aware PDF setup
+\usepackage[unicode]{hyperref}
+\hypersetup{
+  pdfencoding=auto,
+  bookmarksopen=true,
+  bookmarksopenlevel=1,
+  pdftitle={$if(title-meta)$$title-meta$$else$$if(title)$$title$$else$Document$endif$$endif$},
+  pdfauthor={$if(author-meta)$$author-meta$$else$$if(author)$$author$$else$$endif$$endif$},
+  pdfsubject={$if(subject)$$subject$$else$$if(title)$$title$$else$$endif$$endif$},
+  pdfkeywords={$if(keywords)$$for(keywords)$$keywords$$sep$, $endfor$$endif$},
+  pdfcreator={PublishJockey.com},
+  pdfproducer={PublishJockey.com}
+}
+
+% Page geometry
+$if(paperwidth)$
+\usepackage[
+  paperwidth=$paperwidth$,
+  paperheight=$paperheight$,
+  left=$leftmargin$,
+  right=$rightmargin$,
+  top=$topmargin$,
+  bottom=$bottommargin$,
+  footskip=$footskip$,
+  bindingoffset=0pt
+]{geometry}
+$endif$
+
+% Page style
+$if(pagestyle)$
+\pagestyle{$pagestyle$}
+$endif$
+
+% Section formatting
+$if(secstyle)$
+\usepackage{titlesec}
+\titleformat{\chapter}{\huge\bfseries\filcenter}{}{0em}{}
+$endif$
+
+% Spacing
+$if(setspace)$
+\usepackage{setspace}
+\setstretch{$setspace$}
+$endif$
+
+% Typography optimizations for Indic scripts
+\tolerance=2000
+\pretolerance=100
+\hyphenpenalty=50
+\exhyphenpenalty=50
+\widowpenalty=10000
+\clubpenalty=10000
+\displaywidowpenalty=10000
+\raggedbottom
+\sloppy
+
+% Tightlist environment
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+
+% Section numbering
+$if(secnumdepth)$
+\setcounter{secnumdepth}{$secnumdepth$}
+$endif$
+
+% TOC depth
+$if(tocdepth)$
+\setcounter{tocdepth}{$tocdepth$}
+$endif$
+
+% Tables and graphics
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{calc}
+\usepackage{array}
+
+% Front/Main/Back matter commands
+\renewcommand{\frontmatter}{%
+  \cleardoublepage
+  \pagenumbering{roman}
+  \setcounter{page}{1}
+  \pagestyle{plain}
+}
+
+\renewcommand{\mainmatter}{%
+  \cleardoublepage
+  \pagenumbering{arabic}
+  \setcounter{page}{1}
+  \pagestyle{plain}
+}
+
+\renewcommand{\backmatter}{%
+  \cleardoublepage
+  \pagestyle{plain}
+}
+
+\begin{document}
+
+% Table of Contents
+$if(toc)$
+\tableofcontents
+$endif$
+
+% Main content
+$body$
+
+% Bibliography
+$if(bibliography)$
+\bibliography{$bibliography$}
+$endif$
+
+\end{document}
+
