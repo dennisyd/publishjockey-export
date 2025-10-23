@@ -1611,14 +1611,14 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
       
       // === MULTI-TEMPLATE SYSTEM ===
       // Select appropriate template based on language BEFORE building Pandoc args
-      const language = options.language || 'en';
+      let templateLanguage = options.language || 'en';
       const indicLanguages = ['hi', 'ta', 'bn', 'gu', 'te', 'kn', 'ml', 'pa', 'or'];
-      const isIndicScript = indicLanguages.includes(language);
+      const isIndicScript = indicLanguages.includes(templateLanguage);
       
       if (!options.template) {
         if (isIndicScript) {
           options.template = 'templates/custom-indic.tex';
-          console.log(`[PDF EXPORT] Tamil/Hindi/Indic detected - using custom-indic.tex template for language: ${language}`);
+          console.log(`[PDF EXPORT] Tamil/Hindi/Indic detected - using custom-indic.tex template for language: ${templateLanguage}`);
           
           // Set the appropriate Indic font as main font ONLY if user didn't select one
           if (!options.fontFamily) {
@@ -1633,14 +1633,14 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
               'pa': 'Noto Serif Gurmukhi',
               'or': 'Noto Serif Oriya'
             };
-            options.fontFamily = indicFontMap[language] || 'Noto Serif Tamil';
+            options.fontFamily = indicFontMap[templateLanguage] || 'Noto Serif Tamil';
             console.log(`[PDF EXPORT] No font selected, using default: ${options.fontFamily}`);
           } else {
             console.log(`[PDF EXPORT] User selected font: ${options.fontFamily}`);
           }
         } else {
           options.template = 'templates/custom.tex';
-          console.log(`[PDF EXPORT] Using standard template for language: ${language}`);
+          console.log(`[PDF EXPORT] Using standard template for language: ${templateLanguage}`);
         }
       }
       // === END MULTI-TEMPLATE SYSTEM ===
