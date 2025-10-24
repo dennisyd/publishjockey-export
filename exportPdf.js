@@ -1578,13 +1578,15 @@ async function exportPdf(assembledPath, outputPath, options = {}) {
       // === MULTI-TEMPLATE SYSTEM ===
       // Select appropriate template based on language BEFORE building Pandoc args
       let templateLanguage = options.language || 'en';
-      const indicLanguages = ['hi', 'ta', 'bn', 'gu', 'te', 'kn', 'ml', 'pa', 'or'];
+      // Note: Hindi (hi) uses custom.tex because it works well with script-switching
+      // Tamil and other Dravidian scripts use custom-indic.tex for specialized typography
+      const indicLanguages = ['ta', 'bn', 'gu', 'te', 'kn', 'ml', 'pa', 'or'];
       const isIndicScript = indicLanguages.includes(templateLanguage);
       
       if (!options.template) {
         if (isIndicScript) {
           options.template = 'templates/custom-indic.tex';
-          console.log(`[PDF EXPORT] Tamil/Hindi/Indic detected - using custom-indic.tex template for language: ${templateLanguage}`);
+          console.log(`[PDF EXPORT] Indic script detected - using custom-indic.tex template for language: ${templateLanguage}`);
           
           // Set the appropriate Indic font as main font ONLY if user didn't select one
           if (!options.fontFamily) {
