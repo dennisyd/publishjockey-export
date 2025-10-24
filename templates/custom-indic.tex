@@ -1,6 +1,7 @@
 % Custom LaTeX template for Publisher-Grade Tamil Typography
-% Optimized for XeLaTeX + Pandoc with Polyglossia
-% Version 2.0 - Enhanced for professional Tamil publishing
+% Production-ready version for XeLaTeX + Pandoc
+% Simplified Polyglossia setup to avoid common errors
+% Yancy Dennis
 
 \documentclass[$if(fontsize)$$fontsize$,$endif$$for(classoption)$$classoption$$sep$,$endfor$]{$documentclass$}
 
@@ -13,70 +14,47 @@
 \ifxetex
   \usepackage{fontspec}
   
-  % POLYGLOSSIA: Modern language support for XeLaTeX
+  % SIMPLIFIED POLYGLOSSIA: Conservative configuration
   \usepackage{polyglossia}
-  
-  % Set Tamil as main language with proper configuration
-  \setdefaultlanguage[numerals=devanagari]{tamil}
+  \setdefaultlanguage{tamil}
   \setotherlanguage{english}
   
-  % FONTS: Publisher-grade Tamil fonts with complete OpenType features
-  % Primary Tamil font with advanced typography features
+  % FONTS: Optimized Tamil fonts with essential OpenType features
   \setmainfont{$if(mainfont)$$mainfont$$else$Noto Serif Tamil$endif$}[
     Renderer=HarfBuzz,
     Script=Tamil,
     Language=Tamil,
-    Ligatures={Required,Common,Contextual},
-    % CRITICAL: Full OpenType feature set for Tamil
-    RawFeature={+kern,+liga,+clig,+dlig,+rlig,+calt,+ccmp,+locl,+mark,+mkmk,+akhn,+blwf,+half,+pstf,+vatu},
-    % Typography refinements
-    Contextuals=Alternate,
-    % Letter spacing optimization for Tamil
-    LetterSpace=0.0,
+    Ligatures={Required,Common},
+    % Essential OpenType features for Tamil
+    RawFeature={+kern,+liga,+clig,+calt,+ccmp,+locl,+mark,+mkmk,+akhn},
+    Scale=1.0,
     WordSpace=1.0,
-    PunctuationSpace=1.0,
-    Scale=1.0
+    PunctuationSpace=1.0
   ]
   
   % English/Latin font for mixed content
   \newfontfamily\englishfont{$if(romanfont)$$romanfont$$else$Libertinus Serif$endif$}[
     Renderer=HarfBuzz,
-    Ligatures={Required,Common,Rare},
-    RawFeature={+kern,+liga,+clig,+dlig,+onum,+pnum},
-    Scale=MatchLowercase,
-    LetterSpace=0.0,
-    WordSpace=1.0
+    Ligatures={Required,Common},
+    RawFeature={+kern,+liga,+clig},
+    Scale=MatchLowercase
   ]
   
-  % Monospace font for code (if needed)
+  % Monospace font
   \setmonofont{$if(monofont)$$monofont$$else$Inconsolata$endif$}[
-    Scale=MatchLowercase,
-    Contextuals=Alternate
+    Scale=MatchLowercase
   ]
   
-  % MICROTYPE: Limited but optimized settings for XeLaTeX
+  % Conservative microtype settings
   \usepackage{microtype}
   \microtypesetup{
     activate=true,
     protrusion=true,
-    expansion=false,  % Not fully supported in XeLaTeX
-    spacing=true,
+    expansion=false,
+    spacing=false,
     tracking=false,
     kerning=true
   }
-  
-  % Tamil-specific microtypography
-  \SetProtrusion
-    { encoding = *,
-      family   = * }
-    { "0964 = { ,800}, % Tamil danda
-      "0965 = { ,800}, % Tamil double danda
-      "0BE6 = {300,300}, % Tamil digit zero
-      "0BE7 = {200,300}, % Tamil digit one
-      "002D = {300,500}, % Hyphen
-      "2013 = {300,400}, % En-dash
-      "2014 = {200,300}  % Em-dash
-    }
 
 \else
   % Fallback for non-XeLaTeX engines
@@ -85,46 +63,30 @@
   \usepackage{lmodern}
 \fi
 
-% TYPOGRAPHY: Publisher-grade settings for Tamil
-% Optimized line spacing for Tamil script
-\linespread{1.12}  % Slightly increased for Tamil readability
+% PUBLISHER-GRADE TYPOGRAPHY for Tamil
+\linespread{1.10}  % Optimized for Tamil readability
 
 % Paragraph formatting
-\setlength{\parindent}{1.8em}  % Traditional Tamil paragraph indent
-\setlength{\parskip}{0.25em plus 0.1em minus 0.05em}
+\setlength{\parindent}{1.5em}
+\setlength{\parskip}{0.2em plus 0.1em minus 0.05em}
 
-% WORD SPACING AND JUSTIFICATION: Critical for Tamil
-% More restrictive settings for professional appearance
-\tolerance=800        % Tighter tolerance for better word spacing
-\pretolerance=200     % First pass tolerance
-\emergencystretch=1.2em  % Conservative emergency stretch
+% Professional justification settings
+\tolerance=1000
+\pretolerance=200
+\emergencystretch=1.0em
 
-% Hyphenation: Disabled for Tamil (not linguistically appropriate)
+% Disable hyphenation for Tamil (linguistically inappropriate)
 \hyphenpenalty=10000
 \exhyphenpenalty=10000
-\binoppenalty=700
-\relpenalty=500
 
 % Widow and orphan control
 \widowpenalty=10000
 \clubpenalty=10000
 \displaywidowpenalty=10000
 
-% Page breaking
+% Better page breaking
 \raggedbottom
 \parfillskip=0pt plus 1fil
-
-% Better justification algorithm
-\leftskip=0pt plus 0.1em
-\rightskip=0pt plus 0.1em
-\spaceskip=0pt plus 0.1em minus 0.05em
-\xspaceskip=0pt plus 0.15em minus 0.05em
-
-% QUOTATION MARKS: Tamil-appropriate
-\usepackage{csquotes}
-\DeclareQuoteStyle{tamil}
-  {\textquotedblright}{\textquotedblleft}
-  {\textquoteright}{\textquoteleft}
 
 % Page setup
 \makeatletter
@@ -147,8 +109,6 @@
   pdfauthor={$if(author-meta)$$author-meta$$else$$if(author)$$author$$endif$$endif$},
   pdfsubject={$if(subject)$$subject$$else$$if(title)$$title$$endif$$endif$},
   pdfkeywords={$if(keywords)$$for(keywords)$$keywords$$sep$, $endfor$$endif$},
-  pdfcreator={Enhanced Tamil Typography},
-  pdfproducer={XeLaTeX with Polyglossia},
   colorlinks=false,
   hidelinks=true
 }
@@ -172,7 +132,7 @@ $if(pagestyle)$
 \pagestyle{$pagestyle$}
 $endif$
 
-% Section formatting with Tamil support
+% Section formatting
 $if(secstyle)$
 \usepackage{titlesec}
 \titleformat{\chapter}[display]
@@ -198,14 +158,13 @@ $if(setspace)$
 \setstretch{$setspace$}
 $endif$
 
-% Lists with proper Tamil formatting
+% Lists optimization
 \usepackage{enumitem}
 \setlist{
-  itemsep=0.25em,
+  itemsep=0.2em,
   parsep=0.1em,
-  topsep=0.5em,
-  partopsep=0.1em,
-  leftmargin=2em
+  topsep=0.4em,
+  leftmargin=1.8em
 }
 
 % Tight list for Pandoc
@@ -224,15 +183,15 @@ $if(tocdepth)$
 \setcounter{tocdepth}{$tocdepth$}
 $endif$
 
-% Tables and graphics with Tamil support
+% Tables and graphics
 \usepackage{longtable}
 \usepackage{booktabs}
 \usepackage{array}
 \usepackage{graphicx}
 \usepackage{calc}
 
-% Better table formatting for Tamil content
-\renewcommand{\arraystretch}{1.1}
+% Better table formatting
+\renewcommand{\arraystretch}{1.05}
 
 % Front/Main/Back matter
 \renewcommand{\frontmatter}{%
@@ -254,20 +213,8 @@ $endif$
   \pagestyle{plain}
 }
 
-% Tamil-specific commands and environments
-\newcommand{\tamilquote}[1]{\textquotedblright#1\textquotedblleft}
-\newcommand{\tamilemph}[1]{\textbf{#1}}  % Bold emphasis for Tamil
-
-% Verse environment for Tamil poetry
-\newenvironment{tamilverse}
-{\begin{verse}\raggedright}
-{\end{verse}}
-
 % DOCUMENT START
 \begin{document}
-
-% Set Tamil language environment
-\begin{tamil}
 
 % Table of Contents
 $if(toc)$
@@ -278,16 +225,12 @@ $if(toc)$
 }
 $endif$
 
-% Main content with Tamil typography
+% Main content
 $body$
-
-\end{tamil}
 
 % Bibliography
 $if(bibliography)$
-\begin{english}
 \bibliography{$bibliography$}
-\end{english}
 $endif$
 
 \end{document}
