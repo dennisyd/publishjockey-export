@@ -1,0 +1,250 @@
+% Custom LaTeX template for PublishJockey - INDIC SCRIPTS VERSION
+% Optimized for Hindi, Tamil, Bengali, Gujarati, Telugu, Kannada, Malayalam, Punjabi, Oriya
+% Simplified structure to avoid conditional nesting issues
+
+\documentclass[$if(fontsize)$$fontsize$,$endif$$for(classoption)$$classoption$$sep$,$endfor$]{$documentclass$}
+
+\usepackage{amssymb,amsmath}
+\usepackage{ifxetex,ifluatex}
+\usepackage{fixltx2e}
+
+% Simple page numbering
+\makeatletter
+\def\@oddfoot{\hfil\thepage\hfil}
+\def\@evenfoot{\hfil\thepage\hfil}
+\def\@oddhead{}
+\def\@evenhead{}
+\makeatother
+
+\pagestyle{plain}
+
+% XeLaTeX-specific setup for Indic scripts
+\ifxetex
+  \usepackage{fontspec}
+  \usepackage{ucharclasses}
+  
+  % Set Indic script as the main font based on user selection or language default
+  % FIXED: Proper configuration for Indic scripts with correct OpenType features
+  \setmainfont{$if(mainfont)$$mainfont$$else$Noto Serif Tamil$endif$}[
+    Renderer=HarfBuzz,
+    Ligatures=Required,
+    % CRITICAL: Indic-specific OpenType features for proper spacing
+    RawFeature={+kern,+liga,+clig,+dlig,+rlig,+calt,+ccmp,+locl,+mark,+mkmk},
+    Scale=1.0,
+    WordSpace=1.0,
+    PunctuationSpace=1.0
+  ]
+  
+  % Define fonts for different Indic scripts (for fallback/switching if needed)
+  % Using Serif variants to match user's available fonts
+  % Note: The main font comes from $mainfont$ (user selection)
+  % These are only used for script switching when mixing scripts
+  
+  % Devanagari fonts (Hindi, Nepali, Marathi, Sanskrit)
+  \newfontfamily\devanagarifont{Noto Serif Devanagari}[
+    Script=Devanagari,
+    Language=Hindi,
+    Renderer=HarfBuzz,
+    Ligatures=Required,
+    RawFeature={+kern,+liga,+clig,+dlig,+rlig,+calt,+ccmp,+locl,+mark,+mkmk},
+    Scale=1.0,
+    WordSpace=1.0,
+    PunctuationSpace=1.0
+  ]
+  
+  % Tamil fonts (FIXED configuration)
+  \newfontfamily\tamilfont{Noto Serif Tamil}[
+    Script=Tamil,
+    Language=Tamil,
+    Renderer=HarfBuzz,
+    Ligatures=Required,
+    RawFeature={+kern,+liga,+clig,+dlig,+rlig,+calt,+ccmp,+locl,+mark,+mkmk},
+    Scale=1.0,
+    WordSpace=1.0,
+    PunctuationSpace=1.0
+  ]
+  
+  % Bengali fonts (Bengali, Assamese)
+  \newfontfamily\bengalifont{Noto Serif Bengali}[
+    Script=Bengali,
+    Language=Bengali,
+    Renderer=HarfBuzz,
+    Ligatures=Required,
+    RawFeature={+kern,+liga,+clig,+dlig,+rlig,+calt,+ccmp,+locl,+mark,+mkmk},
+    Scale=1.0,
+    WordSpace=1.0,
+    PunctuationSpace=1.0
+  ]
+  
+  % Gurmukhi fonts (Punjabi)
+  \newfontfamily\gurmukhifont{Noto Serif Gurmukhi}[
+    Script=Gurmukhi,
+    Language=Punjabi,
+    Renderer=HarfBuzz,
+    Ligatures=Required,
+    RawFeature={+kern,+liga,+clig,+dlig,+rlig,+calt,+ccmp,+locl,+mark,+mkmk},
+    Scale=1.0,
+    WordSpace=1.0,
+    PunctuationSpace=1.0
+  ]
+  
+  % Define English/Latin font for automatic switching
+  \newfontfamily\englishfont{Liberation Serif}[
+    Ligatures=TeX,
+    Scale=MatchLowercase
+  ]
+  
+  % NO POLYGLOSSIA - Using ucharclasses for automatic font switching
+  % This is the modern XeLaTeX approach for multi-script documents
+  % ucharclasses detects Unicode script blocks and switches fonts automatically
+  
+  % CRITICAL: Automatic font switching based on Unicode script
+  % When Latin characters appear in Indic text: Switch to English font
+  \setTransitionsForLatin{
+    \begingroup\englishfont
+  }{
+    \endgroup
+  }
+  
+  % Note: The main Indic script uses \setmainfont (set from $mainfont$ variable)
+  % so explicit transitions for the main script aren't needed - it's the default!
+  
+  % Disable microtype for XeLaTeX (not fully supported)
+  \usepackage{microtype}
+  \microtypesetup{
+    activate=false,
+    protrusion=false,
+    expansion=false,
+    spacing=false,
+    tracking=false
+  }
+\fi
+
+% Unicode-aware PDF setup
+\usepackage[unicode]{hyperref}
+\hypersetup{
+  pdfencoding=auto,
+  bookmarksopen=true,
+  bookmarksopenlevel=1,
+  pdftitle={$if(title-meta)$$title-meta$$else$$if(title)$$title$$else$Document$endif$$endif$},
+  pdfauthor={$if(author-meta)$$author-meta$$else$$if(author)$$author$$else$$endif$$endif$},
+  pdfsubject={$if(subject)$$subject$$else$$if(title)$$title$$else$$endif$$endif$},
+  pdfkeywords={$if(keywords)$$for(keywords)$$keywords$$sep$, $endfor$$endif$},
+  pdfcreator={PublishJockey.com},
+  pdfproducer={PublishJockey.com}
+}
+
+% Page geometry
+$if(paperwidth)$
+\usepackage[
+  paperwidth=$paperwidth$,
+  paperheight=$paperheight$,
+  left=$leftmargin$,
+  right=$rightmargin$,
+  top=$topmargin$,
+  bottom=$bottommargin$,
+  footskip=$footskip$,
+  bindingoffset=0pt
+]{geometry}
+$endif$
+
+% Page style
+$if(pagestyle)$
+\pagestyle{$pagestyle$}
+$endif$
+
+% Section formatting
+$if(secstyle)$
+\usepackage{titlesec}
+\titleformat{\chapter}{\huge\bfseries\filcenter}{}{0em}{}
+$endif$
+
+% Spacing
+$if(setspace)$
+\usepackage{setspace}
+\setstretch{$setspace$}
+$endif$
+
+% FIXED: Typography optimizations for Indic scripts
+% Better line spacing for Tamil/Indic readability
+\linespread{1.08}  % Reduced from 1.15 - Indic scripts need tighter line spacing
+\setlength{\parindent}{1.5em}
+\setlength{\parskip}{0.3em plus 0.2em minus 0.1em}  % Tighter paragraph spacing
+
+% FIXED: Word and line break optimization for Indic scripts
+\tolerance=1500  % FIXED: Much tighter tolerance for better word spacing
+\pretolerance=100  % FIXED: Lower pretolerance for consistent spacing
+\hyphenpenalty=10000  % FIXED: Completely disable hyphenation for Indic scripts
+\exhyphenpenalty=10000
+\widowpenalty=10000
+\clubpenalty=10000
+\displaywidowpenalty=10000
+
+% FIXED: More conservative spacing for Indic scripts
+\setlength{\emergencystretch}{1.5em}  % Reduced emergency stretch
+\raggedbottom
+
+% FIXED: Remove \sloppy - it causes poor word spacing in Indic scripts
+% \sloppy  % REMOVED - causes uneven spacing
+
+% Better justification for Indic text
+\parfillskip=0pt plus 1fil
+
+% Tightlist environment
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+
+% Section numbering
+$if(secnumdepth)$
+\setcounter{secnumdepth}{$secnumdepth$}
+$endif$
+
+% TOC depth
+$if(tocdepth)$
+\setcounter{tocdepth}{$tocdepth$}
+$endif$
+
+% Tables and graphics
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{calc}
+\usepackage{array}
+
+% Front/Main/Back matter commands
+\renewcommand{\frontmatter}{%
+  \cleardoublepage
+  \pagenumbering{roman}
+  \setcounter{page}{1}
+  \pagestyle{plain}
+}
+
+\renewcommand{\mainmatter}{%
+  \cleardoublepage
+  \pagenumbering{arabic}
+  \setcounter{page}{1}
+  \pagestyle{plain}
+}
+
+\renewcommand{\backmatter}{%
+  \cleardoublepage
+  \pagestyle{plain}
+}
+
+\begin{document}
+
+% Table of Contents
+$if(toc)$
+\tableofcontents
+$endif$
+
+% Main content
+$body$
+
+% Bibliography
+$if(bibliography)$
+\bibliography{$bibliography$}
+$endif$
+
+\end{document}
+

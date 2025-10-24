@@ -1,14 +1,132 @@
-% Custom LaTeX template for PublishJockey - INDIC SCRIPTS VERSION
-% Optimized for Hindi, Tamil, Bengali, Gujarati, Telugu, Kannada, Malayalam, Punjabi, Oriya
-% Simplified structure to avoid conditional nesting issues
+% Custom LaTeX template for Publisher-Grade Tamil Typography
+% Optimized for XeLaTeX + Pandoc with Polyglossia
+% Version 2.0 - Enhanced for professional Tamil publishing
 
 \documentclass[$if(fontsize)$$fontsize$,$endif$$for(classoption)$$classoption$$sep$,$endfor$]{$documentclass$}
 
+% Essential packages
 \usepackage{amssymb,amsmath}
 \usepackage{ifxetex,ifluatex}
 \usepackage{fixltx2e}
 
-% Simple page numbering
+% XeLaTeX-specific setup for Tamil
+\ifxetex
+  \usepackage{fontspec}
+  
+  % POLYGLOSSIA: Modern language support for XeLaTeX
+  \usepackage{polyglossia}
+  
+  % Set Tamil as main language with proper configuration
+  \setdefaultlanguage[numerals=devanagari]{tamil}
+  \setotherlanguage{english}
+  
+  % FONTS: Publisher-grade Tamil fonts with complete OpenType features
+  % Primary Tamil font with advanced typography features
+  \setmainfont{$if(mainfont)$$mainfont$$else$Noto Serif Tamil$endif$}[
+    Renderer=HarfBuzz,
+    Script=Tamil,
+    Language=Tamil,
+    Ligatures={Required,Common,Contextual},
+    % CRITICAL: Full OpenType feature set for Tamil
+    RawFeature={+kern,+liga,+clig,+dlig,+rlig,+calt,+ccmp,+locl,+mark,+mkmk,+akhn,+blwf,+half,+pstf,+vatu},
+    % Typography refinements
+    Contextuals=Alternate,
+    % Letter spacing optimization for Tamil
+    LetterSpace=0.0,
+    WordSpace=1.0,
+    PunctuationSpace=1.0,
+    Scale=1.0
+  ]
+  
+  % English/Latin font for mixed content
+  \newfontfamily\englishfont{$if(romanfont)$$romanfont$$else$Libertinus Serif$endif$}[
+    Renderer=HarfBuzz,
+    Ligatures={Required,Common,Rare},
+    RawFeature={+kern,+liga,+clig,+dlig,+onum,+pnum},
+    Scale=MatchLowercase,
+    LetterSpace=0.0,
+    WordSpace=1.0
+  ]
+  
+  % Monospace font for code (if needed)
+  \setmonofont{$if(monofont)$$monofont$$else$Inconsolata$endif$}[
+    Scale=MatchLowercase,
+    Contextuals=Alternate
+  ]
+  
+  % MICROTYPE: Limited but optimized settings for XeLaTeX
+  \usepackage{microtype}
+  \microtypesetup{
+    activate=true,
+    protrusion=true,
+    expansion=false,  % Not fully supported in XeLaTeX
+    spacing=true,
+    tracking=false,
+    kerning=true
+  }
+  
+  % Tamil-specific microtypography
+  \SetProtrusion
+    { encoding = *,
+      family   = * }
+    { "0964 = { ,800}, % Tamil danda
+      "0965 = { ,800}, % Tamil double danda
+      "0BE6 = {300,300}, % Tamil digit zero
+      "0BE7 = {200,300}, % Tamil digit one
+      "002D = {300,500}, % Hyphen
+      "2013 = {300,400}, % En-dash
+      "2014 = {200,300}  % Em-dash
+    }
+
+\else
+  % Fallback for non-XeLaTeX engines
+  \usepackage[utf8]{inputenc}
+  \usepackage[T1]{fontenc}
+  \usepackage{lmodern}
+\fi
+
+% TYPOGRAPHY: Publisher-grade settings for Tamil
+% Optimized line spacing for Tamil script
+\linespread{1.12}  % Slightly increased for Tamil readability
+
+% Paragraph formatting
+\setlength{\parindent}{1.8em}  % Traditional Tamil paragraph indent
+\setlength{\parskip}{0.25em plus 0.1em minus 0.05em}
+
+% WORD SPACING AND JUSTIFICATION: Critical for Tamil
+% More restrictive settings for professional appearance
+\tolerance=800        % Tighter tolerance for better word spacing
+\pretolerance=200     % First pass tolerance
+\emergencystretch=1.2em  % Conservative emergency stretch
+
+% Hyphenation: Disabled for Tamil (not linguistically appropriate)
+\hyphenpenalty=10000
+\exhyphenpenalty=10000
+\binoppenalty=700
+\relpenalty=500
+
+% Widow and orphan control
+\widowpenalty=10000
+\clubpenalty=10000
+\displaywidowpenalty=10000
+
+% Page breaking
+\raggedbottom
+\parfillskip=0pt plus 1fil
+
+% Better justification algorithm
+\leftskip=0pt plus 0.1em
+\rightskip=0pt plus 0.1em
+\spaceskip=0pt plus 0.1em minus 0.05em
+\xspaceskip=0pt plus 0.15em minus 0.05em
+
+% QUOTATION MARKS: Tamil-appropriate
+\usepackage{csquotes}
+\DeclareQuoteStyle{tamil}
+  {\textquotedblright}{\textquotedblleft}
+  {\textquoteright}{\textquoteleft}
+
+% Page setup
 \makeatletter
 \def\@oddfoot{\hfil\thepage\hfil}
 \def\@evenfoot{\hfil\thepage\hfil}
@@ -18,120 +136,21 @@
 
 \pagestyle{plain}
 
-% XeLaTeX-specific setup for Indic scripts
-\ifxetex
-  \usepackage{fontspec}
-  \usepackage{ucharclasses}
-  
-  % Set Indic script as the main font based on user selection or language default
-  % FIXED: Proper configuration for Indic scripts with correct OpenType features
-  \setmainfont{$if(mainfont)$$mainfont$$else$Noto Serif Tamil$endif$}[
-    Renderer=HarfBuzz,
-    Ligatures=Required,
-    % CRITICAL: Indic-specific OpenType features for proper spacing
-    RawFeature={+kern,+liga,+clig,+dlig,+rlig,+calt,+ccmp,+locl,+mark,+mkmk},
-    Scale=1.0,
-    WordSpace=1.0,
-    PunctuationSpace=1.0
-  ]
-  
-  % Define fonts for different Indic scripts (for fallback/switching if needed)
-  % Using Serif variants to match user's available fonts
-  % Note: The main font comes from $mainfont$ (user selection)
-  % These are only used for script switching when mixing scripts
-  
-  % Devanagari fonts (Hindi, Nepali, Marathi, Sanskrit)
-  \newfontfamily\devanagarifont{Noto Serif Devanagari}[
-    Script=Devanagari,
-    Language=Hindi,
-    Renderer=HarfBuzz,
-    Ligatures=Required,
-    RawFeature={+kern,+liga,+clig,+dlig,+rlig,+calt,+ccmp,+locl,+mark,+mkmk},
-    Scale=1.0,
-    WordSpace=1.0,
-    PunctuationSpace=1.0
-  ]
-  
-  % Tamil fonts (FIXED configuration)
-  \newfontfamily\tamilfont{Noto Serif Tamil}[
-    Script=Tamil,
-    Language=Tamil,
-    Renderer=HarfBuzz,
-    Ligatures=Required,
-    RawFeature={+kern,+liga,+clig,+dlig,+rlig,+calt,+ccmp,+locl,+mark,+mkmk},
-    Scale=1.0,
-    WordSpace=1.0,
-    PunctuationSpace=1.0
-  ]
-  
-  % Bengali fonts (Bengali, Assamese)
-  \newfontfamily\bengalifont{Noto Serif Bengali}[
-    Script=Bengali,
-    Language=Bengali,
-    Renderer=HarfBuzz,
-    Ligatures=Required,
-    RawFeature={+kern,+liga,+clig,+dlig,+rlig,+calt,+ccmp,+locl,+mark,+mkmk},
-    Scale=1.0,
-    WordSpace=1.0,
-    PunctuationSpace=1.0
-  ]
-  
-  % Gurmukhi fonts (Punjabi)
-  \newfontfamily\gurmukhifont{Noto Serif Gurmukhi}[
-    Script=Gurmukhi,
-    Language=Punjabi,
-    Renderer=HarfBuzz,
-    Ligatures=Required,
-    RawFeature={+kern,+liga,+clig,+dlig,+rlig,+calt,+ccmp,+locl,+mark,+mkmk},
-    Scale=1.0,
-    WordSpace=1.0,
-    PunctuationSpace=1.0
-  ]
-  
-  % Define English/Latin font for automatic switching
-  \newfontfamily\englishfont{Liberation Serif}[
-    Ligatures=TeX,
-    Scale=MatchLowercase
-  ]
-  
-  % NO POLYGLOSSIA - Using ucharclasses for automatic font switching
-  % This is the modern XeLaTeX approach for multi-script documents
-  % ucharclasses detects Unicode script blocks and switches fonts automatically
-  
-  % CRITICAL: Automatic font switching based on Unicode script
-  % When Latin characters appear in Indic text: Switch to English font
-  \setTransitionsForLatin{
-    \begingroup\englishfont
-  }{
-    \endgroup
-  }
-  
-  % Note: The main Indic script uses \setmainfont (set from $mainfont$ variable)
-  % so explicit transitions for the main script aren't needed - it's the default!
-  
-  % Disable microtype for XeLaTeX (not fully supported)
-  \usepackage{microtype}
-  \microtypesetup{
-    activate=false,
-    protrusion=false,
-    expansion=false,
-    spacing=false,
-    tracking=false
-  }
-\fi
-
 % Unicode-aware PDF setup
-\usepackage[unicode]{hyperref}
+\usepackage[unicode,bookmarks=true]{hyperref}
 \hypersetup{
   pdfencoding=auto,
   bookmarksopen=true,
-  bookmarksopenlevel=1,
-  pdftitle={$if(title-meta)$$title-meta$$else$$if(title)$$title$$else$Document$endif$$endif$},
-  pdfauthor={$if(author-meta)$$author-meta$$else$$if(author)$$author$$else$$endif$$endif$},
-  pdfsubject={$if(subject)$$subject$$else$$if(title)$$title$$else$$endif$$endif$},
+  bookmarksopenlevel=2,
+  unicode=true,
+  pdftitle={$if(title-meta)$$title-meta$$else$$if(title)$$title$$endif$$endif$},
+  pdfauthor={$if(author-meta)$$author-meta$$else$$if(author)$$author$$endif$$endif$},
+  pdfsubject={$if(subject)$$subject$$else$$if(title)$$title$$endif$$endif$},
   pdfkeywords={$if(keywords)$$for(keywords)$$keywords$$sep$, $endfor$$endif$},
-  pdfcreator={PublishJockey.com},
-  pdfproducer={PublishJockey.com}
+  pdfcreator={Enhanced Tamil Typography},
+  pdfproducer={XeLaTeX with Polyglossia},
+  colorlinks=false,
+  hidelinks=true
 }
 
 % Page geometry
@@ -148,51 +167,52 @@ $if(paperwidth)$
 ]{geometry}
 $endif$
 
-% Page style
+% Page style customization
 $if(pagestyle)$
 \pagestyle{$pagestyle$}
 $endif$
 
-% Section formatting
+% Section formatting with Tamil support
 $if(secstyle)$
 \usepackage{titlesec}
-\titleformat{\chapter}{\huge\bfseries\filcenter}{}{0em}{}
+\titleformat{\chapter}[display]
+  {\normalfont\huge\bfseries\centering}
+  {\chaptertitlename\ \thechapter}
+  {1ex}
+  {}
+\titleformat{\section}
+  {\normalfont\Large\bfseries}
+  {\thesection}
+  {1em}
+  {}
+\titleformat{\subsection}
+  {\normalfont\large\bfseries}
+  {\thesubsection}
+  {1em}
+  {}
 $endif$
 
-% Spacing
+% Spacing customization
 $if(setspace)$
 \usepackage{setspace}
 \setstretch{$setspace$}
 $endif$
 
-% FIXED: Typography optimizations for Indic scripts
-% Better line spacing for Tamil/Indic readability
-\linespread{1.08}  % Reduced from 1.15 - Indic scripts need tighter line spacing
-\setlength{\parindent}{1.5em}
-\setlength{\parskip}{0.3em plus 0.2em minus 0.1em}  % Tighter paragraph spacing
+% Lists with proper Tamil formatting
+\usepackage{enumitem}
+\setlist{
+  itemsep=0.25em,
+  parsep=0.1em,
+  topsep=0.5em,
+  partopsep=0.1em,
+  leftmargin=2em
+}
 
-% FIXED: Word and line break optimization for Indic scripts
-\tolerance=1500  % FIXED: Much tighter tolerance for better word spacing
-\pretolerance=100  % FIXED: Lower pretolerance for consistent spacing
-\hyphenpenalty=10000  % FIXED: Completely disable hyphenation for Indic scripts
-\exhyphenpenalty=10000
-\widowpenalty=10000
-\clubpenalty=10000
-\displaywidowpenalty=10000
-
-% FIXED: More conservative spacing for Indic scripts
-\setlength{\emergencystretch}{1.5em}  % Reduced emergency stretch
-\raggedbottom
-
-% FIXED: Remove \sloppy - it causes poor word spacing in Indic scripts
-% \sloppy  % REMOVED - causes uneven spacing
-
-% Better justification for Indic text
-\parfillskip=0pt plus 1fil
-
-% Tightlist environment
+% Tight list for Pandoc
 \providecommand{\tightlist}{%
-  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+  \setlength{\itemsep}{0pt}%
+  \setlength{\parskip}{0pt}%
+}
 
 % Section numbering
 $if(secnumdepth)$
@@ -204,14 +224,17 @@ $if(tocdepth)$
 \setcounter{tocdepth}{$tocdepth$}
 $endif$
 
-% Tables and graphics
+% Tables and graphics with Tamil support
 \usepackage{longtable}
 \usepackage{booktabs}
+\usepackage{array}
 \usepackage{graphicx}
 \usepackage{calc}
-\usepackage{array}
 
-% Front/Main/Back matter commands
+% Better table formatting for Tamil content
+\renewcommand{\arraystretch}{1.1}
+
+% Front/Main/Back matter
 \renewcommand{\frontmatter}{%
   \cleardoublepage
   \pagenumbering{roman}
@@ -231,20 +254,40 @@ $endif$
   \pagestyle{plain}
 }
 
+% Tamil-specific commands and environments
+\newcommand{\tamilquote}[1]{\textquotedblright#1\textquotedblleft}
+\newcommand{\tamilemph}[1]{\textbf{#1}}  % Bold emphasis for Tamil
+
+% Verse environment for Tamil poetry
+\newenvironment{tamilverse}
+{\begin{verse}\raggedright}
+{\end{verse}}
+
+% DOCUMENT START
 \begin{document}
+
+% Set Tamil language environment
+\begin{tamil}
 
 % Table of Contents
 $if(toc)$
+{
+\hypersetup{linkcolor=black}
+\setcounter{tocdepth}{$toc-depth$}
 \tableofcontents
+}
 $endif$
 
-% Main content
+% Main content with Tamil typography
 $body$
+
+\end{tamil}
 
 % Bibliography
 $if(bibliography)$
+\begin{english}
 \bibliography{$bibliography$}
+\end{english}
 $endif$
 
 \end{document}
-
