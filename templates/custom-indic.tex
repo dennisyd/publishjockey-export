@@ -24,13 +24,15 @@
   \usepackage{ucharclasses}
   
   % Set Indic script as the main font based on user selection or language default
-  % This makes the Indic font the default for the entire document
-  % The font name comes from frontend selection or our defaults
+  % FIXED: Proper configuration for Indic scripts with correct OpenType features
   \setmainfont{$if(mainfont)$$mainfont$$else$Noto Serif Tamil$endif$}[
     Renderer=HarfBuzz,
-    Ligatures=TeX,
+    Ligatures=Required,
+    % CRITICAL: Indic-specific OpenType features for proper spacing
+    RawFeature={+kern,+liga,+clig,+dlig,+rlig,+calt,+ccmp,+locl,+mark,+mkmk},
     Scale=1.0,
-    Mapping=tex-text
+    WordSpace=1.0,
+    PunctuationSpace=1.0
   ]
   
   % Define fonts for different Indic scripts (for fallback/switching if needed)
@@ -41,37 +43,49 @@
   % Devanagari fonts (Hindi, Nepali, Marathi, Sanskrit)
   \newfontfamily\devanagarifont{Noto Serif Devanagari}[
     Script=Devanagari,
-    Renderer=HarfBuzz,
-    Ligatures=TeX,
     Language=Hindi,
-    Scale=1.0
+    Renderer=HarfBuzz,
+    Ligatures=Required,
+    RawFeature={+kern,+liga,+clig,+dlig,+rlig,+calt,+ccmp,+locl,+mark,+mkmk},
+    Scale=1.0,
+    WordSpace=1.0,
+    PunctuationSpace=1.0
   ]
   
-  % Tamil fonts
+  % Tamil fonts (FIXED configuration)
   \newfontfamily\tamilfont{Noto Serif Tamil}[
     Script=Tamil,
-    Renderer=HarfBuzz,
-    Ligatures=TeX,
     Language=Tamil,
-    Scale=1.0
+    Renderer=HarfBuzz,
+    Ligatures=Required,
+    RawFeature={+kern,+liga,+clig,+dlig,+rlig,+calt,+ccmp,+locl,+mark,+mkmk},
+    Scale=1.0,
+    WordSpace=1.0,
+    PunctuationSpace=1.0
   ]
   
   % Bengali fonts (Bengali, Assamese)
   \newfontfamily\bengalifont{Noto Serif Bengali}[
     Script=Bengali,
-    Renderer=HarfBuzz,
-    Ligatures=TeX,
     Language=Bengali,
-    Scale=1.0
+    Renderer=HarfBuzz,
+    Ligatures=Required,
+    RawFeature={+kern,+liga,+clig,+dlig,+rlig,+calt,+ccmp,+locl,+mark,+mkmk},
+    Scale=1.0,
+    WordSpace=1.0,
+    PunctuationSpace=1.0
   ]
   
   % Gurmukhi fonts (Punjabi)
   \newfontfamily\gurmukhifont{Noto Serif Gurmukhi}[
     Script=Gurmukhi,
-    Renderer=HarfBuzz,
-    Ligatures=TeX,
     Language=Punjabi,
-    Scale=1.0
+    Renderer=HarfBuzz,
+    Ligatures=Required,
+    RawFeature={+kern,+liga,+clig,+dlig,+rlig,+calt,+ccmp,+locl,+mark,+mkmk},
+    Scale=1.0,
+    WordSpace=1.0,
+    PunctuationSpace=1.0
   ]
   
   % Define English/Latin font for automatic switching
@@ -151,25 +165,30 @@ $if(setspace)$
 \setstretch{$setspace$}
 $endif$
 
-% Typography optimizations for Indic scripts
-% Line spacing improvements
-\linespread{1.15}  % 15% more line spacing for better readability
-\setlength{\parindent}{1.5em}  % Paragraph indentation
-\setlength{\parskip}{0.5em plus 0.3em minus 0.2em}  % Space between paragraphs
+% FIXED: Typography optimizations for Indic scripts
+% Better line spacing for Tamil/Indic readability
+\linespread{1.08}  % Reduced from 1.15 - Indic scripts need tighter line spacing
+\setlength{\parindent}{1.5em}
+\setlength{\parskip}{0.3em plus 0.2em minus 0.1em}  % Tighter paragraph spacing
 
-% Word and line break optimization
-\tolerance=3000  % More tolerant of loose lines (Indic scripts need this)
-\pretolerance=1000  % Try harder before hyphenating
-\hyphenpenalty=500  % Discourage hyphenation (Indic scripts don't hyphenate well)
-\exhyphenpenalty=500
+% FIXED: Word and line break optimization for Indic scripts
+\tolerance=1500  % FIXED: Much tighter tolerance for better word spacing
+\pretolerance=100  % FIXED: Lower pretolerance for consistent spacing
+\hyphenpenalty=10000  % FIXED: Completely disable hyphenation for Indic scripts
+\exhyphenpenalty=10000
 \widowpenalty=10000
 \clubpenalty=10000
 \displaywidowpenalty=10000
 
-% Flexible spacing for better justification
-\setlength{\emergencystretch}{3em}  % Allow extra stretch in problem lines
+% FIXED: More conservative spacing for Indic scripts
+\setlength{\emergencystretch}{1.5em}  % Reduced emergency stretch
 \raggedbottom
-\sloppy
+
+% FIXED: Remove \sloppy - it causes poor word spacing in Indic scripts
+% \sloppy  % REMOVED - causes uneven spacing
+
+% Better justification for Indic text
+\parfillskip=0pt plus 1fil
 
 % Tightlist environment
 \providecommand{\tightlist}{%
